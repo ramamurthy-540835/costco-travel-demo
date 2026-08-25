@@ -79,8 +79,17 @@ function switchView(id) {
   if (id==='insights') loadInsights();
   window.scrollTo({top:0,behavior:'smooth'});
 }
+function workflowContainer() {
+  if (appState.flow.type !== 'new') return $('#workflowPanel');
+  let element=$('#chatWorkflowPanel');
+  if (!element) { element=document.createElement('div'); element.id='chatWorkflowPanel'; element.className='chat-workflow'; $('#messages').append(element); }
+  return element;
+}
+function clearWorkflowPanels() { $('#workflowPanel').innerHTML=''; $('#chatWorkflowPanel')?.remove(); }
+function scrollConversation() { if (appState.flow.type==='new') $('#messages').scrollTop=$('#messages').scrollHeight; }
 function flowPanel(title, body, actions = '') {
-  $('#workflowPanel').innerHTML = `<section class="workflow-panel"><div class="workflow-icon">✓</div><div><div class="eyebrow">PROTECTED WORKFLOW</div><h3>${title}</h3>${body}<div class="workflow-actions">${actions}</div></div></section>`;
+  workflowContainer().innerHTML = `<section class="workflow-panel"><div class="workflow-icon">✓</div><div><div class="eyebrow">PROTECTED WORKFLOW</div><h3>${title}</h3>${body}<div class="workflow-actions">${actions}</div></div></section>`;
+  scrollConversation();
 }
 
 function dateMentions(message, now = new Date()) {
@@ -187,7 +196,7 @@ async function abandonFlow(announce = true) {
     try { await api(`/api/reservations/${flow.resId}/change/abandon`,{method:'POST'}); } catch (_) { /* already restored/terminal */ }
   }
   closingDatePicker=true; if ($('#bookingModal').open) $('#bookingModal').close(); closingDatePicker=false;
-  appState.flow=FlowMachine.reset(); appState.confirmCards.clear(); await hydrateReservations(); $('#workflowPanel').innerHTML='';
+  appState.flow=FlowMachine.reset(); appState.confirmCards.clear(); await hydrateReservations(); clearWorkflowPanels();
   if (announce) { addMessage('Your original reservation is confirmed and the pending flow was abandoned.'); handleAgentAction({action:'flow_abandoned'}); }
 }
 
@@ -210,10 +219,10 @@ async function acceptDates(event) {
     const updated=await api(`/api/reservations/${appState.flow.resId}/change/update`,{method:'POST',body:JSON.stringify({pickup_at:localTripIso(pickup),drop_at:localTripIso(drop)})});
     if (updated.requires_human_review) { await api(`/api/reservations/${appState.flow.resId}/change/abandon`,{method:'POST'}); appState.flow=FlowMachine.advance(appState.flow,'human_review'); await hydrateReservations(); flowPanel('Specialist review required',`<p>${updated.reason}</p><p>The original reservation was restored to CONFIRMED.</p>`); return; }
   }
-  appState.flow=FlowMachine.advance(appState.flow,'awaiting_car'); switchView('manage'); await renderNewOptions();
+  appState.flow=FlowMachine.advance(appState.flow,'awaiting_car'); switchView(appState.flow.type==='new'?'concierge':'manage'); await renderNewOptions();
 }
 
-function renderLoadingCards() { $('#workflowPanel').innerHTML='<section class="workflow-panel"><div class="loading-cards"><i></i><i></i><i></i></div><p>Checking member-priced inventory…</p></section>'; }
+function renderLoadingCards() { workflowContainer().innerHTML='<section class="workflow-panel"><div class="loading-cards"><i></i><i></i><i></i></div><p>Checking member-priced inventory…</p></section>'; scrollConversation(); }
 async function renderNewOptions() {
   renderLoadingCards(); const dates=appState.flow.newDates;
   let payload;
@@ -221,7 +230,7 @@ async function renderNewOptions() {
   catch (_) { payload={source:'fallback',cars:ALT_CARS}; }
   const cars=Array.isArray(payload)?payload:(payload.cars || ALT_CARS); const source=payload.source || cars[0]?.source || 'fallback';
   const note=source==='fallback'?'<div class="inventory-note">Showing sample inventory while live rates are unavailable.</div>':'';
-  $('#workflowPanel').innerHTML=`${note}<div class="rental-cards flow-car-cards"></div>`; const row=$('.flow-car-cards');
+  const root=workflowContainer(); root.innerHTML=`${note}<div class="rental-cards flow-car-cards"></div>`; const row=$('.flow-car-cards',root);
   cars.forEach((car,index)=>{
     const card=document.createElement('article'); card.className=`rental-card ${index===0?'recommended':''}`;
     const visual=car.image_url?`<img class="car-image" src="${car.image_url}" loading="lazy" alt="${car.car}">`:`<div class="car-emoji">${car.emoji || '🚙'}</div>`;

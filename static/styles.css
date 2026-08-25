@@ -34,6 +34,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @keyframes flow-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media(max-width:560px){.workflow-panel{grid-template-columns:1fr}.flow-summary{grid-template-columns:1fr}.workflow-actions button{width:100%}}
 .reservation-label{margin-top:26px}.reservation-sidebar{display:grid;gap:8px;margin-top:10px}
+.chat-workflow{margin-top:10px}.chat-workflow .workflow-panel{margin-top:0;padding:18px;grid-template-columns:34px 1fr}.chat-workflow .workflow-icon{width:32px;height:32px}.chat-workflow .rental-cards{padding-bottom:8px}
 .sidebar-reservation{width:100%;display:grid;grid-template-columns:1fr auto;gap:4px 10px;text-align:left;border:1px solid var(--line);background:#fff;padding:11px;border-radius:5px;cursor:pointer}
 .sidebar-reservation strong{font-size:11px;color:var(--navy)}.sidebar-reservation small{font-size:9px;color:var(--muted)}
 .status-badge{align-self:start;border-radius:99px;padding:3px 7px;font-size:8px;font-weight:700;text-transform:uppercase;background:#e7f4ee;color:var(--green)}
