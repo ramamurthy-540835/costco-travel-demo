@@ -1,0 +1,32 @@
+[
+  {
+    "provider": "Alamo",
+    "rating": 4.7,
+    "discount": "8%",
+    "included_miles": "Unlimited"
+  },
+  {
+    "provider": "Avis",
+    "rating": 4.6,
+    "discount": "10%",
+    "included_miles": "Unlimited"
+  },
+  {
+    "provider": "Budget",
+    "rating": 4.3,
+    "discount": "12%",
+    "included_miles": "Unlimited"
+  },
+  {
+    "provider": "Enterprise",
+    "rating": 4.8,
+    "discount": "9%",
+    "included_miles": "Unlimited"
+  },
+  {
+    "provider": "National",
+    "rating": 4.9,
+    "discount": "7%",
+    "included_miles": "Unlimited"
+  }
+]

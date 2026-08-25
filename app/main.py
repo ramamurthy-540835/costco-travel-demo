@@ -3,7 +3,7 @@ import logging, os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -14,6 +14,7 @@ from .policies import cancellation_schedule
 from .recommend import rank_cars
 from .reservations import ReservationError,ReservationService,service
 from .seed import seed
+from .sabre_mcp import SabreMcpError,search_documentation
 
 logging.basicConfig(level=logging.INFO); LOGGER=logging.getLogger("costco-travel-demo"); STATIC_DIR=Path(__file__).resolve().parent.parent/"static"
 class ChatInput(BaseModel):
@@ -44,7 +45,11 @@ def health(): return {"status":"ok","service":"costco-travel-demo","auth":"adc",
 def chat(body:ChatInput,reservations:Annotated[ReservationService,Depends(reservation_service)]):
     try: live=reservations.list()
     except Exception: live=[]
-    inventory=rank_cars(days=4,party_size=2); system=build_system_prompt(live,inventory,body.flow)
+    sabre_context=None
+    if "sabre" in body.message.lower():
+        try: sabre_context=search_documentation(body.message)
+        except SabreMcpError: LOGGER.warning("Sabre documentation MCP unavailable")
+    inventory=rank_cars(days=4,party_size=2); system=build_system_prompt(live,inventory,body.flow,sabre_context)
     history=body.messages[-10:] if body.messages else [{"role":"user","content":body.message}]
     try: return agent_reply(system,history)
     except Exception as exc:
@@ -86,6 +91,12 @@ def policies(reservations:Annotated[ReservationService,Depends(reservation_servi
         try: deadlines.append({"reservation_id":item["id"],"free_deadline":reservations.cancel_preview(item["id"])["free_deadline"]})
         except Exception: continue
     return {"schedule":cancellation_schedule(),"reservations":deadlines}
+@app.get("/api/sabre/docs/search")
+def sabre_docs_search(q:Annotated[str,Query(min_length=2,max_length=500)]):
+    try: result=search_documentation(q)
+    except SabreMcpError as exc: raise HTTPException(status_code=502,detail=str(exc)) from exc
+    return {"source":"sabre-developer-hub-mcp","query":q,"result":result}
+
 @app.get("/api/analytics")
 def analytics():
     return {"metrics":{"search_completion_rate":94,"booking_conversion_rate":18,"average_conversation_minutes":3.8,"account_creation_rate":27,"modification_success_rate":96,"customer_satisfaction_score":4.7},"bookings_by_provider":[{"provider":"Enterprise","bookings":248},{"provider":"Avis","bookings":221},{"provider":"Alamo","bookings":205},{"provider":"Budget","bookings":184},{"provider":"National","bookings":142}],"most_booked_locations":[{"location":"Orlando","bookings":146},{"location":"Las Vegas","bookings":131},{"location":"Los Angeles","bookings":118},{"location":"Seattle","bookings":104},{"location":"Denver","bookings":97}],"demo_data":True}

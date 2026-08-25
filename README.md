@@ -30,3 +30,9 @@ The service serves `static/costco-travel-agent-v3.html`, generated from the main
 ```bash
 python scripts/build_single_file.py
 ```
+
+## Customer documentation and mock data
+
+The customer-ready Word guide is at `docs/Costco_Travel_Agentic_Demo_Technical_Guide.docx`. Rebuild its synthetic 500-rental, 100-member, and 1,000-booking fixtures with `python scripts/generate_mock_data.py`, then rebuild the document with `pip install -r requirements-docs.txt && python scripts/build_customer_document.py`.
+
+Sabre's public Developer Hub documentation MCP is integrated server-side through `app/sabre_mcp.py` and `GET /api/sabre/docs/search`. This endpoint searches Sabre documentation; it does not perform live GDS shopping or booking. Transactional Sabre APIs require separately provisioned customer access and must remain behind the existing confirmation and HITL policy layer.

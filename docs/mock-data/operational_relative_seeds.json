@@ -1,0 +1,16 @@
+[
+  {
+    "reservation_id": "CTR-D21OUT1",
+    "pickup_offset": "21 days",
+    "duration_days": 4,
+    "car_class": "Intermediate",
+    "location_code": "MCO"
+  },
+  {
+    "reservation_id": "CTR-D30HRS1",
+    "pickup_offset": "30 hours",
+    "duration_days": 2,
+    "car_class": "Full-Size",
+    "location_code": "LAS"
+  }
+]

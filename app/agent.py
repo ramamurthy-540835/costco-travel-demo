@@ -13,7 +13,7 @@ MODEL=os.environ.get("AGENT_MODEL","gemini-3-flash-preview")
 def _client():
     return genai.Client(vertexai=True,project=os.environ.get("GOOGLE_CLOUD_PROJECT"),location=os.environ.get("VERTEX_LOCATION","global"))
 
-def build_system_prompt(reservations:list[dict[str,Any]],inventory:list[dict[str,Any]],flow:dict[str,Any]|None=None)->str:
+def build_system_prompt(reservations:list[dict[str,Any]],inventory:list[dict[str,Any]],flow:dict[str,Any]|None=None,sabre_context:dict[str,Any]|None=None)->str:
     now=datetime.now().astimezone()
     return f'''You are the Costco Travel car reservation concierge for a demo member presumed authenticated by SSO.
 Today's date and time: {now.isoformat()} ({now.tzname() or "local"}).
@@ -24,6 +24,8 @@ Never book, change, or quote any reservation with a pickup date before tomorrow.
 Dates enter through the calendar only. Never accept free-text dates as booking dates.
 A CANCELLED reservation cannot be changed or re-cancelled; offer to book a new car instead.
 Current flow: {json.dumps(flow or {},default=str,separators=(",",":"))}
+Sabre Developer Hub documentation context: {json.dumps(sabre_context or {},default=str,separators=(",",":"))[:12000]}
+Sabre MCP context is documentation only. Never claim it performed live shopping, booking, ticketing, or servicing.
 Live reservations: {json.dumps(reservations,default=str,separators=(",",":"))}
 Inventory: {json.dumps(inventory,default=str,separators=(",",":"))}
 Cancellation policy: {json.dumps(cancellation_schedule(),separators=(",",":"))}
