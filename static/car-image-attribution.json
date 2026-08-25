@@ -1,0 +1,44 @@
+{
+  "intermediate": {
+    "artist": "Alexander-93",
+    "license": "CC BY-SA 4.0",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Toyota_Camry_(XV70)_IMG_9081.jpg",
+    "title": "File:Toyota Camry (XV70) IMG 9081.jpg",
+    "credit": "Own work"
+  },
+  "minivan": {
+    "title": "File:Chrysler Pacifica (RU) IMG 8281.jpg",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Chrysler_Pacifica_(RU)_IMG_8281.jpg",
+    "license": "CC BY-SA 4.0",
+    "credit": "Own work",
+    "artist": "Alexander-93"
+  },
+  "full-size-suv": {
+    "artist": "Kevauto",
+    "license": "CC BY-SA 4.0",
+    "source_page": "https://commons.wikimedia.org/wiki/File:2015_Chevrolet_Tahoe_LT_5.3L_front_3.24.19.jpg",
+    "title": "File:2015 Chevrolet Tahoe LT 5.3L front 3.24.19.jpg",
+    "credit": "Own work"
+  },
+  "standard-suv": {
+    "source_page": "https://commons.wikimedia.org/wiki/File:Toyota,_Paris_Motor_Show_2018,_Paris_(1Y7A1784).jpg",
+    "title": "File:Toyota, Paris Motor Show 2018, Paris (1Y7A1784).jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Matti Blume",
+    "credit": "Own work"
+  },
+  "economy": {
+    "source_page": "https://commons.wikimedia.org/wiki/File:2023_Nissan_Versa_(N18)_DSC_2669.jpg",
+    "title": "File:2023 Nissan Versa (N18) DSC 2669.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Alexander Migl",
+    "credit": "Own work"
+  },
+  "full-size": {
+    "source_page": "https://commons.wikimedia.org/wiki/File:Chevrolet_Malibu_(2008-2011)_1X7A7375.jpg",
+    "title": "File:Chevrolet Malibu (2008-2011) 1X7A7375.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Alexander-93",
+    "credit": "Own work"
+  }
+}

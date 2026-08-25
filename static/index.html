@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Costco Travel Rental Cars conversational AI proof of concept">
+  <title>Costco Travel | Rental Car AI Concierge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="demo-ribbon"><span></span> Google Cloud AI proof of concept · All prices and reservations are synthetic</div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Costco Travel home"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
+    <nav aria-label="Primary"><button class="nav-link active" data-view="concierge">AI Concierge</button><button class="nav-link" data-view="manage">Manage booking</button><button class="nav-link" data-view="insights">Demo insights</button></nav>
+    <button class="account-button" type="button"><span class="account-icon">◎</span><span id="accountLabel">Demo member</span></button>
+  </header>
+
+  <main>
+    <section id="concierge" class="view active">
+      <div class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">MEMBER-ONLY RENTAL CAR VALUE</div>
+          <h1>Your next drive,<br><em>thoughtfully matched.</em></h1>
+          <p>Tell our AI travel concierge where you’re headed. We’ll compare trusted partners, surface member savings, and guide you from search to confirmation.</p>
+          <div class="trust-row"><span>✓ Unlimited mileage options</span><span>✓ Member pricing included</span><span>✓ Flexible cancellation</span></div>
+        </div>
+        <div class="journey-card" aria-label="Popular destinations">
+          <div class="journey-top"><span>POPULAR THIS SEASON</span><span class="sun">☀</span></div>
+          <div class="destination"><div><small>ORLANDO · MCO</small><strong>Family escapes</strong></div><button data-prompt="Find an SUV in Orlando from 2026-09-10 to 2026-09-14">Explore →</button></div>
+          <div class="destination"><div><small>LAS VEGAS · LAS</small><strong>Desert weekends</strong></div><button data-prompt="Which company has the best savings in Las Vegas from 2026-10-05 to 2026-10-09?">Explore →</button></div>
+          <div class="destination"><div><small>SEATTLE · SEA</small><strong>Pacific road trips</strong></div><button data-prompt="Find a full-size car in Seattle from 2026-09-18 to 2026-09-23">Explore →</button></div>
+        </div>
+      </div>
+
+      <div class="experience-grid">
+        <aside class="starter-panel">
+          <div class="panel-label">TRY A DEMO JOURNEY</div>
+          <button class="scenario" data-prompt="Find an SUV in Orlando from 2026-09-10 to 2026-09-14"><span class="scenario-icon">⌖</span><span><strong>Plan a family trip</strong><small>SUV in Orlando</small></span><span>›</span></button>
+          <button class="scenario" data-prompt="Compare Avis and Enterprise in Las Vegas from 2026-10-05 to 2026-10-09"><span class="scenario-icon">⇄</span><span><strong>Compare providers</strong><small>Avis vs Enterprise</small></span><span>›</span></button>
+          <button class="scenario" data-view="manage"><span class="scenario-icon">↗</span><span><strong>Upgrade a booking</strong><small>Manage a reservation</small></span><span>›</span></button>
+          <div class="member-note"><div class="member-mark">C</div><div><strong>Costco members save more</strong><p>Executive and Gold Star member pricing is automatically applied.</p></div></div>
+        </aside>
+
+        <section class="chat-shell" aria-label="AI concierge conversation">
+          <div class="chat-head"><div class="agent-avatar">✦</div><div><strong>Rental Car Concierge</strong><small><i></i> Powered by Gemini on Google Cloud</small></div><button id="resetChat" title="Start over">↻</button></div>
+          <div id="messages" class="messages" aria-live="polite">
+            <div class="message agent"><div class="bubble"><strong>Hi, I’m your Costco Travel AI concierge.</strong><p>I can compare member-priced rental cars, recommend the right vehicle, or help manage an existing reservation. Where would you like to go?</p></div></div>
+            <div class="quick-replies"><button>Find an SUV in Orlando</button><button>Best savings in Las Vegas</button><button>Manage reservation</button></div>
+          </div>
+          <form id="chatForm" class="composer"><button type="button" class="spark" aria-label="AI suggestions">✦</button><input id="chatInput" autocomplete="off" placeholder="Ask about rentals, prices, or your booking…" aria-label="Message"><button class="send" type="submit" aria-label="Send">➜</button></form>
+          <div class="chat-foot">AI can make mistakes. Demo uses synthetic data. Verify details before booking.</div>
+        </section>
+      </div>
+    </section>
+
+    <section id="manage" class="view content-view">
+      <div class="section-heading"><div><div class="eyebrow">RESERVATION CARE</div><h2>Manage your rental</h2><p>Retrieve, modify, upgrade, or cancel a synthetic demo booking.</p></div><span class="demo-pill">DEMO DATA</span></div>
+      <form id="retrieveForm" class="form-card compact-form"><label>Reservation number<input name="reservation_id" value="CTR-D21OUT1" required></label><button class="primary" type="submit">Find reservation</button></form>
+      <div id="reservationResult"></div><div id="workflowPanel"></div>
+    </section>
+
+    <section id="insights" class="view content-view">
+      <div class="section-heading"><div><div class="eyebrow">EXECUTIVE DEMO</div><h2>Conversation intelligence</h2><p>Illustrative metrics from synthetic searches, accounts, and reservations.</p></div><button id="refreshInsights" class="secondary">Refresh data</button></div>
+      <div id="metricGrid" class="metric-grid"></div>
+      <div class="insight-grid"><article class="chart-card"><div class="card-head"><h3>Bookings by provider</h3><span>Mock dataset</span></div><div id="providerChart"></div></article><article class="chart-card"><div class="card-head"><h3>Top destinations</h3><span>Mock dataset</span></div><div id="locationChart"></div></article></div>
+      <article class="architecture"><div><div class="panel-label">REFERENCE ARCHITECTURE</div><h3>Built for Google Cloud</h3><p>Gemini reasoning coordinates specialized APIs through Agent Builder, while Search grounds inventory and BigQuery powers decision intelligence.</p></div><div class="architecture-flow"><span>Customer</span><b>→</b><span>Agent Builder + Gemini</span><b>→</b><span>Apigee APIs</span><b>→</b><span>Firestore + BigQuery</span></div></article>
+    </section>
+  </main>
+
+  <dialog id="authModal" class="modal"><button class="modal-close" aria-label="Close">×</button><div class="modal-brand"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></div><h2>Demo member session</h2><p>This proof of concept presumes the member is already authenticated by Costco SSO. No credentials are collected.</p></dialog>
+  <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2>Confirm rental dates</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Return date<input name="return_date" type="date" required></label><button class="primary full" type="submit">Create demo reservation</button></form><div id="bookingResult"></div></dialog>
+  <div id="toast" role="status"></div>
+  <script type="module" src="/app.js?v=8"></script>
+</body>
+</html>
