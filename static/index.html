@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- CHANGELOG v3: protected change/cancel state machine; future-only relative dates; server-only SerpAPI inventory with quota-safe fallback; live reservation hydration. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -29,19 +30,21 @@
         </div>
         <div class="journey-card" aria-label="Popular destinations">
           <div class="journey-top"><span>POPULAR THIS SEASON</span><span class="sun">☀</span></div>
-          <div class="destination"><div><small>ORLANDO · MCO</small><strong>Family escapes</strong></div><button data-prompt="Find an SUV in Orlando from 2026-09-10 to 2026-09-14">Explore →</button></div>
-          <div class="destination"><div><small>LAS VEGAS · LAS</small><strong>Desert weekends</strong></div><button data-prompt="Which company has the best savings in Las Vegas from 2026-10-05 to 2026-10-09?">Explore →</button></div>
-          <div class="destination"><div><small>SEATTLE · SEA</small><strong>Pacific road trips</strong></div><button data-prompt="Find a full-size car in Seattle from 2026-09-18 to 2026-09-23">Explore →</button></div>
+          <div class="destination"><div><small>ORLANDO · MCO</small><strong>Family escapes</strong></div><button data-prompt="Find an SUV in Orlando">Explore →</button></div>
+          <div class="destination"><div><small>LAS VEGAS · LAS</small><strong>Desert weekends</strong></div><button data-prompt="Which company has the best savings in Las Vegas?">Explore →</button></div>
+          <div class="destination"><div><small>SEATTLE · SEA</small><strong>Pacific road trips</strong></div><button data-prompt="Find a full-size car in Seattle">Explore →</button></div>
         </div>
       </div>
 
       <div class="experience-grid">
         <aside class="starter-panel">
           <div class="panel-label">TRY A DEMO JOURNEY</div>
-          <button class="scenario" data-prompt="Find an SUV in Orlando from 2026-09-10 to 2026-09-14"><span class="scenario-icon">⌖</span><span><strong>Plan a family trip</strong><small>SUV in Orlando</small></span><span>›</span></button>
-          <button class="scenario" data-prompt="Compare Avis and Enterprise in Las Vegas from 2026-10-05 to 2026-10-09"><span class="scenario-icon">⇄</span><span><strong>Compare providers</strong><small>Avis vs Enterprise</small></span><span>›</span></button>
+          <button class="scenario" data-prompt="Find an SUV in Orlando"><span class="scenario-icon">⌖</span><span><strong>Plan a family trip</strong><small>SUV in Orlando</small></span><span>›</span></button>
+          <button class="scenario" data-prompt="Compare Avis and Enterprise in Las Vegas"><span class="scenario-icon">⇄</span><span><strong>Compare providers</strong><small>Avis vs Enterprise</small></span><span>›</span></button>
           <button class="scenario" data-view="manage"><span class="scenario-icon">↗</span><span><strong>Upgrade a booking</strong><small>Manage a reservation</small></span><span>›</span></button>
           <div class="member-note"><div class="member-mark">C</div><div><strong>Costco members save more</strong><p>Executive and Gold Star member pricing is automatically applied.</p></div></div>
+          <div class="panel-label reservation-label">YOUR RESERVATIONS</div>
+          <div id="reservationSidebar" class="reservation-sidebar" aria-live="polite"></div>
         </aside>
 
         <section class="chat-shell" aria-label="AI concierge conversation">
@@ -71,8 +74,9 @@
   </main>
 
   <dialog id="authModal" class="modal"><button class="modal-close" aria-label="Close">×</button><div class="modal-brand"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></div><h2>Demo member session</h2><p>This proof of concept presumes the member is already authenticated by Costco SSO. No credentials are collected.</p></dialog>
-  <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2>Confirm rental dates</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Return date<input name="return_date" type="date" required></label><button class="primary full" type="submit">Create demo reservation</button></form><div id="bookingResult"></div></dialog>
+  <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2 id="dateModalTitle">Confirm rental dates</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Return date<input name="return_date" type="date" required></label><button id="dateSubmit" class="primary full" type="submit">Continue</button></form><div id="bookingResult"></div></dialog>
   <div id="toast" role="status"></div>
-  <script type="module" src="/app.js?v=8"></script>
+  <script src="/flow-machine.js?v=1"></script>
+  <script type="module" src="/app.js?v=9"></script>
 </body>
 </html>

@@ -1,29 +1,36 @@
 """Swappable Vertex agent adapter, currently Gemini through ADC."""
 import json, os, re
+from datetime import datetime
 from functools import lru_cache
 from typing import Any
 from google import genai
 from google.genai import types
 from .policies import cancellation_schedule
 
-MODEL=os.environ.get("AGENT_MODEL","gemini-3.6-flash")
+MODEL=os.environ.get("AGENT_MODEL","gemini-3-flash-preview")
 
 @lru_cache(maxsize=1)
 def _client():
     return genai.Client(vertexai=True,project=os.environ.get("GOOGLE_CLOUD_PROJECT"),location=os.environ.get("VERTEX_LOCATION","global"))
 
-def build_system_prompt(reservations:list[dict[str,Any]],inventory:list[dict[str,Any]])->str:
+def build_system_prompt(reservations:list[dict[str,Any]],inventory:list[dict[str,Any]],flow:dict[str,Any]|None=None)->str:
+    now=datetime.now().astimezone()
     return f'''You are the Costco Travel car reservation concierge for a demo member presumed authenticated by SSO.
+Today's date and time: {now.isoformat()} ({now.tzname() or "local"}).
 Return raw JSON only with keys message, action, reservationId, chips. action and reservationId may be null.
 Never collect login or membership credentials, card numbers, or income data. Never promise income, returns, availability, or a transaction outcome.
 Chat never mutates state. A change requires start, update, and explicit confirm. Cancellation requires preview then explicit confirm. Human review cannot be overridden.
+Never book, change, or quote any reservation with a pickup date before tomorrow. If the member asks for a past date, do not proceed: explain and return action show_date_picker.
+Dates enter through the calendar only. Never accept free-text dates as booking dates.
+A CANCELLED reservation cannot be changed or re-cancelled; offer to book a new car instead.
+Current flow: {json.dumps(flow or {},default=str,separators=(",",":"))}
 Live reservations: {json.dumps(reservations,default=str,separators=(",",":"))}
 Inventory: {json.dumps(inventory,default=str,separators=(",",":"))}
 Cancellation policy: {json.dumps(cancellation_schedule(),separators=(",",":"))}
-Allowed action hints: list_reservations, search_cars, start_change, cancel_preview, null.'''
+Allowed actions: list_reservations, search_cars, show_date_picker, show_change_flow, show_cancel_confirm, request_human_review, cancel_complete, change_complete, flow_abandoned, null. Never re-emit a start/confirm action after a flow is complete.'''
 
 def _shape(value:dict[str,Any])->dict[str,Any]:
-    return {"message":str(value.get("message") or "How can I help with your rental reservation?"),"action":value.get("action") if isinstance(value.get("action"),str) else None,"reservationId":value.get("reservationId") if isinstance(value.get("reservationId"),str) else None,"chips":[str(x) for x in value.get("chips",[]) if isinstance(x,(str,int,float))][:6]}
+    return {"message":str(value.get("message") or "How can I help with your rental reservation?"),"action":value.get("action") if isinstance(value.get("action"),str) else None,"reservationId":value.get("reservationId") if isinstance(value.get("reservationId"),str) else None,"datePickerContext":value.get("datePickerContext"),"chips":[str(x) for x in value.get("chips",[]) if isinstance(x,(str,int,float))][:6]}
 
 def agent_reply(system:str,messages:list[dict[str,str]])->dict[str,Any]:
     contents=[types.Content(role="user" if x.get("role")=="user" else "model",parts=[types.Part(text=x.get("content",""))]) for x in messages]

@@ -1,6 +1,6 @@
 from datetime import datetime,timedelta,timezone
 import pytest
-from app.policies import cancellation_review,change_review,penalty_preview
+from app.policies import cancellation_review,change_review,penalty_preview,validate_trip_dates
 from app.recommend import quote,rank_cars
 from app.reservations import MemoryRepository,ReservationError,ReservationService
 NOW=datetime(2026,8,24,12,0,tzinfo=timezone.utc)
@@ -44,4 +44,27 @@ def test_create_rejects_past_pickup():
     service=ReservationService(MemoryRepository())
     with pytest.raises(ReservationError) as caught:
         service.create({"car_class":"Intermediate","location_code":"MCO","pickup_at":(NOW-timedelta(days=1)).isoformat(),"drop_at":(NOW+timedelta(days=2)).isoformat()},NOW)
-    assert caught.value.status_code==422 and "future" in caught.value.detail
+    assert caught.value.status_code==422 and "tomorrow" in caught.value.detail
+
+def test_create_rejects_today_and_return_before_pickup():
+    service=ReservationService(MemoryRepository())
+    with pytest.raises(ReservationError) as today:
+        service.create({"car_class":"Intermediate","location_code":"MCO","pickup_at":(NOW+timedelta(hours=2)).isoformat(),"drop_at":(NOW+timedelta(days=2)).isoformat()},NOW)
+    assert today.value.status_code==422
+    with pytest.raises(ReservationError) as ordering:
+        service.create({"car_class":"Intermediate","location_code":"MCO","pickup_at":(NOW+timedelta(days=2)).isoformat(),"drop_at":(NOW+timedelta(days=1)).isoformat()},NOW)
+    assert ordering.value.status_code==422 and "after" in ordering.value.detail
+
+def test_change_rejects_past_pickup_without_mutating_pending():
+    repo=MemoryRepository([reservation("CTR-DATEG01",21*24)])
+    service=ReservationService(repo); pending=service.start_change("CTR-DATEG01",NOW)["replacement"]
+    with pytest.raises(ReservationError) as caught:
+        service.update_change("CTR-DATEG01",{"pickup_at":(NOW-timedelta(days=1)).isoformat()},NOW)
+    assert caught.value.status_code==422 and repo.get(pending["id"])==pending
+
+def test_timezone_edge_1159_pm_local():
+    local=timezone(timedelta(hours=-7)); now=datetime(2026,8,25,6,59,tzinfo=timezone.utc)
+    pickup=datetime(2026,8,25,10,0,tzinfo=local); drop=pickup+timedelta(days=2)
+    assert validate_trip_dates(pickup,drop,now)[0].date()==datetime(2026,8,25,tzinfo=timezone.utc).date()
+    with pytest.raises(ValueError):
+        validate_trip_dates(datetime(2026,8,24,23,59,tzinfo=local),drop,now)

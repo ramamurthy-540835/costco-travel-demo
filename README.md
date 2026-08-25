@@ -1,12 +1,12 @@
 # Costco Travel Agentic Car Reservation
 
-FastAPI and Cloud Run implementation with Application Default Credentials for Google Cloud access and `gemini-3.6-flash` on Vertex AI.
+FastAPI and Cloud Run implementation with Application Default Credentials for Google Cloud access and `gemini-3-flash-preview` on Vertex AI.
 
 ## Local
 
 ```bash
 gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID VERTEX_LOCATION=global AGENT_MODEL=gemini-3.6-flash
+export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID VERTEX_LOCATION=global AGENT_MODEL=gemini-3-flash-preview
 export ASSETS_BUCKET=$GOOGLE_CLOUD_PROJECT-costco-demo-assets
 uvicorn app.main:app --port 8080
 ```
@@ -19,6 +19,14 @@ Only upload licensed/OEM-press/stock images beneath `gs://$PROJECT_ID-costco-dem
 
 Original `CONFIRMED` becomes `HOLD` while a replacement is `PENDING`. Confirmation marks the replacement `CONFIRMED` before releasing the original to `CANCELLED`; abandonment deletes the replacement and restores the original. Cancellation always requires preview then confirm. HITL results never mutate state.
 
-## Frontend gap
+## Live inventory
 
-The named `costco-travel-agent-v3.html` is absent from the workspace. `static/` contains the existing local UI as a temporary same-origin fallback. Supply the v3 file before visual acceptance so only the three authorized wiring changes can be applied.
+`GET /api/cars` validates pickup/return dates before accessing Secret Manager version 2 and SerpAPI. Results are cached for 15 minutes. Any secret, timeout, quota, or upstream error returns normalized sample inventory with `source: fallback`; every card still includes retail price, member rate, and savings. Vehicle images remain private GCS assets signed through ADC and never come from vendor websites.
+
+## Frontend v3
+
+The service serves `static/costco-travel-agent-v3.html`, generated from the maintainable frontend sources by:
+
+```bash
+python scripts/build_single_file.py
+```

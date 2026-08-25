@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from .car_search import search_cars
 from .agent import MODEL,agent_reply,build_system_prompt,fallback_reply
 from .images import image_url
 from .policies import cancellation_schedule
@@ -18,6 +19,9 @@ logging.basicConfig(level=logging.INFO); LOGGER=logging.getLogger("costco-travel
 class ChatInput(BaseModel):
     message:str=Field(min_length=1,max_length=4000)
     session_id:str=Field(min_length=1,max_length=200)
+    client_context:str|None=None
+    flow:dict|None=None
+    messages:list[dict[str,str]]=Field(default_factory=list)
 class ReservationInput(BaseModel):
     car_class:str; location_code:str=Field(min_length=3,max_length=8); pickup_at:str; drop_at:str; pickup_time:str|None=None; drop_time:str|None=None
 class ChangeInput(BaseModel):
@@ -26,7 +30,7 @@ def reservation_service(): return service()
 
 @asynccontextmanager
 async def lifespan(_):
-    if os.environ.get("SEED_DEMO","true").lower()=="true":
+    if os.environ.get("SEED_DEMO","true").lower()=="true" and os.environ.get("RESERVATION_BACKEND","firestore").lower()!="memory":
         try: LOGGER.info("Demo seed result: %s",seed())
         except Exception as exc: LOGGER.warning("Demo seeding unavailable: %s",exc)
     yield
@@ -40,8 +44,9 @@ def health(): return {"status":"ok","service":"costco-travel-demo","auth":"adc",
 def chat(body:ChatInput,reservations:Annotated[ReservationService,Depends(reservation_service)]):
     try: live=reservations.list()
     except Exception: live=[]
-    inventory=rank_cars(days=4,party_size=2); system=build_system_prompt(live,inventory)
-    try: return agent_reply(system,[{"role":"user","content":body.message}])
+    inventory=rank_cars(days=4,party_size=2); system=build_system_prompt(live,inventory,body.flow)
+    history=body.messages[-10:] if body.messages else [{"role":"user","content":body.message}]
+    try: return agent_reply(system,history)
     except Exception as exc:
         LOGGER.warning("Vertex reply unavailable for session %s: %s",body.session_id,exc)
         return fallback_reply(body.message,live)
@@ -64,7 +69,13 @@ def cancel_preview(reservation_id:str,reservations:Annotated[ReservationService,
 @app.post("/api/reservations/{reservation_id}/cancel/confirm")
 def cancel_confirm(reservation_id:str,reservations:Annotated[ReservationService,Depends(reservation_service)]): return reservations.cancel_confirm(reservation_id)
 @app.get("/api/cars")
-def cars(days:Annotated[int,Query(ge=1,le=60)]=1,party_size:Annotated[int,Query(ge=1,le=12)]=1,location:str="",budget_per_day:Annotated[float|None,Query(gt=0)]=None):
+def cars(days:Annotated[int,Query(ge=1,le=60)]=1,party_size:Annotated[int,Query(ge=1,le=12)]=1,location:str="",budget_per_day:Annotated[float|None,Query(gt=0)]=None,pickup:str|None=None,return_at:Annotated[str|None,Query(alias="return")]=None):
+    if pickup or return_at:
+        if not pickup or not return_at: raise ReservationError(422,"pickup and return are both required.")
+        try: live=search_cars(location=location,pickup=pickup,drop=return_at,party_size=party_size,budget_per_day=budget_per_day)
+        except ValueError as exc: raise ReservationError(422,str(exc)) from exc
+        for item in live["cars"]: item["image_url"]=image_url(item["class"])
+        return live
     result=rank_cars(days=days,party_size=party_size,location=location,budget_per_day=budget_per_day)
     for item in result: item["image_url"]=image_url(item["class"])
     return result
@@ -81,7 +92,7 @@ def analytics():
 
 app.mount("/static",StaticFiles(directory=STATIC_DIR),name="static")
 @app.get("/",include_in_schema=False)
-def index(): return FileResponse(STATIC_DIR/"index.html")
+def index(): return FileResponse(STATIC_DIR/"costco-travel-agent-v3.html")
 @app.get("/{asset_path:path}",include_in_schema=False)
 def asset(asset_path:str):
     candidate=(STATIC_DIR/asset_path).resolve()

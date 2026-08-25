@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any, Protocol
 from google.cloud import bigquery, firestore
-from .policies import cancellation_review, change_review, parse_datetime, penalty_preview, utc_now
+from .policies import cancellation_review, change_review, parse_datetime, penalty_preview, utc_now, validate_trip_dates
 from .recommend import quote
 
 class ReservationError(Exception):
@@ -95,12 +95,13 @@ class ReservationService:
         if result is None: raise ReservationError(404,"Reservation not found.")
         return result
     def create(self,data,now:datetime|None=None):
-        current=now or utc_now(); pickup=parse_datetime(data["pickup_at"])
-        if pickup<=current: raise ReservationError(422,"pickup_at must be in the future.")
+        current=now or utc_now()
+        try: pickup,drop=validate_trip_dates(data["pickup_at"],data["drop_at"],current)
+        except ValueError as exc: raise ReservationError(422,str(exc)) from exc
         days=rental_days(data["pickup_at"],data["drop_at"])
         try: pricing=quote(data["car_class"],days)
         except ValueError as exc: raise ReservationError(422,str(exc)) from exc
-        stamp=current.isoformat(); value={"id":reservation_id(),"status":"CONFIRMED","location_code":data["location_code"].upper(),"car_class":data["car_class"],"pickup_at":pickup.isoformat(),"drop_at":parse_datetime(data["drop_at"]).isoformat(),"pickup_time":data.get("pickup_time"),"drop_time":data.get("drop_time"),"days":days,**pricing,"created_at":stamp,"updated_at":stamp}
+        stamp=current.isoformat(); value={"id":reservation_id(),"status":"CONFIRMED","location_code":data["location_code"].upper(),"car_class":data["car_class"],"pickup_at":pickup.isoformat(),"drop_at":drop.isoformat(),"pickup_time":data.get("pickup_time"),"drop_time":data.get("drop_time"),"days":days,**pricing,"created_at":stamp,"updated_at":stamp}
         self.repository.create(value); self._event("booking",value); return value
     def start_change(self,original_id,now:datetime|None=None):
         original=self.get(original_id)
@@ -113,7 +114,10 @@ class ReservationService:
     def update_change(self,original_id,changes,now:datetime|None=None):
         original=self.get(original_id)
         if original.get("status")!="HOLD" or not original.get("replacement_id"): raise ReservationError(409,"No pending change exists for this reservation.")
-        pending=self.get(original["replacement_id"]); proposed={**pending,**{k:v for k,v in changes.items() if v is not None}}; days=rental_days(proposed["pickup_at"],proposed["drop_at"])
+        pending=self.get(original["replacement_id"]); proposed={**pending,**{k:v for k,v in changes.items() if v is not None}}
+        try: pickup,drop=validate_trip_dates(proposed["pickup_at"],proposed["drop_at"],now or utc_now())
+        except ValueError as exc: raise ReservationError(422,str(exc)) from exc
+        proposed.update(pickup_at=pickup.isoformat(),drop_at=drop.isoformat()); days=rental_days(proposed["pickup_at"],proposed["drop_at"])
         try: pricing=quote(proposed["car_class"],days)
         except ValueError as exc: raise ReservationError(422,str(exc)) from exc
         delta=round(pricing["total"]-original["total"],2); percent=round(delta/original["total"]*100,2) if original["total"] else 0
