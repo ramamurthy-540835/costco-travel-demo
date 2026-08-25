@@ -42,5 +42,6 @@ def test_frontend_has_date_gate_and_no_hardcoded_trip_dates():
     app = (ROOT / "static/app.js").read_text()
     html = (ROOT / "static/index.html").read_text()
     assert "That date has already passed" in app
-    assert "pickup.min=localDateAfter(1)" in app
+    assert "pickup.min=localDateAfter(0)" in app
+    assert 'name="pickup_time"' in html and 'name="drop_time"' in html
     assert "from 2026-" not in html and "2025" not in html

@@ -44,13 +44,12 @@ def test_create_rejects_past_pickup():
     service=ReservationService(MemoryRepository())
     with pytest.raises(ReservationError) as caught:
         service.create({"car_class":"Intermediate","location_code":"MCO","pickup_at":(NOW-timedelta(days=1)).isoformat(),"drop_at":(NOW+timedelta(days=2)).isoformat()},NOW)
-    assert caught.value.status_code==422 and "tomorrow" in caught.value.detail
+    assert caught.value.status_code==422 and "today" in caught.value.detail
 
-def test_create_rejects_today_and_return_before_pickup():
+def test_create_allows_future_time_today_and_rejects_return_before_pickup():
     service=ReservationService(MemoryRepository())
-    with pytest.raises(ReservationError) as today:
-        service.create({"car_class":"Intermediate","location_code":"MCO","pickup_at":(NOW+timedelta(hours=2)).isoformat(),"drop_at":(NOW+timedelta(days=2)).isoformat()},NOW)
-    assert today.value.status_code==422
+    today=service.create({"car_class":"Intermediate","location_code":"MCO","pickup_at":(NOW+timedelta(hours=2)).isoformat(),"drop_at":(NOW+timedelta(days=2)).isoformat()},NOW)
+    assert today["status"]=="CONFIRMED"
     with pytest.raises(ReservationError) as ordering:
         service.create({"car_class":"Intermediate","location_code":"MCO","pickup_at":(NOW+timedelta(days=2)).isoformat(),"drop_at":(NOW+timedelta(days=1)).isoformat()},NOW)
     assert ordering.value.status_code==422 and "after" in ordering.value.detail
@@ -61,6 +60,13 @@ def test_change_rejects_past_pickup_without_mutating_pending():
     with pytest.raises(ReservationError) as caught:
         service.update_change("CTR-DATEG01",{"pickup_at":(NOW-timedelta(days=1)).isoformat()},NOW)
     assert caught.value.status_code==422 and repo.get(pending["id"])==pending
+
+def test_same_day_change_routes_to_hitl_without_pending_mutation():
+    repo=MemoryRepository([reservation("CTR-SAMEDAY",21*24)])
+    service=ReservationService(repo); pending=service.start_change("CTR-SAMEDAY",NOW)["replacement"]
+    result=service.update_change("CTR-SAMEDAY",{"pickup_at":(NOW+timedelta(hours=4)).isoformat(),"drop_at":(NOW+timedelta(days=1,hours=4)).isoformat()},NOW)
+    assert result["requires_human_review"] is True
+    assert result["reason"].startswith("Same-day") and repo.get(pending["id"])==pending
 
 def test_timezone_edge_1159_pm_local():
     local=timezone(timedelta(hours=-7)); now=datetime(2026,8,25,6,59,tzinfo=timezone.utc)

@@ -16,7 +16,7 @@
   <header class="topbar">
     <a class="brand" href="#" aria-label="Costco Travel home"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
     <nav aria-label="Primary"><button class="nav-link active" data-view="concierge">AI Concierge</button><button class="nav-link" data-view="manage">Manage booking</button><button class="nav-link" data-view="insights">Demo insights</button></nav>
-    <button class="account-button" type="button"><span class="account-icon">◎</span><span id="accountLabel">Demo member</span></button>
+    <button class="account-button" type="button"><span class="account-icon">◎</span><span id="accountLabel">Demo member · Executive</span></button>
   </header>
 
   <main>
@@ -74,7 +74,7 @@
   </main>
 
   <dialog id="authModal" class="modal"><button class="modal-close" aria-label="Close">×</button><div class="modal-brand"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></div><h2>Demo member session</h2><p>This proof of concept presumes the member is already authenticated by Costco SSO. No credentials are collected.</p></dialog>
-  <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2 id="dateModalTitle">Confirm rental dates</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Return date<input name="return_date" type="date" required></label><button id="dateSubmit" class="primary full" type="submit">Continue</button></form><div id="bookingResult"></div></dialog>
+  <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2 id="dateModalTitle">Confirm rental dates and times</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Pickup time<input name="pickup_time" type="time" step="1800" required></label><label>Return date<input name="return_date" type="date" required></label><label>Return time<input name="drop_time" type="time" step="1800" required></label><button id="dateSubmit" class="primary full" type="submit">Continue</button></form><div id="bookingResult"></div></dialog>
   <div id="toast" role="status"></div>
   <script src="/flow-machine.js?v=1"></script>
   <script type="module" src="/app.js?v=9"></script>

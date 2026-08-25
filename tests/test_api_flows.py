@@ -42,6 +42,13 @@ def test_http_create_rejects_previous_day(api):
     response = client.post("/api/reservations", json={"car_class":"Intermediate","location_code":"MCO","pickup_at":(now-timedelta(days=1)).isoformat(),"drop_at":(now+timedelta(days=2)).isoformat()})
     assert response.status_code == 422
 
+def test_http_create_allows_future_time_today(api):
+    client, _ = api
+    now = utc_now()
+    response = client.post("/api/reservations", json={"car_class":"Intermediate","location_code":"MCO","pickup_at":(now+timedelta(hours=2)).isoformat(),"drop_at":(now+timedelta(days=1,hours=2)).isoformat()})
+    assert response.status_code == 201
+    assert response.json()["status"] == "CONFIRMED"
+
 
 def test_http_change_rejects_previous_day(api):
     client, service = api

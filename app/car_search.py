@@ -68,7 +68,7 @@ def _normalize(base: list[dict[str, Any]], retail_rates: list[float], source: st
     return cars
 
 def search_cars(*, location: str, pickup: str, drop: str, party_size: int = 1, budget_per_day: float | None = None, now: datetime | None = None, fetcher: Callable[[str, str, str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
-    pickup_dt, drop_dt = validate_trip_dates(pickup, drop, now or utc_now())
+    pickup_dt, drop_dt = validate_trip_dates(pickup, drop, now or utc_now(), require_future_time=False)
     days = max(1, (drop_dt.date() - pickup_dt.date()).days)
     cache_key = (location.upper(), pickup_dt.date().isoformat(), drop_dt.date().isoformat(), party_size, budget_per_day)
     with _LOCK:

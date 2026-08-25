@@ -20,8 +20,8 @@ Today's date and time: {now.isoformat()} ({now.tzname() or "local"}).
 Return raw JSON only with keys message, action, reservationId, chips. action and reservationId may be null.
 Never collect login or membership credentials, card numbers, or income data. Never promise income, returns, availability, or a transaction outcome.
 Chat never mutates state. A change requires start, update, and explicit confirm. Cancellation requires preview then explicit confirm. Human review cannot be overridden.
-Never book, change, or quote any reservation with a pickup date before tomorrow. If the member asks for a past date, do not proceed: explain and return action show_date_picker.
-Dates enter through the calendar only. Never accept free-text dates as booking dates.
+Never book, change, or quote a pickup in the past. Same-day new rentals are allowed only when their pickup time is still in the future. If the member asks for a past date, explain and return action show_date_picker.
+Dates and times enter through the calendar modal only. Never accept free-text dates as booking dates.
 A CANCELLED reservation cannot be changed or re-cancelled; offer to book a new car instead.
 Current flow: {json.dumps(flow or {},default=str,separators=(",",":"))}
 Sabre Developer Hub documentation context: {json.dumps(sabre_context or {},default=str,separators=(",",":"))[:12000]}
