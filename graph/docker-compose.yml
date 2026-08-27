@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: apache/age:release_PG16_1.6.0
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: rental
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: localdev
+    volumes:
+      - rental_graph_data:/var/lib/postgresql/data
+      - ./init/01-init-graph.sql:/docker-entrypoint-initdb.d/01-init-graph.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rental"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rental_graph_data:

@@ -1,0 +1,42 @@
+[
+  {
+    "perk_id": "unlimited_mileage",
+    "name": "Unlimited Mileage",
+    "category": "usage"
+  },
+  {
+    "perk_id": "free_additional_driver",
+    "name": "Free Additional Driver",
+    "category": "add_on_waiver"
+  },
+  {
+    "perk_id": "no_young_driver_fee",
+    "name": "No Young Driver Fee",
+    "category": "fee_waiver"
+  },
+  {
+    "perk_id": "waived_underage_fee",
+    "name": "Waived Underage Driver Fee (Business tier)",
+    "category": "fee_waiver"
+  },
+  {
+    "perk_id": "free_upgrade_priority",
+    "name": "Priority Vehicle Upgrade (subject to availability)",
+    "category": "usage"
+  },
+  {
+    "perk_id": "damage_waiver_included",
+    "name": "Primary Damage Waiver Included",
+    "category": "insurance_waiver"
+  },
+  {
+    "perk_id": "consolidated_billing",
+    "name": "Consolidated Business Billing",
+    "category": "billing"
+  },
+  {
+    "perk_id": "flexible_cancellation",
+    "name": "Extended Free-Cancellation Window",
+    "category": "policy"
+  }
+]

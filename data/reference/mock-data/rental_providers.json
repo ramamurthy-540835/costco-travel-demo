@@ -1,0 +1,82 @@
+[
+  {
+    "provider": "Alamo",
+    "rating": 4.7,
+    "discount": "8%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.02
+  },
+  {
+    "provider": "Avis",
+    "rating": 4.6,
+    "discount": "10%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.03
+  },
+  {
+    "provider": "Budget",
+    "rating": 4.3,
+    "discount": "12%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.04
+  },
+  {
+    "provider": "Enterprise",
+    "rating": 4.8,
+    "discount": "9%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.02
+  },
+  {
+    "provider": "National",
+    "rating": 4.9,
+    "discount": "7%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.02
+  },
+  {
+    "provider": "Hertz",
+    "rating": 4.5,
+    "discount": "8%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.03
+  },
+  {
+    "provider": "Thrifty",
+    "rating": 4.1,
+    "discount": "14%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.05
+  },
+  {
+    "provider": "Dollar",
+    "rating": 4.0,
+    "discount": "15%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.05
+  },
+  {
+    "provider": "Sixt",
+    "rating": 4.6,
+    "discount": "9%",
+    "included_miles": "300 mi/day",
+    "minimum_rental_days": 2,
+    "price_change_rate": 0.04
+  },
+  {
+    "provider": "Payless",
+    "rating": 3.9,
+    "discount": "16%",
+    "included_miles": "Unlimited",
+    "minimum_rental_days": 1,
+    "price_change_rate": 0.06
+  }
+]
