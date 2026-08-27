@@ -13,9 +13,9 @@ Members get Costco-style negotiated rental rates and perks that stay honored and
 | Attribute | Value |
 |-----------|-------|
 | Type | Application |
-| Version | 0.0.0 |
+| Version | 0.1.0 |
 | Status | Prototype |
-| Last Updated | 2026-08-27 |
+| Last Updated | 2026-08-28 |
 
 ## Requirements
 
@@ -80,6 +80,9 @@ Architecture pattern is borrowed from the sibling project `mastech-agentic-comme
 | New sibling repo, not an evolution of BookCars | Different domain model (broker vs. fleet-owner) and different stack (Clerk/Postgres+AGE/Mongo vs. Express/Mongo/custom JWT) — evolving BookCars in place would be a rewrite, not an extension | 2026-08-27 | Active |
 | Mirror `mastech-agentic-commerce`'s Discovery/Checkout vs. Fulfillment separation | Same broker-vs-fulfiller shape (agentic commerce's storefront+graph vs. Store Ops Agent) maps directly onto Costco Travel vs. vendor | 2026-08-27 | Active |
 | Generic stack naming (no Costco-specific branding in code) | Keep the platform pattern reusable across broker-style rental scenarios, not locked to one brand | 2026-08-27 | Active |
+| Stripe PaymentIntent flow only (not Checkout Session), PayPal excluded | Custom Next.js checkout UI (Phase 4) needs PaymentIntent + Elements, not a hosted redirect; no second payment provider requirement exists | 2026-08-28 | Active |
+| `mailHelper`/nodemailer deferred to Phase 4 | No booking-confirmation trigger exists yet in Phase 3 — email content should be shaped by real booking data, not ported speculatively | 2026-08-28 | Deferred |
+| New `Vendor` entity added to bookcars-types port, `Car`→`Inventory` reshape | BookCars assumes the platform owns the car; this platform brokers across independent vendors | 2026-08-28 | Active |
 
 ## Success Metrics
 
@@ -95,9 +98,10 @@ Architecture pattern is borrowed from the sibling project `mastech-agentic-comme
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| Auth | Clerk | Matches `mastech-agentic-commerce`'s `clerkMiddleware()` pattern (`middleware.ts`) |
+| Auth | Clerk | Matches `mastech-agentic-commerce`'s `clerkMiddleware()` pattern (`middleware.ts`); catch-all matcher performs no route protection by default |
 | Knowledge graph | PostgreSQL + Apache AGE | Rental ontology: Member, Vendor, VehicleClass, Reservation, NegotiatedTerm, Perk nodes/edges — mirrors agentic-commerce's `commerce_graph` |
-| Operational/document data | MongoDB | Bookings, member profiles, vendor sync state — mirrors agentic-commerce's Mongo user-sync pattern |
+| Operational/document data | MongoDB | Member, Booking, AdditionalDriver, Vendor Mongoose models — mirrors agentic-commerce's Mongo user-sync pattern |
+| Payments | Stripe (PaymentIntent flow only) | Ported from BookCars' `stripeController.ts`; PayPal excluded from scope, Checkout Session flow not ported |
 | Frontend/API | Next.js (App Router) | Discovery/Checkout layer, server actions + API routes |
 | Vendor integration | Separate service/RPC boundary | Fulfillment-facing integration layer, deployed independently — no shared code with Discovery/Checkout, per agentic-commerce's A2A precedent |
 
@@ -111,4 +115,4 @@ Architecture pattern is borrowed from the sibling project `mastech-agentic-comme
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-08-27*
+*Last updated: 2026-08-28 after Phase 3*
