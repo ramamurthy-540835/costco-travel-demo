@@ -38,11 +38,27 @@ export function parseAgtype<T = Record<string, unknown>>(raw: string): T {
 export async function runCypher<T = Record<string, unknown>>(
   query: string,
   params?: Record<string, unknown>,
+  columns?: string[],
 ): Promise<T[]> {
   const p = getPool();
   // node-postgres uses $1-style placeholders (not psycopg2's %s) — the AGE
   // param convention itself (a single JSON-encoded agtype arg) still applies.
-  const sql = `SELECT * FROM cypher('rental_graph', $$ ${query} $$, $1::agtype) AS (result agtype);`;
+  // AGE requires the SQL column list to match the query's RETURN clause
+  // arity exactly — single-column RETURN (the default/existing usage) maps
+  // to `(result agtype)`; a multi-column RETURN must pass its column names.
+  const columnList = columns && columns.length > 0 ? columns.map((c) => `${c} agtype`).join(', ') : 'result agtype';
+  const sql = `SELECT * FROM cypher('rental_graph', $$ ${query} $$, $1::agtype) AS (${columnList});`;
   const result = await p.query(sql, [JSON.stringify(params ?? {})]);
+
+  if (columns && columns.length > 0) {
+    return result.rows.map((row) => {
+      const parsed: Record<string, unknown> = {};
+      for (const col of columns) {
+        parsed[col] = row[col] === null ? null : parseAgtype(row[col]);
+      }
+      return parsed as T;
+    });
+  }
+
   return result.rows.map((row) => parseAgtype<T>(row.result));
 }

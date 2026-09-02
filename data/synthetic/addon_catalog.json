@@ -2,7 +2,8 @@
   {
     "addon_id": "additional_driver",
     "name": "Additional Driver",
-    "typically_covered_by_perk": "free_additional_driver"
+    "typically_covered_by_perk": "free_additional_driver",
+    "fee_per_day": 12
   },
   {
     "addon_id": "young_driver_fee",
@@ -17,22 +18,26 @@
   {
     "addon_id": "collision_damage_waiver",
     "name": "Collision Damage Waiver",
-    "typically_covered_by_perk": "damage_waiver_included"
+    "typically_covered_by_perk": "damage_waiver_included",
+    "fee_per_day": 15
   },
   {
     "addon_id": "gps_navigation",
     "name": "GPS Navigation Unit",
-    "typically_covered_by_perk": null
+    "typically_covered_by_perk": null,
+    "fee_per_day": 8
   },
   {
     "addon_id": "child_seat",
     "name": "Child Safety Seat",
-    "typically_covered_by_perk": null
+    "typically_covered_by_perk": null,
+    "fee_per_day": 10
   },
   {
     "addon_id": "roadside_assistance",
     "name": "Roadside Assistance Plan",
-    "typically_covered_by_perk": null
+    "typically_covered_by_perk": null,
+    "fee_per_day": 6
   },
   {
     "addon_id": "fuel_prepay",

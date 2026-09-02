@@ -16,12 +16,12 @@
 | `Vendor` | provider, rating, minimum_rental_days, price_change_rate | `mock-data/rental_providers.json` (Alamo, Avis, Budget, Enterprise, National, Hertz, Thrifty, Dollar, Sixt, Payless — 10, Plan 01-03) |
 | `VehicleClass` | class_name (Economy, Compact, Mid-size, Full-size, SUV, Minivan, Pickup, Luxury, Convertible) | `mock-data/rental_inventory.json` |
 | `Location` | city (10 US metros) | `mock-data/rental_inventory.json` |
-| `Inventory` | rental_id, vehicle_make/model, vehicle_type, gearbox, seats | `mock-data/rental_inventory.json` |
+| `Inventory` | rental_id, vehicle_make/model, vehicle_type, gearbox, seats, fuel_policy, deposit_amount | `mock-data/rental_inventory.json` — `vehicle_make`/`vehicle_model` cardinality is many-per-class (3 canonical pairs per `VehicleClass` as of Plan 04-10, not 1:1; see VOCABULARY.md). `fuel_policy`/`deposit_amount` added Plan 04-11 (deterministic, `scripts/add-vehicle-extras-fields.mjs`) |
 | `Reservation` | reservation_id, rental_id (FK to Inventory), pickup_date, return_date, status (Pending/Confirmed/Cancelled/Completed) | `mock-data/bookings_1000.json` |
 | `NegotiatedTerm` | term_id, discount_pct, included_miles, cancellation_window_hours | `data/synthetic/negotiated_terms.json` — per (Vendor × MembershipTier) |
 | `Perk` | perk_id, name, category | `data/synthetic/perks.json` |
-| `AddOn` | addon_id, name | `data/synthetic/addon_catalog.json` — for UC6 integrity checks |
-| `VendorPolicy` | cancellation window, modification cutoff, refund SLA | `data/synthetic/vendor_policies.json` |
+| `AddOn` | addon_id, name, fee_per_day | `data/synthetic/addon_catalog.json` — for UC6 integrity checks. `fee_per_day` added Plan 04-11 (5 of 8 addons; queried via `getAddOnsCatalog()`/`getWaivedAddOnIds()`, `lib/graph/queries.ts`) |
+| `VendorPolicy` | cancellation window, modification cutoff, refund SLA | `data/synthetic/vendor_policies.json` — queried via `getVendorPolicy()` as of Plan 04-11 (previously loaded but never queried) |
 
 ## Relations (graph edges)
 

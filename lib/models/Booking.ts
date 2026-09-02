@@ -50,6 +50,9 @@ const bookingSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'AdditionalDriver',
     },
+    paymentIntentId: {
+      type: String,
+    },
     // Snapshot of the negotiated price/perks at booking time — a later graph rate
     // change must not retroactively alter an already-confirmed booking.
     pricingSnapshot: {
@@ -57,6 +60,8 @@ const bookingSchema = new Schema(
       dailyRate: { type: Number, required: [true, "can't be blank"] },
       currency: { type: String, required: [true, "can't be blank"] },
       perkIds: { type: [String], default: [] },
+      addonIds: { type: [String], default: [] },
+      addonTotal: { type: Number, default: 0 },
       totalPrice: { type: Number, required: [true, "can't be blank"] },
     },
     cancelRequest: {
