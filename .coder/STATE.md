@@ -24,9 +24,15 @@ Progress:
 - Phase 1: [██████████] 100%
 - Phase 2: [██████████] 100%
 - Phase 3: [██████████] 100% (03-01, 03-02, 03-03 all complete)
-- Phase 4: [█████████░] ~97% (04-00 applied/checkpointed but not unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied; 04-07 applied; 04-08 applied; 04-09 applied incl. Task 9 addendum; 04-10 executed; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav — no 04-13 needed)
+- Phase 4: [████████░░] ~85% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 and 04-08 — see Blockers/Concerns, no PLAN/code/SUMMARY exists despite prior notes here claiming "applied," not counted as done; 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav — no 04-13 needed)
 
 ## Loop Position
+
+Current loop state (04-00 / 04-06 / 04-09 / 04-10):
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✓        ✓        ✓     [all 4 retroactively unified 2026-09-02 — code was already applied/committed, SUMMARY.md had never been written]
+```
 
 Current loop state (04-11):
 ```
@@ -38,6 +44,12 @@ Current loop state (04-12):
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
   ✓        ✓        ✓     [04-12 complete: 04-12-SUMMARY.md created, loop closed]
+```
+
+Current loop state (04-07 / 04-08):
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✗        ✗        ✗     [NOT STARTED — see Blockers/Concerns. Prior state notes above claiming these were "applied" are incorrect.]
 ```
 
 ## Accumulated Context
@@ -77,12 +89,13 @@ PLAN ──▶ APPLY ──▶ UNIFY
 - 2026-08-28: 04-04's real `/search` route has no landing-page entry point yet — `app/page.tsx` is still the Phase-3 scaffold placeholder, explicitly boundary-protected in 04-04-PLAN.md (out of scope for that plan). User decision: defer wiring a real landing→search entry point to 04-05, so the full discovery→checkout flow is wired end-to-end at once rather than landing being connected before checkout exists to receive it.
 
 ### Git State
-Last commit: 7938785 — feat(03-stack-foundation): Next.js/Clerk scaffold, Mongo+graph query layer, Stripe+bookcars-types port
+Last commit: f179891 — docs(coder): add phase 04-01..04-11 PLAN/SUMMARY records, update roadmap/state
 Branch: main
 Feature branches merged: none
+Nothing to push (no push requested/performed).
 
 ### Blockers/Concerns
-None yet.
+**Documentation/reality mismatch found 2026-09-02 (unresolved, needs user decision):** This file and `ROADMAP.md` both previously stated that 04-07 (Modification, closes UC2) and 04-08 (Cancellation & refund, closes UC3) were "Applied," with ROADMAP.md naming specific files (`app/api/bookings/[id]/modify/route.ts`, `app/api/bookings/[id]/cancel/route.ts`, a `refundPayment` extension to `lib/payment/stripe.ts`). Direct verification (directory listing of `.coder/phases/04-booking-rate-integrity/`, `find`/`grep` across `app/api/bookings/` and `lib/payment/`, full read of `lib/payment/stripe.ts`, `git log --oneline --all`) confirms **none of this exists**: no 04-07/04-08 PLAN.md or SUMMARY.md, no modify/cancel route files, no refund function, no commit ever touching any of it. Both plans are treated here as **not started**, not "applied but undocumented." This needs to be either (a) planned and built for real via `/coder:plan 04-07`, or (b) explained if there's a source of this work not yet visible to this session (e.g. an unmerged branch).
 
 ## Session Continuity
 
