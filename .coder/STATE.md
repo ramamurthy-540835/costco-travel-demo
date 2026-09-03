@@ -24,7 +24,7 @@ Progress:
 - Phase 1: [██████████] 100%
 - Phase 2: [██████████] 100%
 - Phase 3: [██████████] 100% (03-01, 03-02, 03-03 all complete)
-- Phase 4: [█████████░] ~90% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 applied+unified 2026-09-03 (modification/UC2 + My Bookings, 4 live-testing fixes folded in); 04-08 — PLAN.md amended (Task 7 refund fold-in), awaiting APPLY approval, now unblocked; 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav; 04-13 TBD roadmap-only)
+- Phase 4: [██████████] 100% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 applied+unified 2026-09-03 (modification/UC2 + My Bookings, 4 live-testing fixes folded in); 04-08 applied+unified 2026-09-03 (cancellation+refund/UC3 + decreasing-modification refund fold-in); 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav; 04-13 TBD roadmap-only)
 
 ## Loop Position
 
@@ -55,11 +55,14 @@ PLAN ──▶ APPLY ──▶ UNIFY
 Current loop state (04-08):
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ○        ○     [PLAN.md created 2026-09-02, adversarially reviewed (1 round, fixes applied — see Accumulated Context), amended 2026-09-03 to fold in the decreasing-modification refund (Task 7/AC-8). depends_on now ["04-05", "04-07"], wave 9. Awaiting user APPLY approval — 04-07 has now closed, so 04-08 is unblocked.]
+  ✓        ✓        ✓     [04-08 complete: all 7 auto tasks + checkpoint approved 2026-09-03, 04-08-SUMMARY.md created.]
 ```
 
 ### 04-07 closed (2026-09-03)
 All 4 auto tasks executed and qualified (build/tsc clean, `npm run test:e2e` 10/10). Task 5's blocking human-verify checkpoint surfaced 4 real live-testing gaps, all fixed and folded into `04-07-PLAN.md` before closing: (1) no success confirmation after a modification — added a `successMessage` banner; (2) live quote required clicking away from the date input — replaced `onBlur` with a debounced `useEffect`; (3) decrease-path copy read as unfriendly — reworded, with an explicit (now superseded-by-04-08) refund disclosure; (4) confirmation page's back-navigation was inconsistent with the rest of the app (bottom "Back to search" vs. checkout's top-left "Back to results") — standardized to a top-left "← Back to my bookings" link routing to `/bookings`. `04-07-PLAN.md` amended in-place (Task 3 action/verify, checkpoint `<what-built>`, verification checklist) to document all 4 fixes as built, not just planned. `04-07-SUMMARY.md` created — loop closed via `/coder:unify`.
+
+### 04-08 closed (2026-09-03)
+All 7 auto tasks executed and qualified (build/tsc clean, `npm run test:e2e` 10/10). Added a real per-vendor `no_show_fee_percent` to all 10 seeded `VendorPolicy` nodes and reloaded the graph; added `quoteCancellation()` to `lib/vendor-integration/policy.ts`; built `POST /api/bookings/[id]/cancel` with an atomic status-claim before the Stripe refund (closes the concurrent-double-cancel race); added `BookingCancelDialog` to both the confirmation page and My Bookings; closed 04-07's decreasing-modification refund gap (Task 7/AC-8) in `modify/route.ts` and `booking-modify-form.tsx`. One non-structural correction found live: `PaymentIntent.amount_refunded` isn't a real field — both refund paths now expand `latest_charge` to read it off the `Charge`. Checkpoint approved by user; `04-08-SUMMARY.md` created — loop closed via `/coder:unify`.
 
 ### 04-08 amended (2026-09-03): folded in decreasing-modification refund
 During 04-07's live checkpoint testing, the user asked how refunds are handled for a decreasing modification (04-07's UI, added live, disclosed it as "not issued automatically — contact support"). Rather than leave it as a permanent gap or spin up a new plan, user chose to fold it into 04-08 (which already builds the Stripe-refund machinery for cancellation). Added: AC-8, Task 7 (`app/api/bookings/[id]/modify/route.ts` — when `deltaCents < 0` on a real apply, issue `stripe.refunds.create` for `-deltaCents` against the original PaymentIntent, idempotency-keyed on `modify-refund-{bookingId}-{historyLength}`; record `refundId`/`refundAmountCents` on the `modificationHistory` entry; update `components/booking-modify-form.tsx`'s copy to confirm the refunded amount instead of "contact support"). `lib/models/Booking.ts`'s `modificationHistory` subdocument widened with the same two optional fields. This is the one place 04-08 now genuinely depends on 04-07 rather than being symmetric/order-independent — `depends_on` updated to `["04-05", "04-07"]`, `wave` bumped 8→9. Not yet adversarially reviewed as a standalone round (single, contained addition — reusing an already-reviewed refund pattern from Task 4); flag for a light spot-check before APPLY if a fresh review pass is warranted.
@@ -110,7 +113,7 @@ Feature branches merged: none
 Nothing to push (no push requested/performed).
 
 ### Blockers/Concerns
-None currently — the 04-07/04-08 documentation/reality mismatch (found 2026-09-02) is resolved: both now have real PLAN.md files (see Loop Position below), awaiting APPLY approval.
+None currently — 04-07 and 04-08 have both been applied and unified (see Loop Position below). Phase 4 is now at 100% except for 04-13, which remains TBD/roadmap-only (needs an availability-check signal not yet in the ontology).
 
 ### Adversarial review results — round 1, API-only drafts (2026-09-02, superseded)
 - **04-07-PLAN.md** (1 round, 1 reviewer): ownership-check helper misuse and delta-cents rounding fixed. Superseded by the round-2 rewrite below (added UI + vendor-integration boundary module).
@@ -133,9 +136,9 @@ Per explicit user request ("modifications and cancellations can only be done on 
 ## Session Continuity
 
 Last session: 2026-09-03
-Stopped at: 04-07's loop closed (PLAN ✓ → APPLY ✓ → UNIFY ✓, `04-07-SUMMARY.md` created). 04-08-PLAN.md remains fully rewritten and amended (UI + `lib/vendor-integration/policy.ts` boundary module + "My Bookings" account page + Task 7's decreasing-modification refund), adversarially reviewed, awaiting user APPLY approval.
-Next action: `/coder:apply .coder/phases/04-booking-rate-integrity/04-08-PLAN.md`.
-Resume file: .coder/phases/04-booking-rate-integrity/04-08-PLAN.md
+Stopped at: 04-08's loop closed (PLAN ✓ → APPLY ✓ → UNIFY ✓, `04-08-SUMMARY.md` created). Phase 4 (Booking & Rate Integrity) is now complete except for 04-13, which is TBD/roadmap-only.
+Next action: decide on 04-13 (modify location/vehicle-type — needs availability-check research) or move on to Phase 5 planning; no plan is currently in flight.
+Resume file: none — see ROADMAP.md for Phase 5 scope.
 
 ---
 *STATE.md — Updated after every significant action*

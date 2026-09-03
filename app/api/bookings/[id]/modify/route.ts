@@ -75,6 +75,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ deltaCents, newTotalPrice }, { status: 200 });
   }
 
+  const stripeAPI = getStripe();
+
   if (deltaCents > 0) {
     if (!body.paymentIntentId) {
       return NextResponse.json(
@@ -83,7 +85,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
-    const stripeAPI = getStripe();
     const paymentIntent = await stripeAPI.paymentIntents.retrieve(body.paymentIntentId);
     if (paymentIntent.status !== 'succeeded') {
       return NextResponse.json(
@@ -103,12 +104,43 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  let refundId: string | null = null;
+  let refundAmountCents = 0;
+  if (deltaCents < 0) {
+    if (!booking.paymentIntentId) {
+      return NextResponse.json({ error: 'Could not apply this change' }, { status: 500 });
+    }
+    try {
+      const paymentIntent = await stripeAPI.paymentIntents.retrieve(booking.paymentIntentId, {
+        expand: ['latest_charge'],
+      });
+      const latestCharge =
+        typeof paymentIntent.latest_charge === 'object' ? paymentIntent.latest_charge : null;
+      const amountRefunded = latestCharge?.amount_refunded ?? 0;
+      refundAmountCents = Math.min(-deltaCents, paymentIntent.amount - amountRefunded);
+      if (refundAmountCents > 0) {
+        const refund = await stripeAPI.refunds.create(
+          {
+            payment_intent: booking.paymentIntentId,
+            amount: refundAmountCents,
+          },
+          { idempotencyKey: `modify-refund-${booking._id}-${booking.modificationHistory.length}` },
+        );
+        refundId = refund.id;
+      }
+    } catch {
+      return NextResponse.json({ error: 'Could not apply this change' }, { status: 500 });
+    }
+  }
+
   booking.modificationHistory.push({
     from: booking.from,
     to: booking.to,
     inventoryId: booking.inventoryId,
     vendorId: booking.vendorId,
     pricingSnapshot: booking.pricingSnapshot,
+    refundId,
+    refundAmountCents,
   });
 
   booking.inventoryId = inventoryId;
@@ -128,7 +160,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await booking.save();
 
   return NextResponse.json(
-    { bookingId: String(booking._id), totalPrice: newTotalPrice, deltaCents },
+    { bookingId: String(booking._id), totalPrice: newTotalPrice, deltaCents, refundAmountCents, refundId },
     { status: 200 },
   );
 }

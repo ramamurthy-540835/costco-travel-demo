@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardImage } from '@/components/vehicle-card';
 import { BookingModifyForm } from '@/components/booking-modify-form';
+import { BookingCancelDialog } from '@/components/booking-cancel-dialog';
 import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
@@ -262,6 +263,31 @@ export default async function ConfirmationPage({
           to={to.toISOString()}
           receiptEmail={member.email}
         />
+      )}
+
+      {/* Cancel booking */}
+      {booking.status === 'reserved' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">Cancel booking</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BookingCancelDialog bookingId={String(booking._id)} />
+          </CardContent>
+        </Card>
+      )}
+      {booking.status === 'cancelled' && (
+        <Card>
+          <CardContent className="flex flex-col gap-1 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">This booking was cancelled.</p>
+            {typeof booking.cancellation?.refundPercent === 'number' && (
+              <p>
+                Refunded ${((booking.cancellation.refundAmountCents ?? 0) / 100).toFixed(2)} (
+                {booking.cancellation.refundPercent}%).
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Pick-up checklist */}

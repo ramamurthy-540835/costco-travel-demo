@@ -9,7 +9,7 @@
 // only this file's internals change to an RPC call — callers in
 // app/api/bookings/[id]/*/route.ts never need to change.
 
-import { searchInventory } from '@/lib/graph/queries';
+import { searchInventory, getVendorPolicy } from '@/lib/graph/queries';
 
 export interface ModificationQuote {
   dailyRate: number;
@@ -45,5 +45,35 @@ export async function quoteModification(params: {
     negotiatedTermId: match.negotiatedTerm.term_id,
     perkIds: match.perks.map((p) => p.perk_id as string),
     currency: 'usd',
+  };
+}
+
+export interface CancellationQuote {
+  refundPercent: number;
+  withinFreeWindow: boolean;
+}
+
+// Known simplification (documented in 04-08-SUMMARY.md): a booking cancelled
+// after its `from` has already passed (hoursUntilStart < 0) is charged the
+// same standard no-show-fee percent as any other inside-window cancellation.
+// The seed data has no field distinguishing "cancelled late" from "never
+// showed up" — inventing one here would be an unrequested hardcoded rule.
+export async function quoteCancellation(params: {
+  vendorId: string;
+  hoursUntilStart: number;
+}): Promise<CancellationQuote | null> {
+  const policy = await getVendorPolicy(params.vendorId);
+  if (!policy) {
+    return null;
+  }
+
+  const windowHours = policy.standard_cancellation_window_hours ?? 0;
+  if (params.hoursUntilStart >= windowHours) {
+    return { refundPercent: 100, withinFreeWindow: true };
+  }
+
+  return {
+    refundPercent: 100 - (policy.no_show_fee_percent ?? 0),
+    withinFreeWindow: false,
   };
 }

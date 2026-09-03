@@ -64,9 +64,13 @@ const bookingSchema = new Schema(
       addonTotal: { type: Number, default: 0 },
       totalPrice: { type: Number, required: [true, "can't be blank"] },
     },
-    cancelRequest: {
-      type: Boolean,
-      default: false,
+    // Set only once the booking transitions to `cancelled` (see the cancel
+    // route's atomic status-claim-then-update-cancellation-field sequencing).
+    cancellation: {
+      cancelledAt: { type: Date },
+      refundId: { type: String },
+      refundAmountCents: { type: Number },
+      refundPercent: { type: Number },
     },
     // Audit trail of prior states before a modification is applied — the
     // current top-level fields always reflect the latest state.
@@ -87,6 +91,8 @@ const bookingSchema = new Schema(
             totalPrice: { type: Number, required: [true, "can't be blank"] },
           },
           modifiedAt: { type: Date, default: Date.now },
+          refundId: { type: String },
+          refundAmountCents: { type: Number },
         },
       ],
       default: [],

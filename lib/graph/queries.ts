@@ -21,6 +21,7 @@ export interface Perk {
 export interface VendorPolicy {
   provider: string;
   standard_cancellation_window_hours?: number;
+  no_show_fee_percent?: number;
   [key: string]: unknown;
 }
 

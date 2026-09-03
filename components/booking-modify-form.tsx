@@ -132,7 +132,11 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
       }
       setDeltaCents(null);
       setNewTotalPrice(null);
-      setSuccessMessage('Your booking has been updated with the new dates.');
+      setSuccessMessage(
+        body.refundAmountCents > 0
+          ? `Your booking has been updated with the new dates. $${(body.refundAmountCents / 100).toFixed(2)} has been refunded to your original payment method.`
+          : 'Your booking has been updated with the new dates.',
+      );
       router.refresh();
     } catch {
       setError('Could not apply this change.');
@@ -200,7 +204,7 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
                     <p className="text-muted-foreground">
                       Your new total is lower — no additional payment is needed.{' '}
                       {deltaCents < 0
-                        ? 'Refunds for the difference are not issued automatically; contact support if you’d like one.'
+                        ? 'Any difference will be refunded to your original payment method.'
                         : ''}
                     </p>
                     <Button onClick={applyWithoutPayment} disabled={applying}>

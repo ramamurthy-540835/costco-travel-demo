@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookingModifyDialog } from '@/components/booking-modify-dialog';
+import { BookingCancelDialog } from '@/components/booking-cancel-dialog';
 import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
@@ -160,7 +161,15 @@ export default async function MyBookingsPage({
                       receiptEmail={member.email}
                     />
                   )}
+                  {booking.status === 'reserved' && <BookingCancelDialog bookingId={bookingId} />}
                 </div>
+                {booking.status === 'cancelled' &&
+                  typeof booking.cancellation?.refundPercent === 'number' && (
+                    <p className="text-xs text-muted-foreground">
+                      Refunded ${((booking.cancellation.refundAmountCents ?? 0) / 100).toFixed(2)} (
+                      {booking.cancellation.refundPercent}%)
+                    </p>
+                  )}
               </CardContent>
             </Card>
           );
