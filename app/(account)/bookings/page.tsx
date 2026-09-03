@@ -5,12 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookingModifyDialog } from '@/components/booking-modify-dialog';
 import { BookingCancelDialog } from '@/components/booking-cancel-dialog';
+import { BookingAddonsDialog } from '@/components/booking-addons-dialog';
 import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
 import { BOOKING_STATUS } from '@/lib/models/Booking';
 import { buildOwnBookingsFilter } from '@/app/api/bookings/route';
-import { searchInventory } from '@/lib/graph/queries';
+import { searchInventory, getAddOnsCatalog, getWaivedAddOnIds } from '@/lib/graph/queries';
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'destructive'> = {
   pending: 'secondary',
@@ -67,14 +68,31 @@ export default async function MyBookingsPage({
   await connectToDatabase();
   const member = await Member.findOne({ clerkUserId: userId });
 
-  const [bookings, results] = await Promise.all([
+  const [bookings, results, addOnsCatalog] = await Promise.all([
     member
       ? Booking.find(buildOwnBookingsFilter(member._id, { status: status || undefined, from: from || undefined, to: to || undefined }))
           .sort({ from: -1 })
           .lean()
       : Promise.resolve([]),
     searchInventory(),
+    getAddOnsCatalog(),
   ]);
+
+  // Dedupe by distinct perkIds combination actually present on this page,
+  // rather than one getWaivedAddOnIds() Cypher call per booking row.
+  const distinctPerkIdsKeys = new Map<string, string[]>();
+  for (const booking of bookings) {
+    const perkIds = booking.pricingSnapshot.perkIds ?? [];
+    const key = [...perkIds].sort().join('|');
+    if (!distinctPerkIdsKeys.has(key)) distinctPerkIdsKeys.set(key, perkIds);
+  }
+  const waivedByPerkIdsKey = new Map<string, Set<string>>(
+    await Promise.all(
+      Array.from(distinctPerkIdsKeys.entries()).map(
+        async ([key, perkIds]) => [key, await getWaivedAddOnIds(perkIds)] as const,
+      ),
+    ),
+  );
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -128,6 +146,8 @@ export default async function MyBookingsPage({
           const bookingId = String(booking._id);
           const bookingFrom = new Date(booking.from);
           const bookingTo = new Date(booking.to);
+          const perkIdsKey = [...(booking.pricingSnapshot.perkIds ?? [])].sort().join('|');
+          const waivedAddonIds = Array.from(waivedByPerkIdsKey.get(perkIdsKey) ?? new Set<string>());
 
           return (
             <Card key={bookingId}>
@@ -162,6 +182,15 @@ export default async function MyBookingsPage({
                     />
                   )}
                   {booking.status === 'reserved' && <BookingCancelDialog bookingId={bookingId} />}
+                  {booking.status === 'reserved' && member?.email && (
+                    <BookingAddonsDialog
+                      bookingId={bookingId}
+                      receiptEmail={member.email}
+                      catalog={addOnsCatalog}
+                      waivedAddonIds={waivedAddonIds}
+                      currentAddonIds={booking.pricingSnapshot.addonIds ?? []}
+                    />
+                  )}
                 </div>
                 {booking.status === 'cancelled' &&
                   typeof booking.cancellation?.refundPercent === 'number' && (

@@ -14,10 +14,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardImage } from '@/components/vehicle-card';
 import { BookingModifyForm } from '@/components/booking-modify-form';
 import { BookingCancelDialog } from '@/components/booking-cancel-dialog';
+import { BookingAddonsDialog } from '@/components/booking-addons-dialog';
 import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
-import { searchInventory, getAddOnsCatalog, getVendorPolicy } from '@/lib/graph/queries';
+import {
+  searchInventory,
+  getAddOnsCatalog,
+  getVendorPolicy,
+  getWaivedAddOnIds,
+} from '@/lib/graph/queries';
 import getStripe from '@/lib/payment/stripe';
 
 function formatDateTime(date: Date): string {
@@ -75,6 +81,7 @@ export default async function ConfirmationPage({
 
   const chargedAddonIds = booking.pricingSnapshot.addonIds ?? [];
   const chargedAddons = addOnsCatalog.filter((a) => chargedAddonIds.includes(a.addon_id));
+  const waivedAddonIds = Array.from(await getWaivedAddOnIds(booking.pricingSnapshot.perkIds ?? []));
 
   let paymentMethodLabel: string | null = null;
   let paymentStatus = 'Paid';
@@ -263,6 +270,24 @@ export default async function ConfirmationPage({
           to={to.toISOString()}
           receiptEmail={member.email}
         />
+      )}
+
+      {/* Manage extras */}
+      {booking.status === 'reserved' && member?.email && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">Extras</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BookingAddonsDialog
+              bookingId={String(booking._id)}
+              receiptEmail={member.email}
+              catalog={addOnsCatalog}
+              waivedAddonIds={waivedAddonIds}
+              currentAddonIds={chargedAddonIds}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Cancel booking */}
