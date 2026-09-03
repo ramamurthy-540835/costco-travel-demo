@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import {
+  ArrowLeft,
   Car,
   CheckCircle2,
   Circle,
@@ -11,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardImage } from '@/components/vehicle-card';
+import { BookingModifyForm } from '@/components/booking-modify-form';
 import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
@@ -43,11 +45,14 @@ export default async function ConfirmationPage({
 
   if (!booking) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-8 text-center">
-        <p className="text-sm text-muted-foreground">Booking not found.</p>
-        <Button className="mt-4" render={<Link href="/search" />}>
-          Back to search
-        </Button>
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <Link
+          href="/bookings"
+          className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" strokeWidth={1.5} /> Back to my bookings
+        </Link>
+        <p className="text-center text-sm text-muted-foreground">Booking not found.</p>
       </main>
     );
   }
@@ -95,6 +100,13 @@ export default async function ConfirmationPage({
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+      <Link
+        href="/bookings"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" strokeWidth={1.5} /> Back to my bookings
+      </Link>
+
       <div className="flex flex-col items-center gap-2 text-center">
         <CheckCircle2 className="size-10 text-primary" strokeWidth={1.5} />
         <h1 className="font-heading text-2xl font-medium">Booking confirmed</h1>
@@ -242,6 +254,16 @@ export default async function ConfirmationPage({
         </CardContent>
       </Card>
 
+      {/* Modify your booking */}
+      {booking.status === 'reserved' && member?.email && (
+        <BookingModifyForm
+          bookingId={String(booking._id)}
+          from={from.toISOString()}
+          to={to.toISOString()}
+          receiptEmail={member.email}
+        />
+      )}
+
       {/* Pick-up checklist */}
       <Card>
         <CardHeader>
@@ -289,8 +311,6 @@ export default async function ConfirmationPage({
           </ul>
         </CardContent>
       </Card>
-
-      <Button render={<Link href="/search" />}>Back to search</Button>
     </main>
   );
 }

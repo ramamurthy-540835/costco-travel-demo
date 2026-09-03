@@ -21,6 +21,12 @@ export function Header() {
           </SignUpButton>
         </Show>
         <Show when="signed-in">
+          <Link
+            href="/bookings"
+            className="text-sm font-medium text-foreground/80 hover:text-foreground"
+          >
+            My Bookings
+          </Link>
           <UserButton />
         </Show>
       </nav>

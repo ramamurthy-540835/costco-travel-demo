@@ -3,6 +3,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import getStripe from '@/lib/payment/stripe';
 import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
+import Member from '@/lib/models/Member';
 import { getOrCreateMember } from '@/lib/models/member-sync';
 import { searchInventory, getAddOnsCatalog, getWaivedAddOnIds } from '@/lib/graph/queries';
 import { recordReservation } from '@/lib/graph/mutations';
@@ -14,6 +15,48 @@ interface CreateBookingPayload {
   to: string;
   paymentIntentId: string;
   addonIds?: string[];
+}
+
+export function buildOwnBookingsFilter(
+  memberId: unknown,
+  { status, from, to }: { status?: string; from?: string; to?: string },
+) {
+  return {
+    member: memberId,
+    ...(status ? { status } : {}),
+    ...(from || to
+      ? {
+          from: {
+            ...(from ? { $gte: new Date(from) } : {}),
+            ...(to ? { $lte: new Date(to) } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Sign-in required' }, { status: 401 });
+  }
+
+  await connectToDatabase();
+
+  const member = await Member.findOne({ clerkUserId: userId });
+  if (!member) {
+    return NextResponse.json([], { status: 200 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status') ?? undefined;
+  const from = searchParams.get('from') ?? undefined;
+  const to = searchParams.get('to') ?? undefined;
+
+  const filter = buildOwnBookingsFilter(member._id, { status, from, to });
+  const bookings = await Booking.find(filter).sort({ from: -1 }).lean();
+
+  return NextResponse.json(bookings, { status: 200 });
 }
 
 export async function POST(req: NextRequest) {

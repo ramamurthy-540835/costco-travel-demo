@@ -68,6 +68,29 @@ const bookingSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    // Audit trail of prior states before a modification is applied — the
+    // current top-level fields always reflect the latest state.
+    modificationHistory: {
+      type: [
+        {
+          from: { type: Date, required: [true, "can't be blank"] },
+          to: { type: Date, required: [true, "can't be blank"] },
+          inventoryId: { type: String, required: [true, "can't be blank"] },
+          vendorId: { type: String, required: [true, "can't be blank"] },
+          pricingSnapshot: {
+            negotiatedTermId: { type: String, required: [true, "can't be blank"] },
+            dailyRate: { type: Number, required: [true, "can't be blank"] },
+            currency: { type: String, required: [true, "can't be blank"] },
+            perkIds: { type: [String], default: [] },
+            addonIds: { type: [String], default: [] },
+            addonTotal: { type: Number, default: 0 },
+            totalPrice: { type: Number, required: [true, "can't be blank"] },
+          },
+          modifiedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

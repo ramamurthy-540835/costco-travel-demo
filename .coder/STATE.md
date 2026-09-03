@@ -24,7 +24,7 @@ Progress:
 - Phase 1: [██████████] 100%
 - Phase 2: [██████████] 100%
 - Phase 3: [██████████] 100% (03-01, 03-02, 03-03 all complete)
-- Phase 4: [████████░░] ~85% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 and 04-08 — see Blockers/Concerns, no PLAN/code/SUMMARY exists despite prior notes here claiming "applied," not counted as done; 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav — no 04-13 needed)
+- Phase 4: [█████████░] ~90% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 applied+unified 2026-09-03 (modification/UC2 + My Bookings, 4 live-testing fixes folded in); 04-08 — PLAN.md amended (Task 7 refund fold-in), awaiting APPLY approval, now unblocked; 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav; 04-13 TBD roadmap-only)
 
 ## Loop Position
 
@@ -46,11 +46,26 @@ PLAN ──▶ APPLY ──▶ UNIFY
   ✓        ✓        ✓     [04-12 complete: 04-12-SUMMARY.md created, loop closed]
 ```
 
-Current loop state (04-07 / 04-08):
+Current loop state (04-07):
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✗        ✗        ✗     [NOT STARTED — see Blockers/Concerns. Prior state notes above claiming these were "applied" are incorrect.]
+  ✓        ✓        ✓     [04-07 complete: checkpoint closed 2026-09-03 (user closed the loop after 3 rounds of live-testing fixes + a nav-consistency fix), 04-07-SUMMARY.md created.]
 ```
+
+Current loop state (04-08):
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✓        ○        ○     [PLAN.md created 2026-09-02, adversarially reviewed (1 round, fixes applied — see Accumulated Context), amended 2026-09-03 to fold in the decreasing-modification refund (Task 7/AC-8). depends_on now ["04-05", "04-07"], wave 9. Awaiting user APPLY approval — 04-07 has now closed, so 04-08 is unblocked.]
+```
+
+### 04-07 closed (2026-09-03)
+All 4 auto tasks executed and qualified (build/tsc clean, `npm run test:e2e` 10/10). Task 5's blocking human-verify checkpoint surfaced 4 real live-testing gaps, all fixed and folded into `04-07-PLAN.md` before closing: (1) no success confirmation after a modification — added a `successMessage` banner; (2) live quote required clicking away from the date input — replaced `onBlur` with a debounced `useEffect`; (3) decrease-path copy read as unfriendly — reworded, with an explicit (now superseded-by-04-08) refund disclosure; (4) confirmation page's back-navigation was inconsistent with the rest of the app (bottom "Back to search" vs. checkout's top-left "Back to results") — standardized to a top-left "← Back to my bookings" link routing to `/bookings`. `04-07-PLAN.md` amended in-place (Task 3 action/verify, checkpoint `<what-built>`, verification checklist) to document all 4 fixes as built, not just planned. `04-07-SUMMARY.md` created — loop closed via `/coder:unify`.
+
+### 04-08 amended (2026-09-03): folded in decreasing-modification refund
+During 04-07's live checkpoint testing, the user asked how refunds are handled for a decreasing modification (04-07's UI, added live, disclosed it as "not issued automatically — contact support"). Rather than leave it as a permanent gap or spin up a new plan, user chose to fold it into 04-08 (which already builds the Stripe-refund machinery for cancellation). Added: AC-8, Task 7 (`app/api/bookings/[id]/modify/route.ts` — when `deltaCents < 0` on a real apply, issue `stripe.refunds.create` for `-deltaCents` against the original PaymentIntent, idempotency-keyed on `modify-refund-{bookingId}-{historyLength}`; record `refundId`/`refundAmountCents` on the `modificationHistory` entry; update `components/booking-modify-form.tsx`'s copy to confirm the refunded amount instead of "contact support"). `lib/models/Booking.ts`'s `modificationHistory` subdocument widened with the same two optional fields. This is the one place 04-08 now genuinely depends on 04-07 rather than being symmetric/order-independent — `depends_on` updated to `["04-05", "04-07"]`, `wave` bumped 8→9. Not yet adversarially reviewed as a standalone round (single, contained addition — reusing an already-reviewed refund pattern from Task 4); flag for a light spot-check before APPLY if a fresh review pass is warranted.
+
+### Roadmap addition (2026-09-03): 04-13 TBD — modify location/vehicle-type
+During 04-07's live checkpoint testing, user asked whether modifying location/vehicle-type (not just dates) makes sense. Assessed and added as a new, separate future plan rather than folding into 04-07/04-08: it introduces two concerns those plans deliberately don't handle — an availability/double-booking check against the target inventory (no such signal exists in the ontology yet — flagged as needing research), and a full re-match against a potentially different vendor (not just a re-quote of the same inventoryId/vendorId pair), including that vendor's distinct perk set. `modificationHistory` (added by 04-07) already stores `inventoryId`/`vendorId` per entry, so no schema change is anticipated. See ROADMAP.md Phase 4's new 04-13 entry.
 
 ## Accumulated Context
 
@@ -95,14 +110,32 @@ Feature branches merged: none
 Nothing to push (no push requested/performed).
 
 ### Blockers/Concerns
-**Documentation/reality mismatch found 2026-09-02 (unresolved, needs user decision):** This file and `ROADMAP.md` both previously stated that 04-07 (Modification, closes UC2) and 04-08 (Cancellation & refund, closes UC3) were "Applied," with ROADMAP.md naming specific files (`app/api/bookings/[id]/modify/route.ts`, `app/api/bookings/[id]/cancel/route.ts`, a `refundPayment` extension to `lib/payment/stripe.ts`). Direct verification (directory listing of `.coder/phases/04-booking-rate-integrity/`, `find`/`grep` across `app/api/bookings/` and `lib/payment/`, full read of `lib/payment/stripe.ts`, `git log --oneline --all`) confirms **none of this exists**: no 04-07/04-08 PLAN.md or SUMMARY.md, no modify/cancel route files, no refund function, no commit ever touching any of it. Both plans are treated here as **not started**, not "applied but undocumented." This needs to be either (a) planned and built for real via `/coder:plan 04-07`, or (b) explained if there's a source of this work not yet visible to this session (e.g. an unmerged branch).
+None currently — the 04-07/04-08 documentation/reality mismatch (found 2026-09-02) is resolved: both now have real PLAN.md files (see Loop Position below), awaiting APPLY approval.
+
+### Adversarial review results — round 1, API-only drafts (2026-09-02, superseded)
+- **04-07-PLAN.md** (1 round, 1 reviewer): ownership-check helper misuse and delta-cents rounding fixed. Superseded by the round-2 rewrite below (added UI + vendor-integration boundary module).
+- **04-08-PLAN.md** (1 round, 1 reviewer): blocking VendorPolicy field-name defect fixed, `no_show_fee_percent` seed task added, Stripe double-refund guard added. Superseded by the round-2 rewrite below.
+
+### Plan rewrite (2026-09-02): UI + vendor-integration boundary module
+Per explicit user request, both plans were fully rewritten to (a) add a real UI on `app/(checkout)/confirmation/[bookingId]/page.tsx` — a "Modify your booking" card for 04-07, a "Cancel booking" dialog for 04-08 — mirroring 04-12's checkout UI conventions (shadcn `Card`/`Button`, Stripe Elements for delta payments), and (b) introduce `lib/vendor-integration/policy.ts`, a new boundary module (per PROJECT.md's Discovery/Checkout-vs-Fulfillment architecture) that isolates vendor-contract-varying business rules — `quoteModification()` (04-07) and `quoteCancellation()` (04-08) — as the seam Phase 6's real, independently-deployed Vendor Integration Layer will later replace with an RPC call, without requiring route/UI changes. Both plans' Task-1-equivalent now branch symmetrically on whether the shared file already exists (append vs. create), so either plan can apply first without clobbering the other's export.
+
+### Adversarial review results — round 2, UI + boundary-module rewrite (2026-09-02)
+- **04-07-PLAN.md** (1 full review + 1 targeted spot-check round, 2 reviewer agents total): found and fixed 7 issues — most severe: a `dryRun` flag that wasn't a universal no-op (would silently apply a "preview" as a real modification when the previewed date was cheaper — fixed by making the dry-run check unconditional and first); an orphaned-Stripe-charge risk if the quote drifts between confirming payment and applying (now disclosed as an accepted known gap with a non-misleading error message, not silently unhandled); an addon double-charge risk when a modification changes vendor/inventory and the new perks would waive a previously-charged addon (fixed by re-filtering via `getWaivedAddOnIds()` against the new quote before recomputing); a float-rounding mismatch between `deltaCents` and `/api/payments/intent`'s dollar-based amount (fixed with a ±1 cent tolerance); a missing explicit Booking fetch before the ownership check; an Objective/Output section that overclaimed UI parity with the API's inventory/vendor-change capability (corrected — UI is dates-only); and the file-existence branch for the shared `lib/vendor-integration/policy.ts` module. All 6 spot-checked fixes verified PASS on the second targeted round.
+- **04-08-PLAN.md** (1 full review + 1 targeted spot-check round, 2 reviewer agents total): found and fixed 5 issues — most severe (caught only on the spot-check round): the atomic `findOneAndUpdate` cancellation-claim (added to close a concurrent-double-refund race) was followed by a plain `.save()` on the stale pre-claim `booking` object, which would have silently reverted `status` back to `'reserved'` — fixed by requiring the `cancellation` field write to target the already-`'cancelled'` document (a follow-up update or re-fetch), never the stale in-memory object. Also fixed/disclosed: a same-file-clobber risk with 04-07's Task 1 (now symmetric); the dry-run-preview-vs-confirm staleness gap for AC-6 (disclosed as an accepted hours-scale edge case); and `quoteCancellation()`'s handling of a negative `hoursUntilStart` (past-start/no-show) explicitly documented as folding into the standard inside-window rate rather than a distinct rule, since the seed data has no field for a finer distinction.
+- Both plans used 2 of the allowed max-3-agents/max-2-rounds budget (1 full review + 1 targeted fix-verification pass each) — within the standing cap. No further review round is planned; both plans are considered adversarially clean pending user read-through.
+
+### Plan addition (2026-09-02): "My Bookings" account page
+Per explicit user request ("modifications and cancellations can only be done on the confirmation page which is very restrictive — add a My Bookings page for logged-in users, list all bookings with filters, select and do the necessary actions"), both plans were extended again:
+- 04-07 gained Task 4: `GET /api/bookings` (own-bookings listing, `status`/`from`/`to` filters via a new `buildOwnBookingsFilter()` helper exported from `app/api/bookings/route.ts`) + a new real `app/(account)/bookings/page.tsx` list page (status/date filters, per-row "Modify" dialog reusing `BookingModifyForm`) + a "My Bookings" header nav link. New AC-6.
+- 04-08 gained Task 6: a per-row "Cancel" entry point on the same `app/(account)/bookings/page.tsx`, reusing `BookingCancelDialog`, symmetric with 04-07's Task 4 on file-existence (whichever plan applies first creates the page/helper; the other appends its entry point). New AC-7.
+- Adversarial review (1 agent, 1 round, scoped to just this addition — separate budget from the round-2 review above) found and fixed 2 real issues: (1) 04-07's Task 4 originally lacked the symmetric "page already exists → append, don't recreate" clause that 04-08's Task 6 already had — fixed by adding it explicitly. (2) The `from`/`to` query-param filter semantics were prose-only with no concrete Mongoose query shape, risking the two plans' independently-written filter logic diverging — fixed by pinning the exact filter object and factoring it into a shared, named `buildOwnBookingsFilter()` helper both plans import rather than each re-deriving. Also clarified (non-blocking) that the mock `app/prototype/bookings/page.tsx` status-badge maps are a structural pattern only — the real `BOOKING_STATUS` enum doesn't match its keys. No ownership/security leak or factual API mismatch was found (the GET route correctly scopes to `Booking.find({ member: member._id })`).
 
 ## Session Continuity
 
-Last session: 2026-09-02
-Stopped at: 04-12 fully applied and unified, then amended in-place to fold in search-entry gating/modal/labeling/back-nav as Tasks 4-7 (04-12-PLAN.md and 04-12-SUMMARY.md both updated; all 7 ACs verified Pass; checkpoint approved-in-substance; `npm run build` clean; `npm run test:e2e` 10/10).
-Next action: none pending from this thread of work — 04-12 is fully closed with its expanded scope. Awaiting user direction on what's next (e.g. next phase-4 gap, or moving to phase 5).
-Resume file: .coder/phases/04-booking-rate-integrity/04-12-SUMMARY.md
+Last session: 2026-09-03
+Stopped at: 04-07's loop closed (PLAN ✓ → APPLY ✓ → UNIFY ✓, `04-07-SUMMARY.md` created). 04-08-PLAN.md remains fully rewritten and amended (UI + `lib/vendor-integration/policy.ts` boundary module + "My Bookings" account page + Task 7's decreasing-modification refund), adversarially reviewed, awaiting user APPLY approval.
+Next action: `/coder:apply .coder/phases/04-booking-rate-integrity/04-08-PLAN.md`.
+Resume file: .coder/phases/04-booking-rate-integrity/04-08-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*
