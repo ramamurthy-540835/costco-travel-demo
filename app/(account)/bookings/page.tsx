@@ -11,7 +11,13 @@ import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
 import { BOOKING_STATUS } from '@/lib/models/Booking';
 import { buildOwnBookingsFilter } from '@/app/api/bookings/route';
-import { searchInventory, getAddOnsCatalog, getWaivedAddOnIds } from '@/lib/graph/queries';
+import {
+  searchInventory,
+  findEquivalentInventory,
+  getAddOnsCatalog,
+  getWaivedAddOnIds,
+  type InventorySearchResult,
+} from '@/lib/graph/queries';
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'destructive'> = {
   pending: 'secondary',
@@ -94,6 +100,29 @@ export default async function MyBookingsPage({
     ),
   );
 
+  // Dedupe alternate-vendor candidate lookups by distinct (city, class_name)
+  // pair actually present among this page's reserved bookings — one
+  // findEquivalentInventory() call per pair, not one per booking row.
+  const distinctLocationClassPairs = new Map<string, { city?: string; className: string }>();
+  for (const booking of bookings) {
+    if (booking.status !== 'reserved') continue;
+    const match = results.find(
+      (r) => r.inventory.rental_id === booking.inventoryId && r.vendor.provider === booking.vendorId,
+    );
+    if (!match) continue;
+    const key = `${match.location?.city ?? ''}|${match.vehicleClass.class_name}`;
+    if (!distinctLocationClassPairs.has(key)) {
+      distinctLocationClassPairs.set(key, { city: match.location?.city, className: match.vehicleClass.class_name });
+    }
+  }
+  const candidatesByPairKey = new Map<string, InventorySearchResult[]>(
+    await Promise.all(
+      Array.from(distinctLocationClassPairs.entries()).map(
+        async ([key, { city, className }]) => [key, await findEquivalentInventory(city, className)] as const,
+      ),
+    ),
+  );
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="font-heading text-2xl font-medium">My bookings</h1>
@@ -148,6 +177,16 @@ export default async function MyBookingsPage({
           const bookingTo = new Date(booking.to);
           const perkIdsKey = [...(booking.pricingSnapshot.perkIds ?? [])].sort().join('|');
           const waivedAddonIds = Array.from(waivedByPerkIdsKey.get(perkIdsKey) ?? new Set<string>());
+          const pairKey = match ? `${match.location?.city ?? ''}|${match.vehicleClass.class_name}` : '';
+          const alternateCandidates = (candidatesByPairKey.get(pairKey) ?? [])
+            .filter((c) => c.inventory.rental_id !== booking.inventoryId)
+            .map((c) => ({
+              inventoryId: c.inventory.rental_id,
+              vendorId: c.vendor.provider,
+              className: c.vehicleClass.class_name,
+              vehicleMake: c.inventory.vehicle_make as string | undefined,
+              vehicleModel: c.inventory.vehicle_model as string | undefined,
+            }));
 
           return (
             <Card key={bookingId}>
@@ -179,6 +218,10 @@ export default async function MyBookingsPage({
                       from={bookingFrom.toISOString()}
                       to={bookingTo.toISOString()}
                       receiptEmail={member.email}
+                      currentInventoryId={booking.inventoryId}
+                      currentVendorId={booking.vendorId}
+                      currentClassName={match ? match.vehicleClass.class_name : 'Vehicle unavailable'}
+                      candidates={alternateCandidates}
                     />
                   )}
                   {booking.status === 'reserved' && <BookingCancelDialog bookingId={bookingId} />}

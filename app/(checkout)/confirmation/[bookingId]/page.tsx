@@ -20,6 +20,7 @@ import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
 import {
   searchInventory,
+  findEquivalentInventory,
   getAddOnsCatalog,
   getVendorPolicy,
   getWaivedAddOnIds,
@@ -100,6 +101,18 @@ export default async function ConfirmationPage({
       // Payment intent lookup is best-effort display only — booking is already confirmed.
     }
   }
+
+  const alternateCandidates = match
+    ? (await findEquivalentInventory(match.location?.city, match.vehicleClass.class_name))
+        .filter((c) => c.inventory.rental_id !== booking.inventoryId)
+        .map((c) => ({
+          inventoryId: c.inventory.rental_id,
+          vendorId: c.vendor.provider,
+          className: c.vehicleClass.class_name,
+          vehicleMake: c.inventory.vehicle_make as string | undefined,
+          vehicleModel: c.inventory.vehicle_model as string | undefined,
+        }))
+    : [];
 
   const depositAmount = match?.inventory.deposit_amount as number | undefined;
   const fuelPolicy = match?.inventory.fuel_policy as string | undefined;
@@ -269,6 +282,10 @@ export default async function ConfirmationPage({
           from={from.toISOString()}
           to={to.toISOString()}
           receiptEmail={member.email}
+          currentInventoryId={booking.inventoryId}
+          currentVendorId={booking.vendorId}
+          currentClassName={match ? match.vehicleClass.class_name : 'Vehicle unavailable'}
+          candidates={alternateCandidates}
         />
       )}
 

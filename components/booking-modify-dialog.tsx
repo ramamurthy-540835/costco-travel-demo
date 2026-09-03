@@ -5,14 +5,35 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BookingModifyForm } from '@/components/booking-modify-form';
 
+interface BookingModifyCandidate {
+  inventoryId: string;
+  vendorId: string;
+  className: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+}
+
 interface BookingModifyDialogProps {
   bookingId: string;
   from: string;
   to: string;
   receiptEmail: string;
+  currentInventoryId: string;
+  currentVendorId: string;
+  currentClassName: string;
+  candidates: BookingModifyCandidate[];
 }
 
-export function BookingModifyDialog({ bookingId, from, to, receiptEmail }: BookingModifyDialogProps) {
+export function BookingModifyDialog({
+  bookingId,
+  from,
+  to,
+  receiptEmail,
+  currentInventoryId,
+  currentVendorId,
+  currentClassName,
+  candidates,
+}: BookingModifyDialogProps) {
   return (
     <Dialog>
       <DialogTrigger
@@ -31,6 +52,10 @@ export function BookingModifyDialog({ bookingId, from, to, receiptEmail }: Booki
           from={from}
           to={to}
           receiptEmail={receiptEmail}
+          currentInventoryId={currentInventoryId}
+          currentVendorId={currentVendorId}
+          currentClassName={currentClassName}
+          candidates={candidates}
         />
       </DialogContent>
     </Dialog>

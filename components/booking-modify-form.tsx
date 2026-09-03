@@ -19,19 +19,50 @@ function toDateInputValue(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
+interface BookingModifyCandidate {
+  inventoryId: string;
+  vendorId: string;
+  className: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+}
+
+function candidateLabel(c: BookingModifyCandidate): string {
+  const vehicle = [c.vehicleMake, c.vehicleModel].filter(Boolean).join(' ');
+  return vehicle ? `${c.vendorId} — ${c.className} (${vehicle})` : `${c.vendorId} — ${c.className}`;
+}
+
 interface BookingModifyFormProps {
   bookingId: string;
   from: string;
   to: string;
   receiptEmail: string;
+  currentInventoryId: string;
+  currentVendorId: string;
+  currentClassName: string;
+  candidates: BookingModifyCandidate[];
 }
 
-export function BookingModifyForm({ bookingId, from, to, receiptEmail }: BookingModifyFormProps) {
+export function BookingModifyForm({
+  bookingId,
+  from,
+  to,
+  receiptEmail,
+  currentInventoryId,
+  currentVendorId,
+  currentClassName,
+  candidates,
+}: BookingModifyFormProps) {
   const router = useRouter();
   const [newFrom, setNewFrom] = useState(toDateInputValue(from));
   const [newTo, setNewTo] = useState(toDateInputValue(to));
+  // '' means "Keep current vehicle" — dates-only behavior, unchanged from pre-04-14.
+  const [selectedInventoryId, setSelectedInventoryId] = useState('');
   const [deltaCents, setDeltaCents] = useState<number | null>(null);
   const [newTotalPrice, setNewTotalPrice] = useState<number | null>(null);
+  const [quoteVendorId, setQuoteVendorId] = useState<string | null>(null);
+  const [quoteDailyRate, setQuoteDailyRate] = useState<number | null>(null);
+  const [quotePerkIds, setQuotePerkIds] = useState<string[] | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +70,14 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const selectedCandidate = candidates.find((c) => c.inventoryId === selectedInventoryId) ?? null;
+
+  function vehicleChangeBody() {
+    return selectedCandidate
+      ? { inventoryId: selectedCandidate.inventoryId, vendorId: selectedCandidate.vendorId }
+      : {};
+  }
 
   async function fetchDryRunQuote(fromValue: string, toValue: string) {
     setQuoting(true);
@@ -51,18 +90,24 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
       const res = await fetch(`/api/bookings/${bookingId}/modify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: fromValue, to: toValue, dryRun: true }),
+        body: JSON.stringify({ from: fromValue, to: toValue, dryRun: true, ...vehicleChangeBody() }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         setError(body.error ?? 'Could not preview this change.');
         setDeltaCents(null);
         setNewTotalPrice(null);
+        setQuoteVendorId(null);
+        setQuoteDailyRate(null);
+        setQuotePerkIds(null);
         return;
       }
       const data = await res.json();
       setDeltaCents(data.deltaCents);
       setNewTotalPrice(data.newTotalPrice);
+      setQuoteVendorId(data.vendorId ?? null);
+      setQuoteDailyRate(typeof data.dailyRate === 'number' ? data.dailyRate : null);
+      setQuotePerkIds(Array.isArray(data.perkIds) ? data.perkIds : null);
     } catch {
       setError('Could not preview this change.');
     } finally {
@@ -73,9 +118,13 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
   useEffect(() => {
     if (clientSecret) return;
     if (!newFrom || !newTo) return;
-    if (newFrom === toDateInputValue(from) && newTo === toDateInputValue(to)) {
+    const datesUnchanged = newFrom === toDateInputValue(from) && newTo === toDateInputValue(to);
+    if (datesUnchanged && !selectedCandidate) {
       setDeltaCents(null);
       setNewTotalPrice(null);
+      setQuoteVendorId(null);
+      setQuoteDailyRate(null);
+      setQuotePerkIds(null);
       return;
     }
     const timer = setTimeout(() => {
@@ -83,7 +132,7 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
     }, 400);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newFrom, newTo]);
+  }, [newFrom, newTo, selectedInventoryId]);
 
   async function startPayment() {
     if (deltaCents === null) return;
@@ -122,7 +171,7 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
       const res = await fetch(`/api/bookings/${bookingId}/modify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: newFrom, to: newTo }),
+        body: JSON.stringify({ from: newFrom, to: newTo, ...vehicleChangeBody() }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -132,10 +181,11 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
       }
       setDeltaCents(null);
       setNewTotalPrice(null);
+      setSelectedInventoryId('');
       setSuccessMessage(
         body.refundAmountCents > 0
-          ? `Your booking has been updated with the new dates. $${(body.refundAmountCents / 100).toFixed(2)} has been refunded to your original payment method.`
-          : 'Your booking has been updated with the new dates.',
+          ? `Your booking has been updated. $${(body.refundAmountCents / 100).toFixed(2)} has been refunded to your original payment method.`
+          : 'Your booking has been updated.',
       );
       router.refresh();
     } catch {
@@ -185,12 +235,47 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
               </label>
             </div>
 
+            {candidates.length > 0 && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Vehicle / vendor
+                </span>
+                <select
+                  className="rounded-md border border-foreground/10 px-2 py-1.5"
+                  value={selectedInventoryId}
+                  onChange={(e) => setSelectedInventoryId(e.target.value)}
+                >
+                  <option value="">
+                    Keep current vehicle ({currentVendorId} — {currentClassName})
+                  </option>
+                  {candidates.map((c) => (
+                    <option key={c.inventoryId} value={c.inventoryId}>
+                      {candidateLabel(c)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             {quoting && <p className="text-muted-foreground">Checking new rate…</p>}
             {error && <p className="text-destructive">{error}</p>}
             {note && <p className="text-muted-foreground">{note}</p>}
 
-            {datesChanged && deltaCents !== null && newTotalPrice !== null && (
+            {(datesChanged || Boolean(selectedCandidate)) &&
+              deltaCents !== null &&
+              newTotalPrice !== null && (
               <div className="flex flex-col gap-2 rounded-xl bg-card p-3 ring-1 ring-foreground/10">
+                {selectedCandidate && quoteVendorId && quoteVendorId !== currentVendorId && (
+                  <div className="flex flex-col gap-1 text-muted-foreground">
+                    <p>
+                      New vendor: <span className="font-medium text-foreground">{quoteVendorId}</span>
+                      {typeof quoteDailyRate === 'number' && ` — $${quoteDailyRate.toFixed(2)}/day`}
+                    </p>
+                    {quotePerkIds && quotePerkIds.length > 0 && (
+                      <p>Perks: {quotePerkIds.join(', ')}</p>
+                    )}
+                  </div>
+                )}
                 <p className="font-heading font-medium">
                   New total: ${newTotalPrice.toFixed(2)}
                   {deltaCents > 0 ? ` (+$${(deltaCents / 100).toFixed(2)})` : ''}
@@ -221,13 +306,16 @@ export function BookingModifyForm({ bookingId, from, to, receiptEmail }: Booking
               bookingId={bookingId}
               from={newFrom}
               to={newTo}
+              inventoryId={selectedCandidate?.inventoryId}
+              vendorId={selectedCandidate?.vendorId}
               paymentIntentId={paymentIntentId as string}
               onSuccess={() => {
                 setClientSecret(null);
                 setPaymentIntentId(null);
                 setDeltaCents(null);
                 setNewTotalPrice(null);
-                setSuccessMessage('Your booking has been updated with the new dates.');
+                setSelectedInventoryId('');
+                setSuccessMessage('Your booking has been updated.');
               }}
             />
           </Elements>
@@ -241,12 +329,16 @@ function ModifyPaymentStep({
   bookingId,
   from,
   to,
+  inventoryId,
+  vendorId,
   paymentIntentId,
   onSuccess,
 }: {
   bookingId: string;
   from: string;
   to: string;
+  inventoryId?: string;
+  vendorId?: string;
   paymentIntentId: string;
   onSuccess: () => void;
 }) {
@@ -279,7 +371,12 @@ function ModifyPaymentStep({
     const res = await fetch(`/api/bookings/${bookingId}/modify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to, paymentIntentId }),
+      body: JSON.stringify({
+        from,
+        to,
+        paymentIntentId,
+        ...(inventoryId && vendorId ? { inventoryId, vendorId } : {}),
+      }),
     });
 
     const body = await res.json().catch(() => ({}));

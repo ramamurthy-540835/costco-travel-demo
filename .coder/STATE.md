@@ -10,8 +10,15 @@ See: .coder/PROJECT.md (updated 2026-08-27)
 ## Current Position
 
 Milestone: v0.1 Ontology & Discovery/Checkout Core
-Phase: 6 of 6 (Vendor Fulfillment Touchpoints) — Not started
-Plan: None yet — Phase 5 complete, ready to plan Phase 6
+Phase: 4 of 7 (Booking & Rate Integrity) — complete. Phase 6 (Regression Test Infrastructure) and Phase 7 (Vendor Fulfillment Touchpoints, renumbered from Phase 6) not started.
+Plan: 04-14 applied and unified 2026-09-04. Phase 4 fully complete.
+
+### 04-13/04-14 adversarial review (2026-09-04)
+`04-13-PLAN.md` (1 full review + 1 targeted spot-check, 2 agents total): found and fixed 6 issues — most severe (BLOCKING): Task 2 told the implementer to read a `vendorId` off `quoteModification()`'s return, but `ModificationQuote` has no such field — fixed to write the request's own validated `targetVendorId`. Also fixed: AC-4's CAS filter didn't guard on `inventoryId` (only `totalPrice`), missing a same-priced concurrent-swap case; `checkAvailability`/`checkModificationCutoff` take `Date` but the route only has ISO strings, no conversion instruction; `excludeBookingId` needed an explicit `String(booking._id)` cast; dates-only modifications silently skip the cutoff check with no disclosure (now an explicit accepted non-goal in Boundaries); `findEquivalentInventory()`'s param was wrongly named `vehicleClassId` (no such field — `VehicleClass` is keyed by `class_name`), fixed to `vehicleClassName` — the spot-check round caught one leftover stale reference to the old name still in Boundaries, fixed in a follow-up edit. Confirmed clean on final read-through.
+`04-14-PLAN.md` (1 full review + 1 targeted spot-check, 2 agents total): found and fixed 5 issues — most severe (BLOCKING): the plan framed the picker as browsing to a different location/vehicle-type, but `findEquivalentInventory(locationLabel?, vehicleClassName?)` filters *to* the given location/class and can never surface a different one — fixed by narrowing scope throughout (Objective, Purpose, Output, AC-1, Task 1, Boundaries, checkpoint) to "alternate vendors/units at the booking's current location and vehicle class," with true location/class browsing explicitly deferred as a follow-on plan needing a new HTTP wrapper route. Also fixed: same `vehicleClassId`→`vehicleClassName` naming mistake (made independently here too); no per-booking dedup guidance for `bookings/page.tsx` rendering N bookings at potentially different locations/classes — fixed by requiring dedup on distinct `(location_label, class_name)` pairs, mirroring the page's existing `distinctPerkIdsKeys` pattern; Task 1's trigger condition wrongly said "both pages that render `BookingModifyDialog`" when the confirmation page renders `BookingModifyForm` directly (no dialog) — reworded; no instruction to exclude the booking's own current `inventoryId` from candidates despite AC-1 requiring it — added explicitly. Round-2 spot-check verified all 5 fixes PASS against actual source (`lib/graph/queries.ts`, both page files). Both plans used 2 of the standing max-3-agents/max-2-rounds budget each, run strictly sequentially per project convention — within cap, no further review round planned.
+
+### 04-13/04-14 planned (2026-09-04): modify location/vehicle-type, API+UI split
+Ran `/coder:research` (two parallel subagents — mechanics + platform/vendor-boundary angle), then `/coder:plan`. Research docs: `.coder/research/04-13-modify-location-vehicle-type.md` (availability-check + cross-vendor re-match mechanics) and `.coder/research/agentic-boundary-for-04-13.md` (applies `mastech-agentic-commerce`'s Store Ops Agent/A2A boundary pattern — live fulfillment/availability state must never be modeled in the shared Postgres+AGE graph, only candidate/structural data). Asked 4 clarifying questions via AskUserQuestion, all answered: UI scope → **Full UI + API** (drove the 04-13/04-14 split, since API and UI are separate subsystems per CODER sizing guidance); optimistic-lock (CAS) fix → **fold into 04-13** (retrofits `findOneAndUpdate` onto `modify/route.ts`'s pre-existing plain `.save()`, closing a real lost-update race flagged since 05-01); pending-status bookings as an availability conflict → **no, reserved/checked_in only**; modification-cutoff gate → **add now, 04-13-only** (new `VendorPolicy.modification_cutoff_hours` check specific to location/vehicle-type changes, reusing the existing policy lookup). `04-13-PLAN.md` (wave 10, depends_on 04-07): `checkAvailability()`/`checkModificationCutoff()` in `lib/vendor-integration/policy.ts`, `findEquivalentInventory()` in `lib/graph/queries.ts`, extended `modify/route.ts` (availability → cutoff → cross-vendor quote → CAS write), 2 auto tasks + 1 blocking checkpoint. `04-14-PLAN.md` (wave 11, depends_on 04-13): picker UI in `booking-modify-form.tsx`/`booking-modify-dialog.tsx`, wired into the existing dry-run flow, 2 auto tasks + 1 blocking checkpoint. Neither plan has been adversarially reviewed yet (not requested); neither has been approved/applied.
 
 ### Phase 5 closed (2026-09-03)
 05-01 (standalone "Manage extras" add-on management) applied and unified: `POST /api/bookings/[id]/addons` (optimistic-lock `findOneAndUpdate` write, reuses 04-11/04-12's waiver helpers, Stripe delta-payment/refund patterns from 04-07/04-08) + `BookingAddonsDialog`/`Form` wired into both the confirmation page and My Bookings. All 5 ACs passed; `tsc`/`build` clean; `npm run test:e2e` 10/10; live checkpoint approved by user. `05-01-SUMMARY.md` created. Phase 4 (04-00–04-12) and Phase 5 (05-01) are both now complete — see ROADMAP.md. 04-13 (modify location/vehicle-type) remains separately TBD/roadmap-only, not blocking Phase 4/5 completion.
@@ -28,9 +35,10 @@ Progress:
 - Phase 1: [██████████] 100%
 - Phase 2: [██████████] 100%
 - Phase 3: [██████████] 100% (03-01, 03-02, 03-03 all complete)
-- Phase 4: [██████████] 100% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 applied+unified 2026-09-03 (modification/UC2 + My Bookings, 4 live-testing fixes folded in); 04-08 applied+unified 2026-09-03 (cancellation+refund/UC3 + decreasing-modification refund fold-in); 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav; 04-13 TBD roadmap-only, does not block Phase 4 completion)
+- Phase 4: [██████████] 100% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 applied+unified 2026-09-03 (modification/UC2 + My Bookings, 4 live-testing fixes folded in); 04-08 applied+unified 2026-09-03 (cancellation+refund/UC3 + decreasing-modification refund fold-in); 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav; 04-13 applied+unified 2026-09-04 (modify location/vehicle-type API); 04-14 applied+unified 2026-09-04 (modify location/vehicle-type UI). Phase 4 now fully complete.)
 - Phase 5: [██████████] 100% (05-01 applied+unified 2026-09-03 — standalone add-on management)
-- Phase 6: [░░░░░░░░░░] 0% (not started)
+- Phase 6: [░░░░░░░░░░] 0% (not started — Regression Test Infrastructure, renumbered from a 04-15 placeholder 2026-09-04; plan 06-01 TBD)
+- Phase 7: [░░░░░░░░░░] 0% (not started — Vendor Fulfillment Touchpoints, renumbered from Phase 6 2026-09-04)
 
 ## Loop Position
 
@@ -70,6 +78,18 @@ PLAN ──▶ APPLY ──▶ UNIFY
   ✓        ✓        ✓     [05-01 complete: both auto tasks + checkpoint approved 2026-09-03, 05-01-SUMMARY.md created. Phase 5 closed.]
 ```
 
+Current loop state (04-13):
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✓        ✓        ✓     [04-13 complete 2026-09-04: both auto tasks done, checkpoint approved, 04-13-SUMMARY.md created. Proceeding to 04-14 APPLY.]
+```
+
+Current loop state (04-14):
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✓        ✓        ✓     [04-14 complete 2026-09-04: both auto tasks done, checkpoint approved twice (once before, once after a post-checkpoint candidate-label fix), 04-14-SUMMARY.md created. Phase 4 fully closed.]
+```
+
 ### 04-07 closed (2026-09-03)
 All 4 auto tasks executed and qualified (build/tsc clean, `npm run test:e2e` 10/10). Task 5's blocking human-verify checkpoint surfaced 4 real live-testing gaps, all fixed and folded into `04-07-PLAN.md` before closing: (1) no success confirmation after a modification — added a `successMessage` banner; (2) live quote required clicking away from the date input — replaced `onBlur` with a debounced `useEffect`; (3) decrease-path copy read as unfriendly — reworded, with an explicit (now superseded-by-04-08) refund disclosure; (4) confirmation page's back-navigation was inconsistent with the rest of the app (bottom "Back to search" vs. checkout's top-left "Back to results") — standardized to a top-left "← Back to my bookings" link routing to `/bookings`. `04-07-PLAN.md` amended in-place (Task 3 action/verify, checkpoint `<what-built>`, verification checklist) to document all 4 fixes as built, not just planned. `04-07-SUMMARY.md` created — loop closed via `/coder:unify`.
 
@@ -105,6 +125,7 @@ During 04-07's live checkpoint testing, user asked whether modifying location/ve
 - Production Mongo hosting decision — local docker-compose sufficient for now
 - Landing page (`app/page.tsx`) doesn't visually match `/prototype/landing` (hero photo, why-us grid, vendor list, browse-by-vehicle-type) — 04-06-PLAN.md now created to close this (real graph data, not mock data), per user decision during 04-05's checkpoint (2026-08-28)
 - 04-05's AC-2 negative case (tampered Stripe amount → 400, no Booking) was verified by code review only, not a live tampered request — worth a live test if UC2/UC3 build on the same integrity check
+- 2026-09-04: 04-13/04-14's add-on-recompute-on-modify logic (waived-by-new-vendor-perk re-filtering, nights-rescaled fee totals folded into `deltaCents`) was verified by code trace against 04-05's identical booking-creation recompute pattern only — the dev DB currently has zero bookings, so no live reserved-booking-with-add-ons exists to drive a real vehicle-change modify through and diff the response. Closed by Phase 6's planned 06-01 regression suite, not before.
 
 ### Data enhancements made during APPLY (user-approved)
 - `bookings_1000.json` gained `rental_id` (FK to Inventory, backfilled by provider+city+vehicle exact match, all 1000 matched) and `requested_addons` (~33% of rows) — original file had neither, leaving `FOR_INVENTORY` and `REQUESTED` edges unseedable otherwise. See `01-02-SUMMARY.md` Deviations for detail.
@@ -119,7 +140,7 @@ During 04-07's live checkpoint testing, user asked whether modifying location/ve
 - 2026-08-28: 04-04's real `/search` route has no landing-page entry point yet — `app/page.tsx` is still the Phase-3 scaffold placeholder, explicitly boundary-protected in 04-04-PLAN.md (out of scope for that plan). User decision: defer wiring a real landing→search entry point to 04-05, so the full discovery→checkout flow is wired end-to-end at once rather than landing being connected before checkout exists to receive it.
 
 ### Git State
-Last commit: f179891 — docs(coder): add phase 04-01..04-11 PLAN/SUMMARY records, update roadmap/state
+Last commit: 534760c — feat(05-addon-integrity): standalone add-on management on reserved bookings
 Branch: main
 Feature branches merged: none
 Nothing to push (no push requested/performed).
@@ -132,7 +153,7 @@ None currently — 04-07 and 04-08 have both been applied and unified (see Loop 
 - **04-08-PLAN.md** (1 round, 1 reviewer): blocking VendorPolicy field-name defect fixed, `no_show_fee_percent` seed task added, Stripe double-refund guard added. Superseded by the round-2 rewrite below.
 
 ### Plan rewrite (2026-09-02): UI + vendor-integration boundary module
-Per explicit user request, both plans were fully rewritten to (a) add a real UI on `app/(checkout)/confirmation/[bookingId]/page.tsx` — a "Modify your booking" card for 04-07, a "Cancel booking" dialog for 04-08 — mirroring 04-12's checkout UI conventions (shadcn `Card`/`Button`, Stripe Elements for delta payments), and (b) introduce `lib/vendor-integration/policy.ts`, a new boundary module (per PROJECT.md's Discovery/Checkout-vs-Fulfillment architecture) that isolates vendor-contract-varying business rules — `quoteModification()` (04-07) and `quoteCancellation()` (04-08) — as the seam Phase 6's real, independently-deployed Vendor Integration Layer will later replace with an RPC call, without requiring route/UI changes. Both plans' Task-1-equivalent now branch symmetrically on whether the shared file already exists (append vs. create), so either plan can apply first without clobbering the other's export.
+Per explicit user request, both plans were fully rewritten to (a) add a real UI on `app/(checkout)/confirmation/[bookingId]/page.tsx` — a "Modify your booking" card for 04-07, a "Cancel booking" dialog for 04-08 — mirroring 04-12's checkout UI conventions (shadcn `Card`/`Button`, Stripe Elements for delta payments), and (b) introduce `lib/vendor-integration/policy.ts`, a new boundary module (per PROJECT.md's Discovery/Checkout-vs-Fulfillment architecture) that isolates vendor-contract-varying business rules — `quoteModification()` (04-07) and `quoteCancellation()` (04-08) — as the seam Phase 7's real, independently-deployed Vendor Integration Layer will later replace with an RPC call, without requiring route/UI changes. Both plans' Task-1-equivalent now branch symmetrically on whether the shared file already exists (append vs. create), so either plan can apply first without clobbering the other's export.
 
 ### Adversarial review results — round 2, UI + boundary-module rewrite (2026-09-02)
 - **04-07-PLAN.md** (1 full review + 1 targeted spot-check round, 2 reviewer agents total): found and fixed 7 issues — most severe: a `dryRun` flag that wasn't a universal no-op (would silently apply a "preview" as a real modification when the previewed date was cheaper — fixed by making the dry-run check unconditional and first); an orphaned-Stripe-charge risk if the quote drifts between confirming payment and applying (now disclosed as an accepted known gap with a non-misleading error message, not silently unhandled); an addon double-charge risk when a modification changes vendor/inventory and the new perks would waive a previously-charged addon (fixed by re-filtering via `getWaivedAddOnIds()` against the new quote before recomputing); a float-rounding mismatch between `deltaCents` and `/api/payments/intent`'s dollar-based amount (fixed with a ±1 cent tolerance); a missing explicit Booking fetch before the ownership check; an Objective/Output section that overclaimed UI parity with the API's inventory/vendor-change capability (corrected — UI is dates-only); and the file-existence branch for the shared `lib/vendor-integration/policy.ts` module. All 6 spot-checked fixes verified PASS on the second targeted round.
@@ -147,10 +168,10 @@ Per explicit user request ("modifications and cancellations can only be done on 
 
 ## Session Continuity
 
-Last session: 2026-09-03
-Stopped at: Phase 5 complete. 05-01 (`POST /api/bookings/[id]/addons` + "Manage extras" UI on confirmation + My Bookings) applied and unified — all 5 ACs passed, checkpoint approved live against a real reserved booking, `tsc`/`build` clean, `npm run test:e2e` 10/10. Phase-completion transition executed: ROADMAP.md marked Phase 4 and Phase 5 both Complete (fixed staleness — 04-07/04-08 rows had been left unchecked despite being applied+unified in an earlier session), milestone progress bumped to 5/6 phases.
-Next action: plan Phase 6 (Vendor Fulfillment Touchpoints — UC4/UC5/UC7/UC8) via `/coder:plan`, or address 04-13 (modify location/vehicle-type, still TBD/roadmap-only under Phase 4) first if prioritized ahead of Phase 6.
-Resume file: .coder/ROADMAP.md
+Last session: 2026-09-04
+Stopped at: 04-14 fully applied and unified — alternate-vendor/vehicle picker UI (with a post-checkpoint label-clarity fix: `Vendor — Class (Make Model)` instead of vendor-only), dry-run rendering extension, dialog/page prop threading all built, verified (`tsc`/`build` clean twice, live curl against a real booking, checkpoint approved twice), `04-14-SUMMARY.md` created. Phase 4 (Booking & Rate Integrity, 04-00 through 04-14) is now fully complete. Per explicit user request, the roadmap was also renumbered: a draft `04-15` Playwright-regression-suite placeholder was promoted to its own Phase 6 ("Regression Test Infrastructure", plan 06-01, TBD/not researched), and the former Phase 6 ("Vendor Fulfillment Touchpoints", UC4/UC5/UC7/UC8) is now Phase 7 (plan 07-01, TBD). ROADMAP.md and STATE.md were both swept for stale "04-15"/"Phase 6" cross-references and corrected.
+Next action: none in flight. Report completion to user. When picked up, Phase 6 (06-01) needs `/coder:research` on the Clerk E2E test-auth fixture question before `/coder:plan`; Phase 7 (07-01) needs `/coder:research`/`/coder:plan` from scratch.
+Resume file: none — awaiting user direction on which phase to start next.
 
 ---
 *STATE.md — Updated after every significant action*

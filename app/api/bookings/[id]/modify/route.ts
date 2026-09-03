@@ -5,7 +5,7 @@ import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
 import { getAddOnsCatalog, getWaivedAddOnIds } from '@/lib/graph/queries';
-import { quoteModification } from '@/lib/vendor-integration/policy';
+import { quoteModification, checkAvailability, checkModificationCutoff } from '@/lib/vendor-integration/policy';
 
 interface ModifyPayload {
   inventoryId?: string;
@@ -45,6 +45,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const vendorId = body.vendorId ?? booking.vendorId;
   const from = body.from ?? booking.from.toISOString();
   const to = body.to ?? booking.to.toISOString();
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+
+  const isInventoryOrVendorChange =
+    inventoryId !== booking.inventoryId || vendorId !== booking.vendorId;
+
+  if (isInventoryOrVendorChange) {
+    const available = await checkAvailability({
+      inventoryId,
+      from: fromDate,
+      to: toDate,
+      excludeBookingId: String(booking._id),
+    });
+    if (!available) {
+      return NextResponse.json(
+        { error: 'Selected vehicle is no longer available for these dates' },
+        { status: 409 },
+      );
+    }
+
+    const cutoff = await checkModificationCutoff(vendorId, fromDate);
+    if (!cutoff.allowed) {
+      return NextResponse.json(
+        {
+          error: `Too close to pick-up to change location or vehicle type (requires ${cutoff.cutoffHours}h notice)`,
+        },
+        { status: 400 },
+      );
+    }
+  }
 
   const quote = await quoteModification({ vendorId, inventoryId, from, to });
   if (!quote) {
@@ -72,7 +102,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     Math.round(newTotalPrice * 100) - Math.round(booking.pricingSnapshot.totalPrice * 100);
 
   if (body.dryRun === true) {
-    return NextResponse.json({ deltaCents, newTotalPrice }, { status: 200 });
+    return NextResponse.json(
+      {
+        deltaCents,
+        newTotalPrice,
+        vendorId,
+        dailyRate: quote.dailyRate,
+        perkIds: quote.perkIds,
+      },
+      { status: 200 },
+    );
   }
 
   const stripeAPI = getStripe();
@@ -133,21 +172,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  booking.modificationHistory.push({
-    from: booking.from,
-    to: booking.to,
-    inventoryId: booking.inventoryId,
-    vendorId: booking.vendorId,
-    pricingSnapshot: booking.pricingSnapshot,
-    refundId,
-    refundAmountCents,
-  });
-
-  booking.inventoryId = inventoryId;
-  booking.vendorId = vendorId;
-  booking.from = new Date(from);
-  booking.to = new Date(to);
-  booking.pricingSnapshot = {
+  const newPricingSnapshot = {
     negotiatedTermId: quote.negotiatedTermId,
     dailyRate: quote.dailyRate,
     currency: quote.currency,
@@ -157,10 +182,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     totalPrice: newTotalPrice,
   };
 
-  await booking.save();
+  const claimed = await Booking.findOneAndUpdate(
+    {
+      _id: booking._id,
+      status: 'reserved',
+      inventoryId: booking.inventoryId,
+      'pricingSnapshot.totalPrice': booking.pricingSnapshot.totalPrice,
+    },
+    {
+      $set: {
+        inventoryId,
+        vendorId,
+        from: fromDate,
+        to: toDate,
+        pricingSnapshot: newPricingSnapshot,
+      },
+      $push: {
+        modificationHistory: {
+          from: booking.from,
+          to: booking.to,
+          inventoryId: booking.inventoryId,
+          vendorId: booking.vendorId,
+          pricingSnapshot: booking.pricingSnapshot,
+          refundId,
+          refundAmountCents,
+        },
+      },
+    },
+    { new: true },
+  );
+
+  if (!claimed) {
+    return NextResponse.json(
+      { error: 'Booking was modified concurrently, please retry' },
+      { status: 409 },
+    );
+  }
 
   return NextResponse.json(
-    { bookingId: String(booking._id), totalPrice: newTotalPrice, deltaCents, refundAmountCents, refundId },
+    { bookingId: String(claimed._id), totalPrice: newTotalPrice, deltaCents, refundAmountCents, refundId },
     { status: 200 },
   );
 }

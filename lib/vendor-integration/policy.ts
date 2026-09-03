@@ -10,6 +10,7 @@
 // app/api/bookings/[id]/*/route.ts never need to change.
 
 import { searchInventory, getVendorPolicy } from '@/lib/graph/queries';
+import Booking from '@/lib/models/Booking';
 
 export interface ModificationQuote {
   dailyRate: number;
@@ -46,6 +47,38 @@ export async function quoteModification(params: {
     perkIds: match.perks.map((p) => p.perk_id as string),
     currency: 'usd',
   };
+}
+
+// Mongo-backed stand-in for what Phase 6's real Vendor Integration Layer RPC
+// will answer — live per-unit availability is never modeled as graph state.
+export async function checkAvailability(params: {
+  inventoryId: string;
+  from: Date;
+  to: Date;
+  excludeBookingId?: string;
+}): Promise<boolean> {
+  const conflict = await Booking.exists({
+    inventoryId: params.inventoryId,
+    status: { $in: ['reserved', 'checked_in'] },
+    from: { $lt: params.to },
+    to: { $gt: params.from },
+    ...(params.excludeBookingId && { _id: { $ne: params.excludeBookingId } }),
+  });
+  return !conflict;
+}
+
+export async function checkModificationCutoff(
+  vendorId: string,
+  from: Date,
+): Promise<{ allowed: boolean; cutoffHours?: number }> {
+  const policy = await getVendorPolicy(vendorId);
+  const cutoffHours = policy?.modification_cutoff_hours as number | undefined;
+  if (cutoffHours === undefined) {
+    return { allowed: true };
+  }
+
+  const hoursUntilStart = (from.getTime() - Date.now()) / 3_600_000;
+  return { allowed: hoursUntilStart >= cutoffHours, cutoffHours };
 }
 
 export interface CancellationQuote {

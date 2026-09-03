@@ -167,6 +167,53 @@ async function getLowestRankTermsByVendor(): Promise<
   return result;
 }
 
+// Candidate lookup only — never a substitute for a live availability check.
+// Live per-unit availability must never be modeled as graph state (per the
+// platform/vendor boundary decision in .coder/research/agentic-boundary-for-04-13.md);
+// that stays Mongo-side via checkAvailability() in lib/vendor-integration/policy.ts.
+// No caller within this plan — 04-14's picker UI wraps this in its own API route.
+export async function findEquivalentInventory(
+  locationLabel?: string,
+  vehicleClassName?: string,
+): Promise<InventorySearchResult[]> {
+  const conditions: string[] = [];
+  if (locationLabel !== undefined) conditions.push('l.city = $locationLabel');
+  if (vehicleClassName !== undefined) conditions.push('vc.class_name = $vehicleClassName');
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const query = `MATCH (i:Inventory)-[:INSTANCE_OF]->(vc:VehicleClass)
+     MATCH (i)-[:OFFERED_BY]->(v:Vendor)
+     OPTIONAL MATCH (i)-[:LOCATED_AT]->(l:Location)
+     ${whereClause}
+     RETURN i, vc, v, l`;
+
+  const params: Record<string, unknown> = {};
+  if (locationLabel !== undefined) params.locationLabel = locationLabel;
+  if (vehicleClassName !== undefined) params.vehicleClassName = vehicleClassName;
+
+  const [rows, lowestTermsByVendor] = await Promise.all([
+    runCypher<InventoryJoinRow>(query, params, ['i', 'vc', 'v', 'l']),
+    getLowestRankTermsByVendor(),
+  ]);
+
+  return rows.map((row) => {
+    const inventory = row.i.properties as unknown as Inventory;
+    const vehicleClass = row.vc.properties as unknown as VehicleClass;
+    const vendor = row.v.properties as unknown as Vendor;
+    const location = row.l ? (row.l.properties as unknown as Location) : null;
+    const termEntry = lowestTermsByVendor.get(vendor.provider);
+
+    return {
+      inventory,
+      vehicleClass,
+      vendor,
+      location,
+      negotiatedTerm: termEntry?.term ?? null,
+      perks: termEntry?.perks ?? [],
+    };
+  });
+}
+
 export async function searchInventory(locationLabel?: string): Promise<InventorySearchResult[]> {
   const query = locationLabel
     ? `MATCH (i:Inventory)-[:INSTANCE_OF]->(vc:VehicleClass)
