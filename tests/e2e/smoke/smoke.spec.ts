@@ -65,9 +65,10 @@ test.describe('checkout and confirmation routes', () => {
     expect(response?.status()).toBeLessThan(500);
   });
 
-  // No Clerk test-auth fixture exists in this repo, so the enriched checkout
-  // summary and extras toggles (which only render post sign-in) cannot be
-  // driven end-to-end here. These two checks instead prove the new
+  // 06-01 added a real Clerk test-auth fixture (tests/e2e/regression/auth.setup.ts,
+  // via @clerk/testing) used by the `regression` Playwright project. This smoke
+  // suite deliberately stays unauthenticated-only per this phase's Scope, so it
+  // still never drives signed-in flows. These two checks instead prove the
   // getVendorPolicy/getAddOnsCatalog/getWaivedAddOnIds data-fetching added to
   // page.tsx doesn't throw before hitting the auth gate.
   test('/checkout with a valid inventoryId/vendorId still reaches the sign-in gate', async ({ page }) => {
@@ -80,5 +81,13 @@ test.describe('checkout and confirmation routes', () => {
     const response = await page.goto('/checkout?inventoryId=does-not-exist&vendorId=Alamo');
     expect(response?.status()).toBeLessThan(500);
     await expect(page.getByText('This vehicle is no longer available.')).toBeVisible();
+  });
+});
+
+test.describe('account routes', () => {
+  test('/bookings shows the sign-in gate for an unauthenticated user', async ({ page }) => {
+    const response = await page.goto('/bookings');
+    expect(response?.status()).toBeLessThan(500);
+    await expect(page.getByText('Sign in to see your bookings')).toBeVisible();
   });
 });

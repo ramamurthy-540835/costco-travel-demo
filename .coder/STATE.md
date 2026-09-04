@@ -10,8 +10,14 @@ See: .coder/PROJECT.md (updated 2026-08-27)
 ## Current Position
 
 Milestone: v0.1 Ontology & Discovery/Checkout Core
-Phase: 7 of 7 (Vendor Fulfillment Touchpoints) — Not started. Phase 6 complete 2026-09-04.
-Plan: Not started. Phase 6 (06-01 through 06-05) fully applied+unified. Ready for `/coder:research`/`/coder:plan` on Phase 7.
+Phase: 7 of 7 (Vendor Fulfillment Touchpoints) — not started. Phase 6 (Regression Test Infrastructure) is now fully complete (6/6 plans, including 06-06's smoke-suite gap fill applied+unified 2026-09-04).
+Plan: None active. 06-01 through 06-06 all applied+unified. Next: `/coder:research` or `/coder:plan` for Phase 7.
+
+### 06-06 applied+unified (2026-09-04): smoke-suite gap fill — Phase 6 fully complete
+Executed via `/coder:apply` on `06-06-PLAN.md` after explicit user approval ("Approved, run APPLY"). Added a new `test.describe('account routes', ...)` block to `tests/e2e/smoke/smoke.spec.ts` with one test asserting `/bookings` returns a response status below 500 and renders the "Sign in to see your bookings" gate for an unauthenticated user — mirrors the existing `/checkout` sign-in-gate test's structure. Also corrected the stale in-code comment above the checkout-gate tests, which claimed "No Clerk test-auth fixture exists in this repo" (false since 06-01) — now states a real fixture exists in the `regression` project but this suite deliberately stays unauthenticated-only per Phase 6's Scope. No deviations. Both ACs passed; `npx playwright test --project=smoke tests/e2e/smoke/smoke.spec.ts` 11/11 passing (10 pre-existing + 1 new). `06-06-SUMMARY.md` created, loop closed via unify. **Phase 6 is now 6/6 plans complete** — transitioned: ROADMAP.md marked Phase 6 ✅ Complete, STATE.md Current Position moved to Phase 7 (not started), `coder.json`'s `phase.number` set to 7.
+
+### 06-06 planning started (2026-09-04): smoke-suite gap fill
+During Phase 6 close-out review, user asked whether the existing unauthenticated smoke suite (`tests/e2e/smoke/smoke.spec.ts`) is complete. Found: `/bookings` (My Bookings) has zero smoke coverage — no reachability/gate assertion at all, unlike every other route group (`/`, `/search`, `/checkout`, `/confirmation/[id]`, `/sign-in`, `/sign-up`). Also noted (minor, non-blocking): the file's in-code comment claiming "No Clerk test-auth fixture exists in this repo" is now stale at the project level (06-01 built one) — smoke itself deliberately stays unauthenticated-only per ROADMAP.md's Phase 6 Scope, so this doesn't change smoke's scope, just needs the comment corrected. User agreed to reopen Phase 6 rather than defer to Phase 7 — added `06-06` to ROADMAP.md, reverted Phase 6/Overview status to in-progress in ROADMAP.md and `coder.json` (`phase.number: 6`, `loop.plan: "06-06"`, `loop.position: "PLAN"`). PROJECT.md's "Validated (Shipped)" regression-coverage notes for UC1/UC2/UC3/UC6 remain accurate (06-06 is smoke-only, doesn't touch regression). `06-06-PLAN.md` created (quick-fix track: 1 file, 1 task, no architectural implications) — adds an unauthenticated `/bookings` sign-in-gate smoke test mirroring the existing `/checkout` gate pattern, and corrects the stale "no Clerk test-auth fixture" comment. Awaiting APPLY approval.
 
 ### 06-05 applied+unified (2026-09-04): add-ons/UC6 + My Bookings regression specs — Phase 6 complete
 Executed via `/coder:apply` on `06-05-PLAN.md`, the last plan in Phase 6. Built `tests/e2e/regression/addons.spec.ts` (2 specs: fee-bearing addon charge verified against a live `getAddOnsCatalog()`/`getWaivedAddOnIds()` read, and a perk-waived addon locked at $0 in the UI + rejected from `chargedAddonIds` on a direct API call) and `tests/e2e/regression/my-bookings.spec.ts` (2 specs: listing + Modify/Cancel/Addons entry-point wiring, and status-filter narrowing/clearing). One deviation, required to make AC-2 reachable at all: `searchInventory()`'s anonymous path always resolves each vendor's lowest-rank ("Gold Star") `NegotiatedTerm`, and per the seed data, Gold Star terms never carry any of the four addon-waiving perks (those exist only on `executive`/`business` tier terms) — confirmed via direct inspection of `negotiated_terms.json` and a temporary debug script, so no booking created through the real search+checkout path can ever land in the AC-2 scenario. Fixed by creating a normal booking, then directly patching its persisted `pricingSnapshot.perkIds` in Mongo to a real waiving perk (probed live via `getWaivedAddOnIds()` against the known seed vocabulary) — fixture manipulation, not a change to the boundary-protected `addons/route.ts`/`bookings/page.tsx`, same pattern as 06-03's direct-Mongo conflict seeding. Also fixed a card-locator issue: `CardTitle` renders a combined text node (`"{class_name} — {vendorId}"`), so exact-text matching never matched — switched to `[data-slot="card"]` + `hasText` substring matching. All 3 ACs passed; `tsc --noEmit` clean; isolated run 5/5; full `npx playwright test --project=regression` (17 specs) all passing (one pre-existing unrelated `modify.spec.ts` availability-race flake self-resolved on retry, not caused by this plan); no leftover Mongo fixtures; `git status` clean. `06-05-SUMMARY.md` created, loop closed via unify. **Phase 6 is now 5/5 plans complete** — transitioned per `transition-phase.md`: ROADMAP.md marked Phase 6 ✅ Complete, PROJECT.md's Validated section updated (UC1/UC2/UC3/UC6 all now regression-covered), STATE.md Current Position moved to Phase 7 (not started).
@@ -64,7 +70,7 @@ Progress:
 - Phase 3: [██████████] 100% (03-01, 03-02, 03-03 all complete)
 - Phase 4: [██████████] 100% (04-00 applied+unified; 04-01 applied+unified; 04-02 applied ad hoc, documented; 04-03 applied+unified via full loop; 04-04 applied+unified via full loop; 04-05 applied+unified via full loop; 04-06 applied+unified; 04-07 applied+unified 2026-09-03 (modification/UC2 + My Bookings, 4 live-testing fixes folded in); 04-08 applied+unified 2026-09-03 (cancellation+refund/UC3 + decreasing-modification refund fold-in); 04-09 applied+unified incl. Task 9 addendum; 04-10 applied+unified; 04-11 applied+unified; 04-12 applied+unified, scope expanded in-place to include search-entry gating/modal/labeling/back-nav; 04-13 applied+unified 2026-09-04 (modify location/vehicle-type API); 04-14 applied+unified 2026-09-04 (modify location/vehicle-type UI). Phase 4 now fully complete.)
 - Phase 5: [██████████] 100% (05-01 applied+unified 2026-09-03 — standalone add-on management)
-- Phase 6: [██████████] 100% (06-01 applied+unified — fixture foundation; 06-02 applied+unified 2026-09-04 — checkout/UC1 regression + payment smoke; 06-03 applied+unified 2026-09-04 — modification/UC2 regression; 06-04 applied+unified 2026-09-04 — cancellation/UC3 + concurrency race guards; 06-05 applied+unified 2026-09-04 — add-ons/UC6 + My Bookings. Phase 6 complete.)
+- Phase 6: [██████████] 100% (06-01 applied+unified — fixture foundation; 06-02 applied+unified 2026-09-04 — checkout/UC1 regression + payment smoke; 06-03 applied+unified 2026-09-04 — modification/UC2 regression; 06-04 applied+unified 2026-09-04 — cancellation/UC3 + concurrency race guards; 06-05 applied+unified 2026-09-04 — add-ons/UC6 + My Bookings; 06-06 applied+unified 2026-09-04 — smoke-suite gap fill (`/bookings` coverage + stale-comment fix). Phase 6 fully complete, 6/6 plans.)
 - Phase 7: [░░░░░░░░░░] 0% (not started — Vendor Fulfillment Touchpoints, renumbered from Phase 6 2026-09-04)
 
 ## Loop Position
@@ -132,7 +138,13 @@ PLAN ──▶ APPLY ──▶ UNIFY
 Current loop state (06-05):
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [06-05 complete 2026-09-04: add-ons/UC6 + My Bookings (addons.spec.ts, my-bookings.spec.ts), both built and verified (17/17 full regression suite), 06-05-SUMMARY.md created. Phase 6 (5/5 plans) fully complete — transitioned to Phase 7.]
+  ✓        ✓        ✓     [06-05 complete 2026-09-04: add-ons/UC6 + My Bookings (addons.spec.ts, my-bookings.spec.ts), both built and verified (17/17 full regression suite), 06-05-SUMMARY.md created.]
+```
+
+Current loop state (06-06):
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✓        ✓        ✓     [06-06 complete 2026-09-04: smoke-suite gap fill (`/bookings` sign-in-gate test + stale Clerk-fixture comment correction), verified via `npx playwright test --project=smoke` 11/11, 06-06-SUMMARY.md created. Phase 6 (6/6 plans) fully complete — transitioned to Phase 7.]
 ```
 
 ### 04-07 closed (2026-09-03)
@@ -214,7 +226,7 @@ Per explicit user request ("modifications and cancellations can only be done on 
 ## Session Continuity
 
 Last session: 2026-09-04
-Stopped at: Phase 6 complete — `06-01` through `06-05` all applied and unified (fixture foundation; checkout/UC1 regression + payment smoke; modification/UC2 regression; cancellation/UC3 + concurrency race guards; add-ons/UC6 + My Bookings — see entries above). Transitioned via `transition-phase.md`: ROADMAP.md/PROJECT.md/STATE.md all updated to reflect Phase 6 ✅ Complete and Phase 7 as current.
+Stopped at: Phase 6 fully complete — `06-01` through `06-06` all applied and unified (fixture foundation; checkout/UC1 regression + payment smoke; modification/UC2 regression; cancellation/UC3 + concurrency race guards; add-ons/UC6 + My Bookings; smoke-suite gap fill for `/bookings` + stale-comment correction — see entries above). Transitioned: ROADMAP.md/coder.json/STATE.md all updated to reflect Phase 6 ✅ Complete and Phase 7 as current.
 Next action: `/coder:research` or `/coder:plan` for Phase 7 (Vendor Fulfillment Touchpoints — UC4, UC5, UC7, UC8), starting from scratch (no 07-01 plan exists yet).
 Resume file: .coder/ROADMAP.md
 
