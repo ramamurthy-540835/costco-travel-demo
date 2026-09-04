@@ -185,7 +185,7 @@ During 04-07's live checkpoint testing, user asked whether modifying location/ve
 - 2026-08-28: 04-04's real `/search` route has no landing-page entry point yet — `app/page.tsx` is still the Phase-3 scaffold placeholder, explicitly boundary-protected in 04-04-PLAN.md (out of scope for that plan). User decision: defer wiring a real landing→search entry point to 04-05, so the full discovery→checkout flow is wired end-to-end at once rather than landing being connected before checkout exists to receive it.
 
 ### Git State
-Last commit: 534760c — feat(05-addon-integrity): standalone add-on management on reserved bookings
+Last commit: 1c42eb3 — feat(06-regression-test-infrastructure): Clerk-authenticated Playwright regression suite
 Branch: main
 Feature branches merged: none
 Nothing to push (no push requested/performed).
