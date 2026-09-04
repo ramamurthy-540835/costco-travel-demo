@@ -8,7 +8,7 @@ Build a member-centric, multi-vendor rental-car brokerage platform: a rental-dom
 
 **v0.1 Ontology & Discovery/Checkout Core** (v0.1.0)
 Status: In progress
-Phases: 5 of 7 complete, Phases 6-7 not started
+Phases: 6 of 7 complete, Phase 7 not started
 
 ## Phases
 
@@ -19,7 +19,7 @@ Phases: 5 of 7 complete, Phases 6-7 not started
 | 3 | Stack Foundation (Clerk, Postgres+AGE, Mongo) | 03-01, 03-02, 03-03 | Complete | 2026-08-28 |
 | 4 | Booking & Rate Integrity (UC1, UC2, UC3) | 04-00 through 04-14 | Complete | 2026-09-04 |
 | 5 | Add-On Integrity (UC6) | 05-01 | Complete | 2026-09-03 |
-| 6 | Regression Test Infrastructure | TBD | Not started | - |
+| 6 | Regression Test Infrastructure | 06-01 through 06-05 | Complete | 2026-09-04 |
 | 7 | Vendor Fulfillment Touchpoints (UC4, UC5, UC7, UC8) | TBD | Not started | - |
 
 ## Phase Details
@@ -159,7 +159,11 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 - Distinct from the existing unauthenticated smoke suite (`04-10`'s `tests/e2e/smoke.spec.ts`) — extends it with an authenticated layer, doesn't replace it
 
 **Plans:**
-- [ ] 06-01: TBD (needs `/coder:research` + `/coder:plan`) — Authenticated Playwright regression suite (Clerk test-auth fixture) — moved here 2026-09-04 (was a 04-15 roadmap placeholder) per user request to give it its own phase rather than bolting it onto Phase 4. Not yet researched/planned; run `/coder:research` on the Clerk test-auth fixture question before `/coder:plan`.
+- [x] 06-01: Test infrastructure foundation: Clerk `@clerk/testing` auth fixture (project-based `setup` → `storageState` reuse), `tests/e2e/smoke/` vs `tests/e2e/regression/` folder+project split, worker/test-scoped Mongo test-data fixtures (tagged self-cleaning documents, not ambient data), Stripe network-mock helper stub. Researched via `/coder:research-phase` (`.coder/phases/06-regression-test-infrastructure/RESEARCH.md`) against the sibling `mastech-agentic-commerce` repo's Playwright/Clerk pattern, this repo's full authenticated-flow inventory, and industry best practices. Applied and unified 2026-09-04 — all 4 ACs passed, `tsc` clean, `npm run test:e2e:smoke` 10/10.
+- [x] 06-02: Checkout/UC1 regression specs: happy-path booking creation, tampered-Stripe-amount server-side rejection (rate-integrity), one `@payment-smoke`-tagged real-Stripe-Elements test. **Depends on:** 06-01. Applied and unified 2026-09-04 — all 3 ACs passed.
+- [x] 06-03: Modification/UC2 regression specs: dates-only increase (delta payment)/decrease (auto-refund), cross-vendor success + 409 (unavailable candidate), modification-cutoff 400. **Depends on:** 06-01. Applied and unified 2026-09-04 — all 4 ACs passed.
+- [x] 06-04: Cancellation/UC3 regression specs (refund preview/confirm against live vendor policy) + dedicated concurrency race-guard specs for the double-cancel (04-08) and concurrent-modify optimistic-lock (04-13) fixes. **Depends on:** 06-01. Applied and unified 2026-09-04 — all 3 ACs passed.
+- [x] 06-05: Add-on/UC6 regression specs (fee-bearing charge, perk-waived lock/no-double-charge) + My Bookings listing/entry-point wiring spec. **Depends on:** 06-01. Applied and unified 2026-09-04 — all 3 ACs passed. Deviation: anonymous search can never surface a perk that waives an addon (Gold Star tier lacks the waiving perks) — fixed via a direct Mongo fixture patch of `pricingSnapshot.perkIds`, not a route/page change.
 
 ### Phase 7: Vendor Fulfillment Touchpoints (UC4, UC5, UC7, UC8)
 
@@ -178,4 +182,4 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 
 ---
 *Roadmap created: 2026-08-27*
-*Last updated: 2026-09-04 — 04-14 applied and unified (all 3 ACs passed); Phase 4 now fully complete (04-00 through 04-14). Renumbered: the authenticated-Playwright-regression-suite placeholder (previously drafted as 04-15) is now its own Phase 6 ("Regression Test Infrastructure", plan 06-01, TBD), and the former Phase 6 (Vendor Fulfillment Touchpoints) is renumbered to Phase 7 — per explicit user request. Phase 5 (05-01) remains applied+unified/closed independently. See STATE.md's Accumulated Context for research/planning findings.*
+*Last updated: 2026-09-04 — Phase 6 complete: all 5 plans (06-01 fixture foundation, 06-02 checkout/UC1, 06-03 modification/UC2, 06-04 cancellation/UC3 + concurrency race guards, 06-05 add-ons/UC6 + My Bookings) applied and unified. No CI-wiring plan added yet (out of scope for every 06-0x plan; revisit as a possible 06-06 once specs are proven). Phase 5 (05-01) and Phase 4 (04-00–04-14) remain complete/closed independently. Phase 7 (Vendor Fulfillment Touchpoints) is next, not started. See STATE.md's Accumulated Context for research/planning findings.*

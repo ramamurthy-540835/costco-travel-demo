@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --project=smoke",
+    "test:e2e:regression": "playwright test --project=setup --project=regression"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -29,6 +31,7 @@
     "validator": "^13.15.35"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.33",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24",

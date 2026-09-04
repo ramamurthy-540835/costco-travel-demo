@@ -28,3 +28,4 @@ yarn-error.log*
 
 # playwright
 /test-results/
+tests/e2e/.auth/

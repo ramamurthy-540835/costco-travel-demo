@@ -15,7 +15,7 @@ Members get Costco-style negotiated rental rates and perks that stay honored and
 | Type | Application |
 | Version | 0.1.0 |
 | Status | Prototype |
-| Last Updated | 2026-08-28 |
+| Last Updated | 2026-09-04 |
 
 ## Requirements
 
@@ -28,7 +28,11 @@ Members get Costco-style negotiated rental rates and perks that stay honored and
 - Rental-domain ontology and knowledge graph modeling members, vendors, vehicles, reservations, negotiated-rate terms, and perks — the source of truth both Discovery/Checkout and dispute resolution query against
 
 ### Validated (Shipped)
-None yet.
+- ✓ UC1 Booking (rate-integrity server-side recompute + Stripe verification) — Phase 4, regression-covered Phase 6 (06-02)
+- ✓ UC2 Modification (dates + cross-vendor, optimistic-lock CAS guard) — Phase 4, regression-covered Phase 6 (06-03, 06-04)
+- ✓ UC3 Cancellation/Refund (live vendor-policy refund quote, atomic cancel claim) — Phase 4, regression-covered Phase 6 (06-04)
+- ✓ UC6 Add-on integrity (perk-waiver check, fee-bearing charge) — Phase 5, regression-covered Phase 6 (06-05)
+- ✓ Rental-domain ontology and knowledge graph — Phase 1/2
 
 ### Active (In Progress)
 None yet.
@@ -115,4 +119,4 @@ Architecture pattern is borrowed from the sibling project `mastech-agentic-comme
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-08-28 after Phase 3*
+*Last updated: 2026-09-04 after Phase 6*

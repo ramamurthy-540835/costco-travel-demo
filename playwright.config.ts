@@ -1,12 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
+dotenv.config({ path: path.resolve(__dirname, '.env.test') });
 
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
-  retries: 0,
+  retries: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     trace: 'retain-on-failure',
   },
   webServer: {
@@ -17,8 +22,23 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
+      name: 'setup',
+      testDir: './tests/e2e/fixtures',
+      testMatch: /.*\.setup\.ts/,
+    },
+    {
+      name: 'smoke',
+      testDir: './tests/e2e/smoke',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'regression',
+      testDir: './tests/e2e/regression',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/user.json',
+      },
     },
   ],
 });
