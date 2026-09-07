@@ -12,6 +12,7 @@ NODE_LABELS = [
     "AddOn",
     "VocabularyTerm",
     "Intent",
+    "EquivalenceCluster",
 ]
 
 EDGE_ENDPOINTS = {
@@ -35,4 +36,7 @@ EDGE_ENDPOINTS = {
     # NegotiatedTerm, AddOn) per data/synthetic/agent_intents.json; Reservation
     # is used here as the representative pair for the generic existence check.
     "TARGETS": ("Intent", "Reservation"),
+    # PART_OF_CLUSTER models VehicleClass substitutability (Phase 7) — distinct from
+    # PARENT_OF's Standard/Utility/Premium classification taxonomy.
+    "PART_OF_CLUSTER": ("VehicleClass", "EquivalenceCluster"),
 }

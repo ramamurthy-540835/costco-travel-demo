@@ -33,6 +33,8 @@ Canonical term list for every name-valued property across the 11 ontology node t
 | VendorPolicy | standard_cancellation_window_hours | 24 (all 10 rows) | `data/synthetic/vendor_policies.json` |
 | VendorPolicy | refund_processing_days | 5 (all 10 rows) | `data/synthetic/vendor_policies.json` |
 | Intent | intent_id | book_reservation, modify_reservation, cancel_reservation, check_availability, compare_rates, request_addon, check_in, return_vehicle, dispute_charge, escalate_support (added Phase 2) | `data/synthetic/agent_intents.json` |
+| EquivalenceCluster | cluster_id | budget_sedan, standard_sedan, family_utility, premium, utility_truck (added Phase 7) | `data/synthetic/equivalence_clusters.json` |
+| EquivalenceCluster | name | Budget Sedan, Standard Sedan, Family Utility, Premium, Utility Truck (added Phase 7) | `data/synthetic/equivalence_clusters.json` |
 
 ## Agent-support vocabulary (Phase 2)
 
@@ -49,7 +51,30 @@ A `synonyms` list property was added directly onto these existing node types:
 
 Queried the same way as `mastech-agentic-commerce`: `toLower($keyword) IN [x IN n.synonyms | toLower(x)]`. See `graph/scripts/load_seed_data.py`'s `*_SYNONYMS` dicts for the full lists.
 
+## Agent-support vocabulary (Phase 7)
+
+| Node Type | Property | LLM-generated via | Example |
+|---|---|---|---|
+| Location | synonyms | `graph/scripts/backfill_synonyms.py` (Phase 7) | `Las Vegas: ["Vegas", "Sin City", "The Strip", "City of Lights"]` |
+
+Unlike the table above (all four hand-curated in `load_seed_data.py`'s `*_SYNONYMS` dicts), `Location.synonyms` is the first `synonyms` property populated by a real LLM call rather than a hardcoded dict — generated via Azure OpenAI's forced-tool-call pattern (`backfill_synonyms.py`) against the 10 seeded cities. The script is a reusable pattern, not a one-off: it's addressable by `--labels` for any node type in `KEY_FIELD`, skips nodes with existing non-empty `synonyms` unless `--force` (idempotent), and could be re-run in the future to backfill or regenerate synonyms for `VehicleClass`/`Perk`/`AddOn`/`MembershipTier` as well, though that hasn't been done — their hand-curated dicts remain authoritative for now.
+
+## Substitutability clusters (Phase 7)
+
+`EquivalenceCluster` groups `VehicleClass` nodes by cross-vendor substitutability ("no exact match, what's close") — a partition of all 9 real classes, distinct from `TAXONOMY.md`'s Standard/Utility/Premium classification split, which groups by tier/category rather than by "would a customer accept this instead."
+
+| Cluster | Member Classes |
+|---|---|
+| Budget Sedan | Economy, Compact |
+| Standard Sedan | Mid-size, Full-size |
+| Family Utility | SUV, Minivan |
+| Premium | Luxury, Convertible |
+| Utility Truck | Pickup |
+
+Queried via `getEquivalenceCandidates(className)` (`lib/graph/queries.ts`), which returns the sibling `VehicleClass` nodes sharing a cluster with the input class (excluding itself) — `Pickup` is a singleton cluster and returns no siblings.
+
 ## Notes
+- **Phase 7-03 retriever tool surface**: `lib/graph/retrievers.ts`'s `resolveSynonym(term)` is the sanctioned generic query path for future agent/tool-calling code and searches exactly these node labels for a `synonyms` array match: `VehicleClass`, `Perk`, `AddOn`, `MembershipTier`, `Location`, `Intent` — a future contributor adding a `synonyms` property to a new label should add it to this list (and this note) too. See `ONTOLOGY.md`'s "Retriever tool surface (Phase 7-03)" subsection for the full 3-tool surface (`lookupNode`/`traverse`/`resolveSynonym`).
 - Plan 04-11 surfaces `VendorPolicy` (via `Vendor-[:GOVERNED_BY]->VendorPolicy`) and `AddOn` (via `Perk-[:WAIVES]->AddOn`) in the app for the first time — both node types were loaded into the graph since Phase 1 but never queried by `lib/graph/queries.ts` until `getVendorPolicy`/`getAddOnsCatalog`/`getWaivedAddOnIds` were added in that plan.
 - `Inventory.vehicle_make`/`vehicle_model` were originally a single hardcoded (make, model) pair per `VehicleClass` across all 1000 rows (Plan 01-03). Plan 04-10 expanded this to 3 pairs per class (see table above), assigned deterministically via a hash of `rental_id` (`scripts/reassign-vehicle-makes.mjs`) so re-running the script is idempotent. Still per-row free-text, not a small closed vocabulary in the sense of an enum — but no longer 1:1 with `VehicleClass`.
 - `VendorPolicy` has no separate natural-key field distinct from `provider` in the source file — it shares the `provider` value with `Vendor` (confirmed by inspecting `data/synthetic/vendor_policies.json`).

@@ -9,6 +9,7 @@ from graph_service.connection import get_connection
 ROOT = Path(__file__).resolve().parents[2]
 MOCK = ROOT / "data" / "reference" / "mock-data"
 SYNTH = ROOT / "data" / "synthetic"
+EQUIV = SYNTH / "equivalence_clusters.json"
 
 TAXONOMY_GROUPS = {
     "Standard": ["Economy", "Compact", "Mid-size", "Full-size"],
@@ -117,6 +118,7 @@ def main():
     perks = load_json(SYNTH / "perks.json")
     addons = load_json(SYNTH / "addon_catalog.json")
     policies = load_json(SYNTH / "vendor_policies.json")
+    equivalence_clusters = load_json(EQUIV)
 
     # --- Nodes ---
 
@@ -142,6 +144,16 @@ def main():
     for group in TAXONOMY_GROUPS:
         merge_node(cur, "VehicleClass", "class_name", group, {"class_name": group, "synonyms": []})
     print(f"VehicleClass: {len(vehicle_classes) + len(TAXONOMY_GROUPS)}")
+
+    equiv_member_classes = [c for cluster in equivalence_clusters for c in cluster["member_classes"]]
+    assert sorted(equiv_member_classes) == sorted(vehicle_classes), (
+        f"equivalence_clusters.json does not partition the real VehicleClass set exactly: "
+        f"expected {sorted(vehicle_classes)}, got {sorted(equiv_member_classes)}"
+    )
+
+    for c in equivalence_clusters:
+        merge_node(cur, "EquivalenceCluster", "cluster_id", c["cluster_id"], {"cluster_id": c["cluster_id"], "name": c["name"]})
+    print(f"EquivalenceCluster: {len(equivalence_clusters)}")
 
     vocabulary_terms = sorted(set(VEHICLE_CLASS_ALIASES) & {row["vehicle_class"] for row in inventory})
     for term in vocabulary_terms:
@@ -232,6 +244,10 @@ def main():
     for group, children in TAXONOMY_GROUPS.items():
         for child in children:
             merge_edge(cur, "VehicleClass", "class_name", child, "VehicleClass", "class_name", group, "PARENT_OF")
+
+    for c in equivalence_clusters:
+        for class_name in c["member_classes"]:
+            merge_edge(cur, "VehicleClass", "class_name", class_name, "EquivalenceCluster", "cluster_id", c["cluster_id"], "PART_OF_CLUSTER")
 
     # Intent.TARGETS: each Intent points at a representative node of the entity type
     # it acts on (per data/synthetic/agent_intents.json's target_entity field), so an

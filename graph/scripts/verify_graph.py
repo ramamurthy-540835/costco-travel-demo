@@ -61,6 +61,7 @@ def main():
     addons = load_json(SYNTH / "addon_catalog.json")
     policies = load_json(SYNTH / "vendor_policies.json")
     intents = load_json(SYNTH / "agent_intents.json")
+    equivalence_clusters = load_json(SYNTH / "equivalence_clusters.json")
 
     # "Compact Plus" (Payless) is a naming variant, not a canonical VehicleClass —
     # it becomes a VocabularyTerm node instead, so it must not inflate this count.
@@ -82,6 +83,7 @@ def main():
         "VendorPolicy": len(policies),
         "VocabularyTerm": len({row["vehicle_class"] for row in inventory} & vehicle_class_aliases),
         "Intent": len(intents),
+        "EquivalenceCluster": len(equivalence_clusters),
     }
 
     print("== Label counts ==")
@@ -135,6 +137,31 @@ def main():
     ok = it is not None and len(it.get("properties", {}).get("synonyms", [])) > 0
     failed = failed or not ok
     print(f"{'PASS' if ok else 'FAIL'} Intent '{intent0['intent_id']}' has non-empty synonyms")
+
+    print("\n== EquivalenceCluster partition (Phase 7) ==")
+    real_classes = sorted(distinct_classes)
+    cur.execute(
+        "SELECT * FROM cypher('rental_graph', $$ MATCH (vc:VehicleClass)-[:PART_OF_CLUSTER]->(c:EquivalenceCluster) RETURN vc.class_name $$) AS (class_name agtype);"
+    )
+    seeded = [parse_agtype(row[0]) for row in cur.fetchall()]
+    ok = sorted(seeded) == real_classes
+    failed = failed or not ok
+    print(f"{'PASS' if ok else 'FAIL'} every real VehicleClass has exactly one PART_OF_CLUSTER edge (expected={real_classes} actual={sorted(seeded)})")
+
+    print("\n== Location synonyms (Phase 7, LLM-backfilled) ==")
+    cur.execute("SELECT * FROM cypher('rental_graph', $$ MATCH (n:Location) RETURN n $$) AS (n agtype);")
+    location_rows = cur.fetchall()
+    failing_cities = []
+    for (raw,) in location_rows:
+        props = parse_agtype(raw).get("properties", {})
+        if not (props.get("synonyms") or []):
+            failing_cities.append(props.get("city"))
+    ok = len(failing_cities) == 0
+    failed = failed or not ok
+    if ok:
+        print(f"PASS Location.synonyms non-empty ({len(location_rows)}/{len(location_rows)})")
+    else:
+        print(f"FAIL Location.synonyms non-empty ({len(location_rows) - len(failing_cities)}/{len(location_rows)}) — missing: {failing_cities}")
 
     cur.close()
     conn.close()

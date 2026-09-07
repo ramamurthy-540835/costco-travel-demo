@@ -66,6 +66,16 @@ export async function getVendorPolicy(provider: string): Promise<VendorPolicy | 
   return rows.length > 0 ? (rows[0].properties as unknown as VendorPolicy) : null;
 }
 
+export async function getEquivalenceCandidates(className: string): Promise<VehicleClass[]> {
+  const rows = await runCypher<VertexResult>(
+    `MATCH (input:VehicleClass {class_name: $className})-[:PART_OF_CLUSTER]->(c:EquivalenceCluster)<-[:PART_OF_CLUSTER]-(sibling:VehicleClass)
+     WHERE sibling.class_name <> $className
+     RETURN DISTINCT sibling`,
+    { className },
+  );
+  return rows.map((row) => row.properties as unknown as VehicleClass);
+}
+
 export async function getAddOnsCatalog(): Promise<AddOn[]> {
   const rows = await runCypher<VertexResult>('MATCH (a:AddOn) RETURN a');
   return rows.map((row) => row.properties as unknown as AddOn);

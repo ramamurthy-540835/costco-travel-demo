@@ -1,0 +1,7 @@
+[
+  { "cluster_id": "budget_sedan", "name": "Budget Sedan", "member_classes": ["Economy", "Compact"] },
+  { "cluster_id": "standard_sedan", "name": "Standard Sedan", "member_classes": ["Mid-size", "Full-size"] },
+  { "cluster_id": "family_utility", "name": "Family Utility", "member_classes": ["SUV", "Minivan"] },
+  { "cluster_id": "premium", "name": "Premium", "member_classes": ["Luxury", "Convertible"] },
+  { "cluster_id": "utility_truck", "name": "Utility Truck", "member_classes": ["Pickup"] }
+]

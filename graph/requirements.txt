@@ -1,1 +1,2 @@
 psycopg[binary]
+openai>=1.0,<2.0  # AzureOpenAI client ships in the same package

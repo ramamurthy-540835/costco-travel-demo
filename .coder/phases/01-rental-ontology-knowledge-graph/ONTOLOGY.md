@@ -15,13 +15,14 @@
 | `MembershipTier` | tier_id, name, rank | `data/synthetic/membership_tiers.json` (Gold Star / Executive / Business — observed in members_100.json) |
 | `Vendor` | provider, rating, minimum_rental_days, price_change_rate | `mock-data/rental_providers.json` (Alamo, Avis, Budget, Enterprise, National, Hertz, Thrifty, Dollar, Sixt, Payless — 10, Plan 01-03) |
 | `VehicleClass` | class_name (Economy, Compact, Mid-size, Full-size, SUV, Minivan, Pickup, Luxury, Convertible) | `mock-data/rental_inventory.json` |
-| `Location` | city (10 US metros) | `mock-data/rental_inventory.json` |
+| `Location` | city (10 US metros), synonyms (LLM-generated, Phase 7) | `mock-data/rental_inventory.json` |
 | `Inventory` | rental_id, vehicle_make/model, vehicle_type, gearbox, seats, fuel_policy, deposit_amount | `mock-data/rental_inventory.json` — `vehicle_make`/`vehicle_model` cardinality is many-per-class (3 canonical pairs per `VehicleClass` as of Plan 04-10, not 1:1; see VOCABULARY.md). `fuel_policy`/`deposit_amount` added Plan 04-11 (deterministic, `scripts/add-vehicle-extras-fields.mjs`) |
 | `Reservation` | reservation_id, rental_id (FK to Inventory), pickup_date, return_date, status (Pending/Confirmed/Cancelled/Completed) | `mock-data/bookings_1000.json` |
 | `NegotiatedTerm` | term_id, discount_pct, included_miles, cancellation_window_hours | `data/synthetic/negotiated_terms.json` — per (Vendor × MembershipTier) |
 | `Perk` | perk_id, name, category | `data/synthetic/perks.json` |
 | `AddOn` | addon_id, name, fee_per_day | `data/synthetic/addon_catalog.json` — for UC6 integrity checks. `fee_per_day` added Plan 04-11 (5 of 8 addons; queried via `getAddOnsCatalog()`/`getWaivedAddOnIds()`, `lib/graph/queries.ts`) |
 | `VendorPolicy` | cancellation window, modification cutoff, refund SLA | `data/synthetic/vendor_policies.json` — queried via `getVendorPolicy()` as of Plan 04-11 (previously loaded but never queried) |
+| `EquivalenceCluster` | cluster_id, name | `data/synthetic/equivalence_clusters.json` — Phase 7, agent-grounding ontology enrichment |
 
 ## Relations (graph edges)
 
@@ -65,6 +66,7 @@ New relations added to the Relations block:
 (child:VehicleClass)-[:PARENT_OF]->(parent:VehicleClass)   -- TAXONOMY.md
 (alias:VocabularyTerm)-[:SYNONYM_OF]->(canonical)           -- THESAURUS.md
 (intent:Intent)-[:TARGETS]->(entity)                        -- THESAURUS.md, Phase 2 — entity is Reservation/Inventory/NegotiatedTerm/AddOn per intent
+(vc:VehicleClass)-[:PART_OF_CLUSTER]->(c:EquivalenceCluster) -- Phase 7 — substitutability, distinct from PARENT_OF's Standard/Utility/Premium classification taxonomy
 ```
 
 `VehicleClass`, `Perk`, `AddOn`, and `MembershipTier` also gained a `synonyms` list property directly on the node (Phase 2) — colloquial phrasings an agent can match against, mirroring `mastech-agentic-commerce`'s attribute-synonym pattern. See `THESAURUS.md`'s "Action/Intent vocabulary" section.
@@ -87,6 +89,10 @@ New relations added to the Relations block:
 - **Plan 01-03 (user-approved) vendor expansion**: added 5 vendors (Hertz, Thrifty, Dollar, Sixt, Payless) → 10 total, referencing BookCars' `Supplier`/`Car` field shapes (`backend/src/models/{SupplierForm,Car}.ts` via `SupplierForm.ts`/`Car.ts` in `mastech-rental-car-management`, read-only reference). `Vendor` gained `minimum_rental_days`/`price_change_rate` (backfilled onto all 10); `Inventory` gained `vehicle_type`/`gearbox`/`seats` (backfilled onto all 1000 rows, BookCars `CarType`/`GearboxType`-aligned). `Inventory` grew from 500 to 1000 rows (100/vendor, proportional). `NegotiatedTerm` grew from 15 to 30 rows (5 new vendors × 3 tiers), `VendorPolicy` from 5 to 10. `data/reference/mock-data/rental_inventory_500.json` renamed to `rental_inventory.json` (the `_500` suffix became inaccurate). `bookings_1000.json`/`members_100.json` intentionally NOT touched — new vendors have inventory/terms/policies but no reservations yet (deferred to Phase 3).
 - **Plan 01-03 real thesaurus data**: Sixt reports `included_miles: "300 mi/day"` (not "Unlimited") and Payless uses `"Compact Plus"` as a raw `vehicle_class` naming variant of `Compact` on part of its inventory — see `THESAURUS.md`. This converts `VocabularyTerm`/`SYNONYM_OF` from the Plan 01-02 "0, documented exception" state to real non-zero seeded data.
 - **Phase 2 (Agent-Enablement Ontology Layer)**: added a new `Intent` node type + `TARGETS` edge (action/intent-level vocabulary — "cancel my booking", "cheapest car" — a gap not covered by `mastech-agentic-commerce`'s own thesaurus, confirmed via read-only research), plus a `synonyms` list property directly on `VehicleClass`/`Perk`/`AddOn`/`MembershipTier` (attribute-level, ported from that project's pattern). Scoped to ontology/knowledge-graph only — no tool-calling contract (`check_access`/`record_audit`-style gating) yet; that's deferred until the actual conversational/fulfillment agents are built. See `THESAURUS.md`'s "Action/Intent vocabulary" section and `.coder/phases/02-agent-ontology-enablement/`.
+- **Phase 7 (Agent-Grounding Ontology & Knowledge-Graph Enrichment)**: added a new `EquivalenceCluster` node type + `PART_OF_CLUSTER` edge modeling cross-`VehicleClass` substitutability ("no exact match, what's close") — deliberately distinct from `PARENT_OF`'s Standard/Utility/Premium classification taxonomy. Exposed via `getEquivalenceCandidates()` (`lib/graph/queries.ts`). 07-02 (LLM-generated synonym backfill + Location vocabulary enrichment) closed the `Location.synonyms` gap via a real Azure OpenAI backfill script (`graph/scripts/backfill_synonyms.py`), giving all 10 seeded cities non-hardcoded colloquial aliases. 07-03 (composable retriever tools) closed out the phase — see the "Retriever tool surface" subsection below.
+
+### Retriever tool surface (Phase 7-03)
+`lib/graph/retrievers.ts`'s `lookupNode(label, matchProperty, matchValue)`, `traverse(fromLabel, fromProperty, fromValue, edgeType, toLabel, direction)`, and `resolveSynonym(term)` are the sanctioned generic query path for any future agent/tool-calling code — the Phase 8 Vendor Agent and Phase 9 Customer/Driver Assistant should call these (or wrap them in LLM tool schemas) rather than growing new bespoke `queries.ts` functions per prompt. `resolveSynonym` searches every node label carrying a `synonyms` array property: `VehicleClass`, `Perk`, `AddOn`, `MembershipTier`, `Location`, `Intent`. The existing bespoke functions in `lib/graph/queries.ts` (`getVehicleClasses`, `getNegotiatedTermsForVendor`, `getEquivalenceCandidates`, etc.) remain unchanged for their current Phase 4-6 route call-sites — this is a parallel surface, not a replacement. Demonstrated with real live output in `agent-lab/docs/knowledge_graph_demo.html`'s "Retriever Tools" section.
 
 ## Next
 - Implement as Postgres + Apache AGE schema — see `graph_schema.sql` in this directory.

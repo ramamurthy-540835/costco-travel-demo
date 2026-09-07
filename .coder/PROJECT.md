@@ -15,7 +15,7 @@ Members get Costco-style negotiated rental rates and perks that stay honored and
 | Type | Application |
 | Version | 0.1.0 |
 | Status | Prototype |
-| Last Updated | 2026-09-04 |
+| Last Updated | 2026-09-07 |
 
 ## Requirements
 
@@ -33,6 +33,7 @@ Members get Costco-style negotiated rental rates and perks that stay honored and
 - ✓ UC3 Cancellation/Refund (live vendor-policy refund quote, atomic cancel claim) — Phase 4, regression-covered Phase 6 (06-04)
 - ✓ UC6 Add-on integrity (perk-waiver check, fee-bearing charge) — Phase 5, regression-covered Phase 6 (06-05)
 - ✓ Rental-domain ontology and knowledge graph — Phase 1/2
+- ✓ Agent-grounding ontology enrichment (substitution/equivalence clusters, LLM-generated Location synonyms, generic `lookupNode`/`traverse`/`resolveSynonym` retriever-tool surface) — Phase 7, the shared query layer Phase 8's Vendor Agent and Phase 9's Customer/Driver Assistant will consume
 
 ### Active (In Progress)
 None yet.
@@ -87,6 +88,7 @@ Architecture pattern is borrowed from the sibling project `mastech-agentic-comme
 | Stripe PaymentIntent flow only (not Checkout Session), PayPal excluded | Custom Next.js checkout UI (Phase 4) needs PaymentIntent + Elements, not a hosted redirect; no second payment provider requirement exists | 2026-08-28 | Active |
 | `mailHelper`/nodemailer deferred to Phase 4 | No booking-confirmation trigger exists yet in Phase 3 — email content should be shaped by real booking data, not ported speculatively | 2026-08-28 | Deferred |
 | New `Vendor` entity added to bookcars-types port, `Car`→`Inventory` reshape | BookCars assumes the platform owns the car; this platform brokers across independent vendors | 2026-08-28 | Active |
+| Generic label/property-parameterized graph retrievers (`lib/graph/retrievers.ts`) as the sanctioned Phase 8/9 agent query surface, kept parallel to (not replacing) `queries.ts`'s bespoke functions | Neither future agent should grow one-off `queries.ts` functions per prompt; a small composable tool surface lets both agents (and any LLM tool-calling layer) do real graph retrieval generically | 2026-09-07 | Active |
 
 ## Success Metrics
 
@@ -119,4 +121,4 @@ Architecture pattern is borrowed from the sibling project `mastech-agentic-comme
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-09-04 after Phase 6*
+*Last updated: 2026-09-07 after Phase 7*

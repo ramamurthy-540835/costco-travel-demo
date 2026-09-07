@@ -8,7 +8,7 @@ Build a member-centric, multi-vendor rental-car brokerage platform: a rental-dom
 
 **v0.1 Ontology & Discovery/Checkout Core** (v0.1.0)
 Status: In progress
-Phases: 6 of 7 complete, Phase 7 not started
+Phases: 7 of 12 complete, Phase 8 not started
 
 ## Phases
 
@@ -20,7 +20,12 @@ Phases: 6 of 7 complete, Phase 7 not started
 | 4 | Booking & Rate Integrity (UC1, UC2, UC3) | 04-00 through 04-14 | Complete | 2026-09-04 |
 | 5 | Add-On Integrity (UC6) | 05-01 | Complete | 2026-09-03 |
 | 6 | Regression Test Infrastructure | 06-01 through 06-06 | Complete | 2026-09-04 |
-| 7 | Vendor Fulfillment Touchpoints (UC4, UC5, UC7, UC8) | TBD | Not started | - |
+| 7 | Agent-Grounding Ontology & Knowledge-Graph Enrichment | 07-01, 07-02, 07-03 | Complete | 2026-09-07 |
+| 8 | Vendor Agent (A2A Inventory/Modification/Cancellation) | TBD | Not started | - |
+| 9 | Customer/Driver Assistant Agent | TBD | Not started | - |
+| 10 | Agent Lab & Observability/Evals (Phoenix) | TBD | Not started | - |
+| 11 | Unified Agent-Service Deployment | TBD | Not started | - |
+| 12 | Vendor Fulfillment Touchpoints (UC4, UC5, UC7, UC8) | TBD | Not started | - |
 
 ## Phase Details
 
@@ -166,7 +171,96 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 - [x] 06-05: Add-on/UC6 regression specs (fee-bearing charge, perk-waived lock/no-double-charge) + My Bookings listing/entry-point wiring spec. **Depends on:** 06-01. Applied and unified 2026-09-04 — all 3 ACs passed. Deviation: anonymous search can never surface a perk that waives an addon (Gold Star tier lacks the waiving perks) — fixed via a direct Mongo fixture patch of `pricingSnapshot.perkIds`, not a route/page change.
 - [x] 06-06: Smoke-suite gap fill — added an unauthenticated `/bookings` sign-in-gate smoke test to `tests/e2e/smoke/smoke.spec.ts` (matching `app/(account)/bookings/page.tsx`'s "Sign in to see your bookings" gate) and corrected the file's stale in-code comment claiming no Clerk test-auth fixture exists (06-01 built one; smoke itself deliberately stays unauthenticated-only per this phase's Scope). Raised by user during Phase 6 close-out review 2026-09-04. **Depends on:** 06-01 (folder/project split), 04-10 (smoke suite origin). Applied and unified 2026-09-04 — both ACs passed, `npx playwright test --project=smoke` 11/11 passing. Phase 6 (6/6 plans) now fully complete.
 
-### Phase 7: Vendor Fulfillment Touchpoints (UC4, UC5, UC7, UC8)
+### Phase 7: Agent-Grounding Ontology & Knowledge-Graph Enrichment
+
+**Goal:** Extend the Phase 1/2 ontology/taxonomy/thesaurus so both the Phase 9 Customer/Driver Assistant and the Phase 8 Vendor Agent can resolve natural-language phrasing and cross-vendor substitution against the shared graph — before either agent is built, so both consume a stable grounding layer rather than each inventing their own.
+**Depends on:** Phase 1/2 (ontology/KG must exist to enrich), precedes Phase 8/9 (both agents consume this)
+**Research:** Done — `.coder/research/agent-service-extension.md` Part A §7 (commerce's `ontology.py` vocabulary constants + `backfill_synonyms.py` LLM-generated thesaurus pattern; `EquivalenceCluster`/`PART_OF_CLUSTER` substitution-graph pattern, net-new in commerce, template only) and Part B §3 (GraphRAG enrichment pipelines, multi-tool graph retrieval pattern)
+
+**Scope:**
+- LLM-generated `synonyms` property backfill for vehicle-type/amenity/location vocabulary nodes (mirrors commerce's `backfill_synonyms.py`, extends this project's existing attribute-level `synonyms` from Phase 2's 02-01)
+- New substitution/equivalence relation (e.g. `EquivalenceCluster`-style node + `PART_OF_CLUSTER`-style edge) modeling alternate-vehicle-class/alternate-pickup-location substitutability — genuinely new to this project, no existing analog; needed for both agents' "no exact match, what's close" resolution
+- Expose the graph via 2-3 composable retriever tools (node lookup, traversal, synonym-resolve) rather than one opaque search call, per the GraphRAG multi-tool pattern — this is the tool surface Phase 8/9's agents will call
+- Update VOCABULARY.md/ONTOLOGY.md for all new node/edge/property types
+
+**Not in scope:** date-range availability modeling (stays vendor/platform-DB-side per the Store Ops Agent boundary precedent — see Phase 8's Scope note); any LLM/agent runtime code (this phase is graph/data only)
+
+**Plans:**
+- [x] 07-01: EquivalenceCluster/PART_OF_CLUSTER substitution relation (new node/edge, `equivalence_clusters.json`, `getEquivalenceCandidates()`) — applied+unified 2026-09-05
+- [x] 07-02: LLM-generated synonym backfill script + Location vocabulary — Azure OpenAI-backed, all 10 seeded cities, applied+unified 2026-09-07
+- [x] 07-03: Composable retriever tools (`lookupNode`/`traverse`/`resolveSynonym`) for Phase 8/9 agents — applied+unified 2026-09-07
+
+**Phase 7 complete (3/3 plans), 2026-09-07.**
+
+### Phase 8: Vendor Agent (A2A Inventory/Modification/Cancellation)
+
+**Goal:** Stand up a Vendor Agent as a separate process/service, exposing inventory-check/modification/cancellation skills over a real A2A (agent-to-agent) interface, so the platform's own agents (and eventually external integrators) can query vendor state and policy without the platform owning or importing vendor internals — mirrors `mastech-agentic-commerce`'s Store Ops Agent boundary.
+**Depends on:** Phase 7 (shared grounding layer), Phase 4 (existing `lib/vendor-integration/policy.ts` boundary module — `quoteModification()`/`quoteCancellation()`/`checkAvailability()`/`checkModificationCutoff()` — is the logic this phase moves behind a real A2A seam)
+**Research:** Done — `.coder/research/agent-service-extension.md` Part A §1 (Store Ops Agent architecture: separate Starlette/uvicorn process, static Agent Card at `/.well-known/agent-card.json`, JSON-RPC 2.0 `message/send` over `/a2a`, synchronous Task response, no LLM/no auth) and Part B §2 (full A2A spec: Agent Cards, Message/Task/Parts shape, task lifecycle `submitted→working→(input-required|auth-required)→completed|failed|canceled|rejected`, official `a2a-python` SDK)
+
+**Scope:**
+- Separate deployable service (own process/port, own image entrypoint — reuse-one-image-different-target pattern from commerce's `agent-service`/`store-ops-agent`)
+- Static Agent Card + JSON-RPC `/a2a` endpoint exposing skills: `check_availability` (date-range-aware — the explicit gap vs. commerce's binary in-stock model, needs new design, not a straight port), `apply_modification`, `apply_cancellation`, `get_vendor_policy`
+- **Decision required before planning:** A2A conformance depth — commerce deliberately skipped streaming/polling/push/auth and used only `submitted|completed|failed`. This phase should explicitly decide whether to adopt the fuller lifecycle (`input-required`/`auth-required`, SSE streaming) for real vendor-policy interactions (e.g. cutoff-window rejections needing a follow-up field, multi-step cancellation approval) or stay at commerce's minimal level.
+- **Decision required before planning:** per-vendor deployment topology — one Vendor Agent process per real/simulated vendor (true multi-tenant A2A) vs. one platform-hosted Vendor Agent process parameterized per vendor config (simulated). Directly affects Phase 11's docker-compose service list.
+- Vendor operational facts (availability, in-flight modification/cancellation state) live in the platform's own Mongo/vendor-side store, never in the shared Postgres+AGE graph — same boundary discipline as commerce's `inventory_facts`/`local_offers` tables
+
+**Not in scope:** replacing `lib/vendor-integration/policy.ts`'s existing callers in `app/api/bookings/[id]/modify/route.ts`/`cancel/route.ts` — that route-level integration is Phase 9's concern (or a later phase), this phase only stands up the Vendor Agent service and its A2A surface
+
+**Plans:**
+- [ ] 08-01: TBD
+
+### Phase 9: Customer/Driver Assistant Agent
+
+**Goal:** A conversational agent that helps members (and, per the original request, drivers) book, modify, and cancel reservations through natural language — discovery through checkout, calling the Phase 8 Vendor Agent (via A2A) and the Phase 7 grounding tools rather than reimplementing vendor logic or graph queries itself.
+**Depends on:** Phase 7 (grounding tools), Phase 8 (Vendor Agent A2A surface for availability/modification/cancellation checks), Phase 4 (existing booking/modify/cancel/addon routes remain the system of record — this agent orchestrates calls to them, doesn't bypass them)
+**Research:** Done — `.coder/research/agent-service-extension.md` Part A §2 (commerce's hand-rolled SSE tool-calling loop, `actor`-first tool convention with server-injected identity, prompt-injection-defense structure, detect-after-stream guardrail limitation) and Part B §1 (standard discovery→checkout→post-booking tool taxonomy, idempotency keys on mutating tools, state machine under the LLM, proposal→confirm human-in-the-loop pattern for irreversible actions)
+
+**Scope:**
+- Tool chain: `search_inventory`, `get_quote`, `create_booking`, `get_booking_status`, `modify_booking`, `cancel_booking`, `get_cancellation_policy` — wrapping this project's existing API routes, not reimplementing their logic
+- Session/state management held outside the LLM context (structured session doc keyed by conversation_id — Mongo, matching this project's existing operational-data store), booking flow modeled as an explicit state machine (`searching→quoted→confirming→booked→modifying/cancelling`)
+- **Proposal→confirm pattern enforced at the orchestration layer, not the prompt** — every mutating tool call (`create_booking`/`modify_booking`/`cancel_booking`) requires a prior `propose_*` call showing a diff/summary and an explicit user confirmation turn before the real tool fires; this is a deliberate strengthening over commerce's detect-after-stream-only guardrail, justified by PROJECT.md's Core Value (negotiated-rate/perk integrity is the platform's whole reason to exist)
+- Idempotency keys on every mutating tool call, reusing this project's existing optimistic-lock/CAS write patterns underneath
+- Discovery/driver-support framing: initial scope is member-facing booking assistance; driver-facing support (in-rental questions) stays deferred to Phase 12 (UC5) unless the user pulls it forward
+
+**Not in scope:** replacing the existing UI-driven booking/modify/cancel flows — this agent is an additional conversational entry point, not a replacement
+
+**Plans:**
+- [ ] 09-01: TBD
+
+### Phase 10: Agent Lab & Observability/Evals (Phoenix)
+
+**Goal:** Give developers a way to inspect and debug the Phase 8/9 agents' behavior (tool calls, traces, prompt iterations) and a standing eval harness to regression-test agent behavior across prompt/model changes — backed by Arize Phoenix, matching `mastech-agentic-commerce`'s observability stack.
+**Depends on:** Phase 8, Phase 9 (needs real agents emitting traces to observe/evaluate)
+**Research:** Done — `.coder/research/agent-service-extension.md` Part A §3-4 (commerce's Agent Lab is Jupyter-notebook-only graph exploration, NOT a prompt/tool-testing tool — explicitly flagged as a gap, not something to port verbatim; Phoenix `phoenix.otel.register()` instrumentation pattern, Dataset/Experiment eval harness with custom evaluators) and Part B §4-5 (LangGraph Studio as the closest off-the-shelf analog: trace replay/time-travel/thread management; Phoenix deployment ports/env vars, OpenInference auto-instrumentation, standard agentic eval types: task success, tool-selection correctness, groundedness, hallucination, latency)
+
+**Scope:**
+- Phoenix instrumentation on both Phase 8 (Vendor Agent) and Phase 9 (Customer Assistant) services — `phoenix.otel.register()` equivalent, per-tool-call custom spans
+- **Decision required before planning:** Agent Lab scope — a thin web UI reading off the same Phoenix trace store (conversation/thread list, per-turn tool-call diff view, state-snapshot inspector, fork-and-rerun-with-modified-prompt) is new build work, distinct from commerce's Jupyter-notebook KG-exploration tool. If graph-exploration-only tooling is sufficient for this project's needs, a lighter Jupyter-based Agent Lab (closer to commerce's actual scope) is also an option — this decision should be made explicitly, not defaulted
+- Eval dataset(s) + Experiment harness for the Customer Assistant's tool-selection correctness and booking-flow task success (mirrors commerce's `search_relevance_eval.py` pattern — hand-labeled example set, custom evaluator functions, before/after regression comparisons)
+
+**Not in scope:** replacing Phase 6's Playwright regression suite — Phoenix evals target agent/LLM behavior specifically, Playwright continues to cover UI/API regression
+
+**Plans:**
+- [ ] 10-01: TBD
+
+### Phase 11: Unified Agent-Service Deployment
+
+**Goal:** One docker-compose stack bringing up every service from Phase 7-10 (Vendor Agent, Customer Assistant, Agent Lab, Phoenix) alongside the existing app/graph/Mongo services, with health-check and start/stop scripts mirroring `mastech-agentic-commerce`'s script trio.
+**Depends on:** Phase 8, 9, 10 (needs the actual services to compose)
+**Research:** Done — `.coder/research/agent-service-extension.md` Part A §5-6 (commerce's single-file `docker-compose.yml`, profile-based opt-in services, one-image-multiple-uvicorn-targets pattern, `--env-file` invocation requirement; `health-check.sh`/`start-services.sh`/`stop-services.sh` trio — readiness polling, `--with-*` flags mirrored between start/stop, tracked tunnel PIDs, never `down -v`) and Part B §6 (general multi-service health-check/`depends_on: condition: service_healthy`/`--wait` conventions)
+
+**Scope:**
+- Single root `docker-compose.yml` (or an addition to this project's existing graph-store compose file) with services for: Vendor Agent, Customer Assistant, Agent Lab (profiled, opt-in), Phoenix + its Postgres backing store (profiled, opt-in), plus the existing Postgres+AGE graph and Mongo
+- `healthcheck:` blocks + `depends_on: condition: service_healthy` so agent services don't start before graph/Mongo/Phoenix collector are ready
+- `scripts/health-check.sh` (read-only checks per service, never prints secrets), `scripts/start-services.sh` (`--with-agent-lab --with-phoenix` style flags, readiness polling), `scripts/stop-services.sh` (mirrored flags, never destroys volumes) — direct ports of commerce's script trio, adapted to this project's service names
+
+**Not in scope:** production/cloud deployment — this phase is local/dev docker-compose only, matching commerce's own scope
+
+**Plans:**
+- [ ] 11-01: TBD
+
+### Phase 12: Vendor Fulfillment Touchpoints (UC4, UC5, UC7, UC8)
 
 **Goal:** Lower-priority vendor-primary flows — pickup/check-in, in-rental support routing, return/drop-off, and billing-dispute resolution — built as thin integration/tracking touchpoints, not full vendor-operational systems.
 **Depends on:** Phase 4 (needs booking data to reference)
@@ -174,13 +268,13 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 
 **Scope:**
 - UC4: Pickup/check-in cross-reference (platform confirmation + vendor lookup)
-- UC5: In-rental support triage/escalation logging (vendor is primary; platform logs/redirects)
+- UC5: In-rental support triage/escalation logging (vendor is primary; platform logs/redirects) — natural fit for the Phase 9 Customer/Driver Assistant if pulled forward
 - UC7: Return/drop-off record sync from vendor
 - UC8: Billing-dispute resolution against the booking record as source of truth
 
 **Plans:**
-- [ ] 07-01: TBD
+- [ ] 12-01: TBD
 
 ---
 *Roadmap created: 2026-08-27*
-*Last updated: 2026-09-04 — Phase 6 fully complete (6/6 plans): 06-01 through 06-05 (fixture foundation, checkout/UC1, modification/UC2, cancellation/UC3 + concurrency race guards, add-ons/UC6 + My Bookings) plus 06-06 (smoke-suite gap fill for `/bookings` + stale-comment correction), all applied and unified. No CI-wiring plan added yet (still out of scope). Phase 5 (05-01) and Phase 4 (04-00–04-14) remain complete/closed independently. Phase 7 (Vendor Fulfillment Touchpoints) is now the current phase, not started. See STATE.md's Accumulated Context for research/planning findings.*
+*Last updated: 2026-09-05 — Inserted 5 new phases (7-11: Agent-Grounding Ontology Enrichment, Vendor Agent/A2A, Customer/Driver Assistant Agent, Agent Lab & Observability/Evals, Unified Agent-Service Deployment) ahead of the deferred Vendor Fulfillment Touchpoints phase, now renumbered 7→12, per `/coder:research` findings in `.coder/research/agent-service-extension.md` (extends `mastech-agentic-commerce`'s Store Ops Agent/A2A, storefront chat agent, Agent Lab, and Phoenix patterns into this project's rental-domain agent service). No plans created yet for any of the 5 new phases — TBD pending `/coder:plan`. Milestone total is now 12 phases (6 complete, 6 not started). Phase 6 fully complete as of 2026-09-04 (6/6 plans): 06-01 through 06-06, all applied and unified. Phase 5 (05-01) and Phase 4 (04-00–04-14) remain complete/closed independently. See STATE.md's Accumulated Context for prior research/planning findings.*
