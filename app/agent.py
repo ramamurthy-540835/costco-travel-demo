@@ -13,9 +13,20 @@ MODEL=os.environ.get("AGENT_MODEL","gemini-3-flash-preview")
 def _client():
     return genai.Client(vertexai=True,project=os.environ.get("GOOGLE_CLOUD_PROJECT"),location=os.environ.get("VERTEX_LOCATION","global"))
 
-def build_system_prompt(reservations:list[dict[str,Any]],inventory:list[dict[str,Any]],flow:dict[str,Any]|None=None,sabre_context:dict[str,Any]|None=None)->str:
+def _member_context(member_id:str|None)->dict[str,Any]:
+    if not member_id: return {}
+    try:
+        from .firestore_db import get_member, get_member_activity_summary
+        member=get_member(member_id) or {}
+        summary=get_member_activity_summary(member_id)
+        return {"member":{"id":member_id,"name":f"{member.get('first_name','')} {member.get('last_name','')}".strip(),"tier":member.get("membership_tier",""),"status":member.get("status",""),"preferences":member.get("preferences",{}),"member_since":member.get("member_since",""),"lifetime_savings_usd":member.get("lifetime_savings_usd",0)},"activity_summary":summary}
+    except Exception:
+        return {}
+
+def build_system_prompt(reservations:list[dict[str,Any]],inventory:list[dict[str,Any]],flow:dict[str,Any]|None=None,sabre_context:dict[str,Any]|None=None,member_id:str|None=None)->str:
     now=datetime.now().astimezone()
-    return f'''You are the Costco Travel car reservation concierge for a demo member presumed authenticated by SSO.
+    member_ctx=_member_context(member_id or "MBR-00001")
+    return f'''You are the Costco Travel car reservation concierge for a demo member presumed authenticated by Costco SSO.
 Today's date and time: {now.isoformat()} ({now.tzname() or "local"}).
 Return raw JSON only with keys message, action, reservationId, chips. action and reservationId may be null.
 Never collect login or membership credentials, card numbers, or income data. Never promise income, returns, availability, or a transaction outcome.
@@ -23,8 +34,10 @@ Chat never mutates state. A change requires start, update, and explicit confirm.
 Never book, change, or quote a pickup in the past. Same-day new rentals are allowed only when their pickup time is still in the future. If the member asks for a past date, explain and return action show_date_picker.
 Dates and times enter through the calendar modal only. Never accept free-text dates as booking dates.
 A CANCELLED reservation cannot be changed or re-cancelled; offer to book a new car instead.
+Member profile & activity: {json.dumps(member_ctx,default=str,separators=(",",":"))}
+Use the member profile to personalize suggestions — reference their preferred locations, car class, past searches, and lifetime savings. If they have active disputes, acknowledge them proactively.
 Current flow: {json.dumps(flow or {},default=str,separators=(",",":"))}
-Sabre Developer Hub documentation context: {json.dumps(sabre_context or {},default=str,separators=(",",":"))[:12000]}
+Sabre Developer Hub documentation context: {json.dumps(sabre_context or {},default=str,separators=(",",":"))[:8000]}
 Sabre MCP context is documentation only. Never claim it performed live shopping, booking, ticketing, or servicing.
 Live reservations: {json.dumps(reservations,default=str,separators=(",",":"))}
 Inventory: {json.dumps(inventory,default=str,separators=(",",":"))}

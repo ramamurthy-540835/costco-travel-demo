@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UC5 — In-Rental Support · Roadside / Extension / Swap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0c2948;--blue:#1d65a6;--red:#d71920;--sand:#f4f0e8;--cream:#fbfaf7;--ink:#172333;--muted:#607184;--line:#dbe2e8;--gold:#c59a45;--green:#16805b;--shadow:0 18px 50px rgba(18,44,70,.12);--agency-bg:#0f2d1e;--agency-border:#1e4a31;--agency-accent:#27c975}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#111827;color:var(--ink);min-height:100vh}
+.ribbon{height:28px;background:var(--navy);color:#dce9f5;text-align:center;font-size:11px;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.ribbon span{width:6px;height:6px;border-radius:50%;background:#6cdfaf;box-shadow:0 0 8px #6cdfaf}
+.header{background:#1e293b;padding:14px 28px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #2d3e50}
+.header-brand{text-decoration:none;line-height:.8;display:flex;flex-direction:column;transform:skew(-6deg)}
+.costco{color:#e31837;font:900 18px Arial,sans-serif;letter-spacing:-1px;border-bottom:3px solid #1676b9}
+.travel{font:bold 10px Arial,sans-serif;letter-spacing:6px;color:#1676b9;margin-top:4px}
+.header h1{color:#e2e8f0;font-family:Fraunces,serif;font-size:16px;font-weight:600}
+.header .uc-badge{margin-left:auto;background:#1e3a5f;border:1px solid #2d5a8e;padding:6px 12px;border-radius:4px;color:#7bb8e8;font-size:10px;font-weight:700;letter-spacing:.1em}
+.step-nav{background:#1e293b;border-bottom:1px solid #2d3e50;padding:0 28px;display:flex;align-items:center;gap:0}
+.step-btn{border:0;background:transparent;color:#64748b;font:600 11px inherit;letter-spacing:.08em;padding:14px 20px;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
+.step-btn.active{color:#93c5fd;border-bottom-color:#3b82f6}
+.step-btn.done{color:#4ade80}
+.step-btn:hover:not(.active){color:#94a3b8}
+.step-sep{color:#374151;padding:0 4px;font-size:14px}
+.panels{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 150px);overflow:hidden}
+.panel{overflow-y:auto;padding:24px}
+.panel-header{font-size:9px;letter-spacing:.18em;font-weight:700;padding:6px 10px;border-radius:3px;margin-bottom:16px;display:inline-block}
+.member-panel{background:var(--cream)}
+.member-panel .panel-header{background:#e8f0f7;color:var(--blue)}
+.agency-panel{background:#0d1f13;border-left:1px solid var(--agency-border)}
+.agency-panel .panel-header{background:#1a3a24;color:var(--agency-accent)}
+.card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h3{font-family:Fraunces,serif;color:var(--navy);font-size:20px;margin-bottom:12px}
+.card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.card-row:last-child{border-bottom:none}
+.card-row label{color:var(--muted);font-size:10px;letter-spacing:.06em;font-weight:700}
+.card-row strong{color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:10px;font-weight:700;color:#526477;letter-spacing:.06em}
+.field input,.field select{border:1px solid #cbd5dd;border-radius:3px;padding:10px 11px;font:13px inherit;color:var(--ink);background:#fff}
+.agency-card{background:#0f2d1e;border:1px solid var(--agency-border);border-radius:6px;padding:18px;margin-bottom:12px}
+.agency-card h3{color:#a7f3c3;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.agency-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a3a2a;font-size:11px}
+.agency-row:last-child{border-bottom:none}
+.agency-row label{color:#5a8a6a;font-size:9px;letter-spacing:.08em;font-weight:700}
+.agency-row strong{color:#d1fae5;font-size:11px}
+.agency-status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:9px;font-weight:700;letter-spacing:.08em}
+.status-confirmed{background:#1a3a24;color:var(--agency-accent);border:1px solid var(--agency-accent)}
+.status-pending{background:#1a3a24;color:#6ee7b7;border:1px solid #27c975}
+.status-warning{background:#2d1f00;color:#fbbf24;border:1px solid #d97706}
+.terminal-line{font-family:"Courier New",monospace;font-size:10px;color:#4ade80;background:#060d08;border:1px solid #1a3a2a;border-radius:4px;padding:12px;margin-top:10px;line-height:1.7}
+.terminal-line .dim{color:#3d6b47}
+.terminal-line .hi{color:#a7f3c3}
+.terminal-line .err{color:#f87171}
+.terminal-line .warn{color:#fbbf24}
+.btn{border:0;border-radius:3px;padding:11px 18px;font:700 12px inherit;cursor:pointer;transition:.18s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:#174f80}
+.btn-secondary{background:#e7eef3;color:var(--navy)}
+.btn-secondary:hover{background:#d6e5ef}
+.btn-orange{background:#d97706;color:#fff}
+.btn-orange:hover{background:#b45309}
+.btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.scenario-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.scenario-tab{border:1px solid #cbd5dd;background:#fff;border-radius:3px;padding:7px 12px;font:600 10px inherit;color:var(--muted);cursor:pointer;letter-spacing:.04em}
+.scenario-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.step-panel{display:none}.step-panel.active{display:block}
+.alert-box{background:#fff5d9;border:1px solid #e3bd63;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#6f5317}
+.info-box{background:#eef4fb;border:1px solid #7baed8;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#1e3a5f}
+.success-box{background:#edf8f3;border:1px solid #a7d7bf;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#176a4e}
+.sync-bar{background:#0f1f2e;border-top:1px solid #1e3a5f;padding:8px 28px;font-size:10px;color:#64748b;display:flex;align-items:center;gap:8px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#27c975;box-shadow:0 0 6px #27c975;animation:pulse 1.5s infinite}
+@keyframes pulse{50%{opacity:.4}}
+@media(max-width:900px){.panels{grid-template-columns:1fr;height:auto}.agency-panel{border-left:none;border-top:1px solid var(--agency-border)}}
+</style>
+</head>
+<body>
+<div class="ribbon"><span></span> UC5 Mock · In-Rental Support (Roadside / Extension / Swap) · Dual View</div>
+<header class="header">
+  <a class="header-brand" href="/"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
+  <h1>UC5 — In-Rental Support</h1>
+  <div class="uc-badge">MOCK SCENARIO</div>
+</header>
+<nav class="step-nav" id="stepNav">
+  <button class="step-btn active" data-step="1" onclick="goStep(1)">1 · INCIDENT REPORTED</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="2" onclick="goStep(2)">2 · VENDOR TRIAGE</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="3" onclick="goStep(3)">3 · COSTCO ESCALATION</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="4" onclick="goStep(4)">4 · RESOLUTION</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="5" onclick="goStep(5)">5 · EXCEPTIONS</button>
+</nav>
+<div class="panels">
+  <div class="panel member-panel">
+    <div class="panel-header">MEMBER / PLATFORM VIEW</div>
+
+    <!-- Step 1 -->
+    <div class="step-panel active" id="mp-step1">
+      <div class="card">
+        <h3>Active Rental</h3>
+        <div class="card-row"><label>RESERVATION</label><strong>CTR-DACTIV1</strong></div>
+        <div class="card-row"><label>VENDOR</label><strong>Avis</strong></div>
+        <div class="card-row"><label>VENDOR CONF</label><strong>AW-87654321</strong></div>
+        <div class="card-row"><label>VEHICLE</label><strong>Toyota RAV4 (SFAR) · Standard SUV</strong></div>
+        <div class="card-row"><label>PICKUP</label><strong>LAX · Today, 2 hours ago</strong></div>
+        <div class="card-row"><label>STATUS</label><strong style="color:var(--blue)">ACTIVE</strong></div>
+      </div>
+      <div class="card">
+        <h3>What's the issue?</h3>
+        <div class="scenario-tabs">
+          <button class="scenario-tab active" onclick="selectScenario('roadside',this)">Roadside Breakdown</button>
+          <button class="scenario-tab" onclick="selectScenario('extension',this)">Extend Rental</button>
+          <button class="scenario-tab" onclick="selectScenario('swap',this)">Vehicle Swap</button>
+        </div>
+        <div id="scenarioDesc">
+          <div class="alert-box"><strong>Roadside Breakdown</strong> — Your Toyota RAV4 has a flat tire on I-405. You need emergency roadside assistance.</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goStep(2)">Report to Vendor →</button>
+          <button class="btn btn-secondary" onclick="goStep(3)">Contact Costco Travel →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-panel" id="mp-step2">
+      <div class="card">
+        <h3>Vendor Primary Support</h3>
+        <div class="info-box">The vendor (Avis) is the primary support path — they own the vehicle and the rental agreement.</div>
+        <div id="mp-vendorSupport">
+          <div class="card-row"><label>CALL</label><strong>1-800-352-7900 (Avis Roadside)</strong></div>
+          <div class="card-row"><label>REFERENCE</label><strong>Vendor conf AW-87654321</strong></div>
+          <div class="card-row"><label>MEMBER</label><strong>Maria Smith · COST100002</strong></div>
+          <div class="card-row"><label>LOCATION</label><strong>I-405 NB, mile marker 47</strong></div>
+          <div class="card-row"><label>VEHICLE</label><strong>Toyota RAV4 · CA plate 8ABC123</strong></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goStep(4)">Vendor dispatched →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-panel" id="mp-step3">
+      <div class="card">
+        <h3>Costco Travel Contact</h3>
+        <div class="alert-box">Member called Costco Travel instead of vendor directly. Costco Travel will triage and redirect to vendor for all vehicle-level incidents.</div>
+        <div class="card-row"><label>COSTCO TRAVEL LINE</label><strong>1-866-921-7925</strong></div>
+        <div class="card-row"><label>CASE CREATED</label><strong>CT-CASE-2026-08841</strong></div>
+        <div class="card-row"><label>ACTION</label><strong>Escalate to Avis Roadside</strong></div>
+        <div class="card-row"><label>ROUTED TO</label><strong>AW-87654321 · 1-800-352-7900</strong></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goStep(4)">Costco escalated to vendor →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-panel" id="mp-step4">
+      <div id="mp-resolution">
+        <div class="success-box"><strong>Resolution confirmed</strong> — Avis roadside dispatched. ETA 35 minutes. Flat tire replaced at no charge to member.</div>
+        <div class="card">
+          <h3>Resolution Summary</h3>
+          <div id="resolutionDetail">
+            <div class="card-row"><label>INCIDENT</label><strong>Flat tire · I-405 NB</strong></div>
+            <div class="card-row"><label>RESOLVED BY</label><strong>Avis Roadside Service</strong></div>
+            <div class="card-row"><label>CHARGE TO MEMBER</label><strong style="color:var(--green)">$0 — covered by rental agreement</strong></div>
+            <div class="card-row"><label>CASE STATUS</label><strong>CLOSED</strong></div>
+            <div class="card-row"><label>COSTCO CASE LOG</label><strong>CT-CASE-2026-08841 · logged for member experience tracking</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-panel" id="mp-step5">
+      <div class="card">
+        <h3>Exception Scenarios</h3>
+        <div class="scenario-tabs">
+          <button class="scenario-tab active" onclick="selectException('rateExpire',this)">Extension Rate Mismatch</button>
+          <button class="scenario-tab" onclick="selectException('callConfusion',this)">Vendor vs Costco Confusion</button>
+        </div>
+        <div id="exceptionContent">
+          <div class="alert-box"><strong>Extension Rate Mismatch</strong> — Member requests 2-day extension. Vendor quotes $89/day (retail), but original Costco rate was $63/day. Extension may not honor negotiated contract rate, depending on inventory availability and contract terms.</div>
+          <div class="card-row"><label>ORIGINAL RATE</label><strong style="color:var(--green)">$63.00/day (Costco member)</strong></div>
+          <div class="card-row"><label>EXTENSION QUOTED</label><strong style="color:var(--red)">$89.00/day (retail — no contract inventory)</strong></div>
+          <div class="card-row"><label>COSTCO ACTION</label><strong>Disclose rate change; member must accept or end rental on schedule</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel agency-panel">
+    <div class="panel-header">TRAVEL AGENCY / VENDOR VIEW</div>
+
+    <!-- Step 1 agency -->
+    <div class="step-panel active" id="ap-step1">
+      <div class="agency-card">
+        <h3><span>🔴</span> Incident Flag</h3>
+        <div class="agency-row"><label>RENTAL</label><strong>CTR-DACTIV1 · AW-87654321</strong></div>
+        <div class="agency-row"><label>STATUS</label><span class="agency-status status-confirmed">ACTIVE</span></div>
+        <div class="agency-row"><label>VEHICLE</label><strong>Toyota RAV4 SFAR · CA 8ABC123</strong></div>
+        <div class="agency-row"><label>MEMBER</label><strong>Maria Smith · COST100002 · Executive</strong></div>
+        <div class="agency-row"><label>INCIDENT TYPE</label><strong id="ap-incidentType">Roadside — flat tire</strong></div>
+        <div class="terminal-line">
+<span class="dim">// Costco Travel platform log</span><br>
+<span class="hi">INCIDENT_REPORTED · reservation=CTR-DACTIV1</span><br>
+<span class="dim">vendor=Avis · vendor_conf=AW-87654321</span><br>
+<span class="dim">member=COST100002 · contract=COSTCO-CMR-2024</span><br>
+<span class="hi">routing: PRIMARY_PATH → vendor_roadside</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📋</span> Costco Contract Coverage</h3>
+        <div class="agency-row"><label>ROADSIDE ASSIST</label><strong style="color:var(--agency-accent)">Covered by vendor rental agreement</strong></div>
+        <div class="agency-row"><label>COSTCO ROLE</label><strong>Secondary escalation path only</strong></div>
+        <div class="agency-row"><label>LOGGING</label><strong>Case created for member experience tracking</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 2 agency -->
+    <div class="step-panel" id="ap-step2">
+      <div class="agency-card">
+        <h3><span>📡</span> Vendor Dispatch Request</h3>
+        <div class="terminal-line">
+<span class="dim">// Avis Roadside API · EZ-API v3</span><br>
+<span class="hi">POST /roadside/dispatch</span><br>
+<span class="dim">{ "vendor_conf": "AW-87654321",</span><br>
+<span class="dim">  "member_id": "COST100002",</span><br>
+<span class="dim">  "incident": "flat_tire",</span><br>
+<span class="dim">  "location": "I-405 NB mile 47",</span><br>
+<span class="dim">  "vehicle_plate": "CA-8ABC123" }</span><br>
+<br>
+<span class="hi">200 OK · dispatch_id: AW-DISP-449821</span><br>
+<span class="hi">eta_minutes: 35 · technician: T. Williams</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>🚗</span> Roadside Dispatch</h3>
+        <div class="agency-row"><label>DISPATCH ID</label><strong>AW-DISP-449821</strong></div>
+        <div class="agency-row"><label>ETA</label><strong>35 minutes</strong></div>
+        <div class="agency-row"><label>TECHNICIAN</label><strong>T. Williams · Avis Roadside Region 4</strong></div>
+        <div class="agency-row"><label>CHARGE</label><strong style="color:var(--agency-accent)">$0 — covered by rental agreement</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 3 agency -->
+    <div class="step-panel" id="ap-step3">
+      <div class="agency-card">
+        <h3><span>🔀</span> Costco Travel Triage</h3>
+        <div class="terminal-line">
+<span class="dim">// Member called Costco Travel first</span><br>
+<span class="hi">POST /api/support/case</span><br>
+<span class="dim">{ "reservation": "CTR-DACTIV1",</span><br>
+<span class="dim">  "member": "COST100002",</span><br>
+<span class="dim">  "type": "roadside_assist" }</span><br>
+<br>
+<span class="hi">201 CREATED · case_id: CT-CASE-2026-08841</span><br>
+<span class="hi">action: ESCALATE_TO_VENDOR</span><br>
+<span class="dim">routed to: Avis Roadside · AW-87654321</span><br>
+<span class="dim">costco_role: secondary_escalation_only</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📞</span> Routing Logic</h3>
+        <div class="agency-row"><label>PRIMARY PATH</label><strong>Vendor roadside (vehicle owner)</strong></div>
+        <div class="agency-row"><label>SECONDARY PATH</label><strong>Costco Travel (intermediary)</strong></div>
+        <div class="agency-row"><label>RESOLUTION</label><strong>Always routed back to vendor</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 4 agency -->
+    <div class="step-panel" id="ap-step4">
+      <div class="agency-card">
+        <h3><span>✅</span> Incident Closed</h3>
+        <div class="terminal-line">
+<span class="dim">// Vendor resolution webhook → Costco Travel</span><br>
+<span class="hi">POST /webhooks/support-resolved</span><br>
+<span class="dim">{ "dispatch_id": "AW-DISP-449821",</span><br>
+<span class="dim">  "resolution": "flat_tire_replaced",</span><br>
+<span class="dim">  "duration_min": 28,</span><br>
+<span class="dim">  "charge": 0.00,</span><br>
+<span class="dim">  "rental_continued": true }</span><br>
+<br>
+<span class="hi">200 OK · case CT-CASE-2026-08841 CLOSED</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📊</span> Member Experience Log</h3>
+        <div class="agency-row"><label>CASE</label><strong>CT-CASE-2026-08841</strong></div>
+        <div class="agency-row"><label>RESOLUTION TIME</label><strong>28 minutes</strong></div>
+        <div class="agency-row"><label>MEMBER COST</label><strong style="color:var(--agency-accent)">$0</strong></div>
+        <div class="agency-row"><label>RENTAL STATUS</label><strong>ACTIVE — rental continued</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 5 agency -->
+    <div class="step-panel" id="ap-step5">
+      <div id="ap-exceptionDetail">
+        <div class="agency-card">
+          <h3><span>⚠</span> Rate Exception: Extension</h3>
+          <div class="terminal-line">
+<span class="dim">// Extension rate query</span><br>
+<span class="hi">GET /rates?vendor_conf=AW-87654321&extend_days=2</span><br>
+<span class="warn">200 OK · negotiated_available: false</span><br>
+<span class="warn">{ "extension_rate": 89.00,</span><br>
+<span class="warn">  "type": "RETAIL_RATE",</span><br>
+<span class="warn">  "contract_rate": null,</span><br>
+<span class="warn">  "reason": "no_negotiated_inventory_remaining" }</span><br>
+<br>
+<span class="dim">→ Costco Travel must disclose rate change to member.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="sync-bar"><div class="sync-dot"></div><span>Platform ↔ Agency sync active · UC5 In-Rental Support Mock</span></div>
+
+<script>
+const SCENARIOS = {
+  roadside: {
+    mp: '<div class="alert-box"><strong>Roadside Breakdown</strong> — Your Toyota RAV4 has a flat tire on I-405. You need emergency roadside assistance.</div>',
+    ap: 'Roadside — flat tire'
+  },
+  extension: {
+    mp: '<div class="info-box"><strong>Extend Rental</strong> — You need the car 2 more days. Original Costco rate was $63/day. Extension availability and rate depend on remaining inventory.</div><div class="card-row"><label>CURRENT RETURN</label><strong>Tomorrow 10:00 AM</strong></div><div class="card-row"><label>REQUESTED NEW RETURN</label><strong>Day after tomorrow 10:00 AM</strong></div>',
+    ap: 'Rental extension request (+2 days)'
+  },
+  swap: {
+    mp: '<div class="alert-box"><strong>Vehicle Swap</strong> — A/C is not working in your Toyota RAV4. You need a replacement vehicle of the same or better class.</div><div class="card-row"><label>ISSUE</label><strong>Air conditioning failure</strong></div><div class="card-row"><label>SWAP REQUEST</label><strong>Standard SUV or better</strong></div>',
+    ap: 'Vehicle swap — A/C failure'
+  }
+};
+const EXCEPTIONS = {
+  rateExpire: {
+    mp: '<div class="alert-box"><strong>Extension Rate Mismatch</strong> — Member requests 2-day extension. Vendor quotes $89/day (retail), but original Costco rate was $63/day.</div><div class="card-row"><label>ORIGINAL RATE</label><strong style="color:var(--green)">$63.00/day (Costco member)</strong></div><div class="card-row"><label>EXTENSION QUOTED</label><strong style="color:var(--red)">$89.00/day (retail)</strong></div><div class="card-row"><label>COSTCO ACTION</label><strong>Disclose rate change; member accepts or ends rental on schedule</strong></div>',
+    ap: `<div class="agency-card"><h3><span>⚠</span> Rate Exception: Extension</h3><div class="terminal-line"><span class="dim">// Extension rate query</span><br><span class="hi">GET /rates?vendor_conf=AW-87654321&extend_days=2</span><br><span class="warn">200 OK · negotiated_available: false</span><br><span class="warn">{ "extension_rate": 89.00, "type": "RETAIL_RATE", "reason": "no_negotiated_inventory_remaining" }</span><br><br><span class="dim">→ Costco Travel must disclose rate change to member.</span></div></div>`
+  },
+  callConfusion: {
+    mp: '<div class="info-box"><strong>Vendor vs Costco Confusion</strong> — Member is unsure whether to call Avis or Costco Travel for a windshield crack.</div><div class="card-row"><label>CORRECT PATH</label><strong>Call Avis directly: 1-800-352-7900</strong></div><div class="card-row"><label>WHY</label><strong>Vendor owns the vehicle and rental agreement</strong></div><div class="card-row"><label>COSTCO ROLE</label><strong>Redirect + case log only; cannot dispatch directly</strong></div>',
+    ap: `<div class="agency-card"><h3><span>📞</span> Support Path Routing</h3><div class="agency-row"><label>INCIDENT</label><strong>Windshield crack</strong></div><div class="agency-row"><label>MEMBER CALLED</label><strong>Costco Travel (incorrect path)</strong></div><div class="agency-row"><label>COSTCO ACTION</label><strong>Redirect to Avis 1-800-352-7900</strong></div><div class="terminal-line"><span class="dim">// Costco Travel triage</span><br><span class="hi">incident_type=windshield_damage</span><br><span class="hi">routing=VENDOR_PRIMARY</span><br><span class="dim">redirect: Avis Roadside 1-800-352-7900</span><br><span class="dim">log_case: CT-CASE-2026-08855</span></div></div>`
+  }
+};
+
+let currentStep = 1;
+
+function goStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.step-btn').forEach(b => {
+    const s = +b.dataset.step;
+    b.classList.toggle('active', s === n);
+    b.classList.toggle('done', s < n);
+  });
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('mp-step'+n).classList.add('active');
+  document.getElementById('ap-step'+n).classList.add('active');
+  if (n === 5) selectException('rateExpire', document.querySelector('.scenario-tab'));
+}
+
+function selectScenario(key, btn) {
+  document.querySelectorAll('.scenario-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const s = SCENARIOS[key];
+  document.getElementById('scenarioDesc').innerHTML = s.mp;
+  const el = document.getElementById('ap-incidentType');
+  if (el) el.textContent = s.ap;
+}
+
+function selectException(key, btn) {
+  document.querySelectorAll('#mp-step5 .scenario-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const ex = EXCEPTIONS[key];
+  document.getElementById('exceptionContent').innerHTML = ex.mp;
+  document.getElementById('ap-exceptionDetail').innerHTML = ex.ap;
+}
+</script>
+</body>
+</html>

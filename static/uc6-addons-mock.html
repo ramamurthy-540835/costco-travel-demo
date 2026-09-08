@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UC6 — Add-On / Upsell Purchase · Costco Travel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0c2948;--blue:#1d65a6;--red:#d71920;--sand:#f4f0e8;--cream:#fbfaf7;--ink:#172333;--muted:#607184;--line:#dbe2e8;--gold:#c59a45;--green:#16805b;--shadow:0 18px 50px rgba(18,44,70,.12);--agency-border:#1e4a31;--agency-accent:#27c975}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#111827;color:var(--ink);min-height:100vh}
+.ribbon{height:28px;background:var(--navy);color:#dce9f5;text-align:center;font-size:11px;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.ribbon span{width:6px;height:6px;border-radius:50%;background:#6cdfaf;box-shadow:0 0 8px #6cdfaf}
+.header{background:#1e293b;padding:14px 28px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #2d3e50}
+.header-brand{text-decoration:none;line-height:.8;display:flex;flex-direction:column;transform:skew(-6deg)}
+.costco{color:#e31837;font:900 18px Arial,sans-serif;letter-spacing:-1px;border-bottom:3px solid #1676b9}
+.travel{font:bold 10px Arial,sans-serif;letter-spacing:6px;color:#1676b9;margin-top:4px}
+.header h1{color:#e2e8f0;font-family:Fraunces,serif;font-size:16px;font-weight:600}
+.header .uc-badge{margin-left:auto;background:#1e3a5f;border:1px solid #2d5a8e;padding:6px 12px;border-radius:4px;color:#7bb8e8;font-size:10px;font-weight:700;letter-spacing:.1em}
+.step-nav{background:#1e293b;border-bottom:1px solid #2d3e50;padding:0 28px;display:flex;align-items:center;gap:0}
+.step-btn{border:0;background:transparent;color:#64748b;font:600 11px inherit;letter-spacing:.08em;padding:14px 20px;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
+.step-btn.active{color:#93c5fd;border-bottom-color:#3b82f6}
+.step-btn.done{color:#4ade80}
+.step-btn:hover:not(.active){color:#94a3b8}
+.step-sep{color:#374151;padding:0 4px;font-size:14px}
+.panels{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 150px);overflow:hidden}
+.panel{overflow-y:auto;padding:24px}
+.panel-header{font-size:9px;letter-spacing:.18em;font-weight:700;padding:6px 10px;border-radius:3px;margin-bottom:16px;display:inline-block}
+.member-panel{background:var(--cream)}
+.member-panel .panel-header{background:#e8f0f7;color:var(--blue)}
+.agency-panel{background:#0d1f13;border-left:1px solid var(--agency-border)}
+.agency-panel .panel-header{background:#1a3a24;color:var(--agency-accent)}
+.card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h3{font-family:Fraunces,serif;color:var(--navy);font-size:20px;margin-bottom:12px}
+.card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.card-row:last-child{border-bottom:none}
+.card-row label{color:var(--muted);font-size:10px;letter-spacing:.06em;font-weight:700}
+.agency-card{background:#0f2d1e;border:1px solid var(--agency-border);border-radius:6px;padding:18px;margin-bottom:12px}
+.agency-card h3{color:#a7f3c3;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.agency-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a3a2a;font-size:11px}
+.agency-row:last-child{border-bottom:none}
+.agency-row label{color:#5a8a6a;font-size:9px;letter-spacing:.08em;font-weight:700}
+.agency-row strong{color:#d1fae5}
+.terminal-line{font-family:"Courier New",monospace;font-size:10px;color:#4ade80;background:#060d08;border:1px solid #1a3a2a;border-radius:4px;padding:12px;margin-top:10px;line-height:1.7}
+.terminal-line .dim{color:#3d6b47}
+.terminal-line .hi{color:#a7f3c3}
+.terminal-line .err{color:#f87171}
+.terminal-line .warn{color:#fbbf24}
+.btn{border:0;border-radius:3px;padding:11px 18px;font:700 12px inherit;cursor:pointer;transition:.18s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:#174f80}
+.btn-secondary{background:#e7eef3;color:var(--navy)}
+.btn-secondary:hover{background:#d6e5ef}
+.btn-danger{background:#fff;color:#b21f2d;border:1px solid #dfb7bc;padding:10px 16px;font-weight:700;cursor:pointer}
+.btn-danger:hover{background:#b21f2d;color:#fff}
+.btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.step-panel{display:none}.step-panel.active{display:block}
+.addon-table{width:100%;border-collapse:collapse;font-size:12px}
+.addon-table th{background:#f2f5f7;color:var(--navy);font-size:10px;letter-spacing:.06em;padding:10px 12px;text-align:left;border:1px solid var(--line)}
+.addon-table td{padding:10px 12px;border:1px solid var(--line)}
+.addon-table tr.included td{background:#edf8f3}
+.addon-table tr.selected td{background:#fff4db;font-weight:600}
+.perk-badge{font-size:9px;background:#edf8f3;color:#176a4e;padding:3px 8px;border-radius:99px;font-weight:700}
+.perk-badge.vendor{background:#f0f3f5;color:#526477}
+.alert-box{background:#fff5d9;border:1px solid #e3bd63;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#6f5317}
+.success-box{background:#edf8f3;border:1px solid #a7d7bf;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#176a4e}
+.error-box{background:#fff0f1;border:1px solid #dfb7bc;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#8e2430}
+.sync-bar{background:#0f1f2e;border-top:1px solid #1e3a5f;padding:8px 28px;font-size:10px;color:#64748b;display:flex;align-items:center;gap:8px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#27c975;box-shadow:0 0 6px #27c975;animation:pulse 1.5s infinite}
+@keyframes pulse{50%{opacity:.4}}
+@media(max-width:900px){.panels{grid-template-columns:1fr;height:auto}.agency-panel{border-left:none;border-top:1px solid var(--agency-border)}}
+</style>
+</head>
+<body>
+<div class="ribbon"><span></span> UC6 Mock · Add-On / Upsell Purchase · Dual View (Platform + Travel Agency)</div>
+<header class="header">
+  <a class="header-brand" href="/"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
+  <h1>UC6 — Add-On / Upsell Purchase</h1>
+  <div class="uc-badge">MOCK SCENARIO</div>
+</header>
+<nav class="step-nav" id="stepNav">
+  <button class="step-btn active" data-step="1" onclick="goStep(1)">1 · ADD-ON REQUEST</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="2" onclick="goStep(2)">2 · CHECK PERKS</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="3" onclick="goStep(3)">3 · PRICING</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="4" onclick="goStep(4)">4 · CONFIRMATION</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="5" onclick="goStep(5)">5 · EXCEPTIONS</button>
+</nav>
+<div class="panels">
+  <div class="panel member-panel">
+    <div class="panel-header">MEMBER / PLATFORM VIEW</div>
+
+    <!-- Step 1 -->
+    <div class="step-panel active" id="mp-step1">
+      <div class="card">
+        <h3>Your Active Rental</h3>
+        <div class="card-row"><label>RESERVATION</label><strong>CTR-DACTIV1</strong></div>
+        <div class="card-row"><label>VENDOR</label><strong>Avis · AW-87654321</strong></div>
+        <div class="card-row"><label>VEHICLE</label><strong>Toyota RAV4 · Standard SUV (SFAR)</strong></div>
+        <div class="card-row"><label>RENTAL DAYS</label><strong>2 days</strong></div>
+        <div class="card-row"><label>BASE RATE</label><strong>$63.00/day (Costco member)</strong></div>
+      </div>
+      <div class="card">
+        <h3>Request Add-On Services</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Select an add-on below. Some are already covered under your Costco membership.</p>
+        <table class="addon-table">
+          <thead><tr><th>Add-On</th><th>Per Day</th><th>Member Status</th><th></th></tr></thead>
+          <tbody id="addonTableBody">
+            <tr class="included"><td>Additional Driver</td><td style="color:var(--green);font-weight:700">FREE</td><td><span class="perk-badge">✓ COSTCO INCLUDED</span></td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:10px" onclick="selectAddon('extra_driver')">Add</button></td></tr>
+            <tr><td>GPS Navigation</td><td>$12.99</td><td><span class="perk-badge vendor">Vendor charge</span></td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:10px" onclick="selectAddon('gps')">Add</button></td></tr>
+            <tr><td>Child Safety Seat</td><td>$11.99</td><td><span class="perk-badge vendor">Vendor charge</span></td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:10px" onclick="selectAddon('child_seat')">Add</button></td></tr>
+            <tr><td>Collision Damage Waiver</td><td>$18.99</td><td><span class="perk-badge vendor">Vendor charge</span></td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:10px" onclick="selectAddon('insurance')">Add</button></td></tr>
+            <tr><td>In-Car Wi-Fi</td><td>$9.99</td><td><span class="perk-badge vendor">Vendor charge</span></td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:10px" onclick="selectAddon('wifi')">Add</button></td></tr>
+            <tr><td>Prepaid Fuel Option</td><td>$8.99</td><td><span class="perk-badge vendor">Vendor charge</span></td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:10px" onclick="selectAddon('prepaid_fuel')">Add</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-panel" id="mp-step2">
+      <div class="card">
+        <h3>Perk Verification</h3>
+        <div id="mp-perkCheck"></div>
+      </div>
+      <div class="card">
+        <h3>Included Member Perks</h3>
+        <div class="card-row"><label>ADDITIONAL DRIVER</label><strong style="color:var(--green)">Free — contract clause 4.2</strong></div>
+        <div class="card-row"><label>YOUNG DRIVER FEE</label><strong style="color:var(--green)">Waived — contract clause 4.5</strong></div>
+        <div class="card-row"><label>MILEAGE</label><strong style="color:var(--green)">Unlimited — contract clause 3.1</strong></div>
+        <div class="card-row"><label>CANCELLATION</label><strong>Free up to 48h — contract clause 7.0</strong></div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="goStep(3)">View pricing →</button></div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-panel" id="mp-step3">
+      <div class="card">
+        <h3>Add-On Pricing</h3>
+        <div id="mp-pricing"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goStep(1)">Change selection</button>
+          <button class="btn btn-primary" onclick="goStep(4)">Confirm add-on →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-panel" id="mp-step4">
+      <div class="success-box"><strong>Add-on activated</strong> — Your selection has been confirmed.</div>
+      <div class="card">
+        <h3>Confirmation</h3>
+        <div id="mp-confirmation"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goStep(1)">Add another service</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-panel" id="mp-step5">
+      <div class="card">
+        <h3>Exception: Vendor Upsells a Covered Perk</h3>
+        <div class="error-box"><strong>Dispute Trigger</strong> — Vendor counter agent charges $13/day for additional driver, despite it being FREE under Costco contract clause 4.2.</div>
+        <div class="card-row"><label>VENDOR CHARGE</label><strong style="color:var(--red)">$13.00/day × 2 days = $26.00</strong></div>
+        <div class="card-row"><label>COSTCO BOOKING SAYS</label><strong style="color:var(--green)">Additional Driver: $0 — member perk included</strong></div>
+        <div class="card-row"><label>MEMBER ACTION</label><strong>Show Costco Travel confirmation / call Costco Travel</strong></div>
+        <div class="card-row"><label>RESOLUTION PATH</label><strong>UC8 · Billing Dispute</strong></div>
+        <div class="alert-box" style="margin-top:14px">This is the most common perk dispute. Always verify add-on inclusion before paying at the counter.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel agency-panel">
+    <div class="panel-header">TRAVEL AGENCY / VENDOR VIEW</div>
+
+    <!-- Step 1 agency -->
+    <div class="step-panel active" id="ap-step1">
+      <div class="agency-card">
+        <h3><span>📋</span> Add-On Catalog</h3>
+        <div class="terminal-line">
+<span class="dim">// GET /api/addons · Costco Travel</span><br>
+<span class="hi">200 OK</span><br>
+<span class="hi">{ "addons": [</span><br>
+<span class="hi">&nbsp;&nbsp;{ "type":"extra_driver","per_day":0,"included_for_members":true,"billed_by":"costco_travel" },</span><br>
+<span class="hi">&nbsp;&nbsp;{ "type":"gps","per_day":12.99,"included_for_members":false,"billed_by":"vendor" },</span><br>
+<span class="hi">&nbsp;&nbsp;{ "type":"child_seat","per_day":11.99,"included_for_members":false,"billed_by":"vendor" },</span><br>
+<span class="hi">&nbsp;&nbsp;{ "type":"insurance","per_day":18.99,"included_for_members":false,"billed_by":"vendor" },</span><br>
+<span class="hi">&nbsp;&nbsp;{ "type":"wifi","per_day":9.99,"included_for_members":false,"billed_by":"vendor" },</span><br>
+<span class="hi">&nbsp;&nbsp;{ "type":"prepaid_fuel","per_day":8.99,"included_for_members":false,"billed_by":"vendor" }</span><br>
+<span class="hi">] }</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>🔒</span> Contract Clause Reference</h3>
+        <div class="agency-row"><label>CLAUSE 3.1</label><strong>Unlimited mileage — all classes</strong></div>
+        <div class="agency-row"><label>CLAUSE 4.2</label><strong>Additional driver: $0 for members</strong></div>
+        <div class="agency-row"><label>CLAUSE 4.5</label><strong>Young-driver fee waived</strong></div>
+        <div class="agency-row"><label>CLAUSE 7.0</label><strong>Free cancellation ≥48h before pickup</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 2 agency -->
+    <div class="step-panel" id="ap-step2">
+      <div class="agency-card">
+        <h3><span>🔍</span> Perk Eligibility Check</h3>
+        <div class="terminal-line" id="ap-perkTerminal">
+<span class="dim">// Checking addon eligibility...</span>
+        </div>
+      </div>
+      <div class="agency-card" id="ap-perkResult">
+        <h3><span>📄</span> Awaiting selection</h3>
+      </div>
+    </div>
+
+    <!-- Step 3 agency -->
+    <div class="step-panel" id="ap-step3">
+      <div class="agency-card">
+        <h3><span>💰</span> Add-On Request</h3>
+        <div class="terminal-line" id="ap-pricingTerminal">
+<span class="dim">// Pricing terminal loading...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 agency -->
+    <div class="step-panel" id="ap-step4">
+      <div class="agency-card">
+        <h3><span>✅</span> Add-On Activated</h3>
+        <div class="terminal-line" id="ap-confirmTerminal">
+<span class="dim">// Confirmation loading...</span>
+        </div>
+      </div>
+      <div class="agency-card" id="ap-confirmResult"></div>
+    </div>
+
+    <!-- Step 5 agency -->
+    <div class="step-panel" id="ap-step5">
+      <div class="agency-card">
+        <h3><span>⚠</span> Vendor Upsell Dispute</h3>
+        <div class="terminal-line">
+<span class="dim">// Vendor counter charges additional driver fee</span><br>
+<span class="err">CHARGE: extra_driver · $13.00/day · 2 days = $26.00</span><br>
+<br>
+<span class="dim">// Costco Travel booking terms check</span><br>
+<span class="hi">GET /api/addons?type=extra_driver&contract=COSTCO-CMR-2024</span><br>
+<span class="hi">{ "charge": 0, "included_for_members": true, "clause": "4.2" }</span><br>
+<br>
+<span class="err">CONFLICT: vendor_charge=$26.00 vs contract=$0.00</span><br>
+<span class="dim">→ Escalate to UC8 billing dispute workflow.</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📊</span> Dispute Metrics</h3>
+        <div class="agency-row"><label>MOST COMMON DISPUTE</label><strong>Upsold included perk (38% of cases)</strong></div>
+        <div class="agency-row"><label>AVG RESOLUTION</label><strong>1–2 business days</strong></div>
+        <div class="agency-row"><label>PREVENTION</label><strong>Agent training + digital perk display at counter</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="sync-bar"><div class="sync-dot"></div><span>Platform ↔ Agency sync active · UC6 Add-On / Upsell Mock</span></div>
+
+<script>
+const ADDON_DATA = {
+  extra_driver: {name:'Additional Driver', perDay:0, included:true, billedBy:'Costco Travel', clause:'4.2'},
+  gps: {name:'GPS Navigation', perDay:12.99, included:false, billedBy:'Vendor (Avis)'},
+  child_seat: {name:'Child Safety Seat', perDay:11.99, included:false, billedBy:'Vendor (Avis)'},
+  insurance: {name:'Collision Damage Waiver', perDay:18.99, included:false, billedBy:'Vendor (Avis)'},
+  wifi: {name:'In-Car Wi-Fi', perDay:9.99, included:false, billedBy:'Vendor (Avis)'},
+  prepaid_fuel: {name:'Prepaid Fuel Option', perDay:8.99, included:false, billedBy:'Vendor (Avis)'},
+};
+const DAYS = 2;
+let selectedAddon = null;
+let currentStep = 1;
+
+function goStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.step-btn').forEach(b => {
+    const s = +b.dataset.step;
+    b.classList.toggle('active', s === n);
+    b.classList.toggle('done', s < n);
+  });
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('mp-step'+n).classList.add('active');
+  document.getElementById('ap-step'+n).classList.add('active');
+}
+
+function selectAddon(key) {
+  selectedAddon = key;
+  const a = ADDON_DATA[key];
+  const charge = a.included ? 0 : a.perDay * DAYS;
+  const chargeStr = a.included ? 'FREE (member perk)' : `$${charge.toFixed(2)} ($${a.perDay}/day × ${DAYS} days)`;
+  const color = a.included ? 'var(--green)' : 'var(--ink)';
+
+  // Step 2 member panel
+  document.getElementById('mp-perkCheck').innerHTML = a.included
+    ? `<div style="display:flex;align-items:center;gap:10px;background:#edf8f3;border:1px solid #a7d7bf;border-radius:4px;padding:14px;margin-bottom:12px"><span style="font-size:24px">✓</span><div><strong style="color:#176a4e;display:block">${a.name} is included in your Costco membership</strong><span style="font-size:11px;color:#4d8a72">Contract clause ${a.clause} — no charge applies</span></div></div>`
+    : `<div style="background:#f0f3f5;border:1px solid #cbd5dd;border-radius:4px;padding:14px;margin-bottom:12px;font-size:12px"><strong>${a.name}</strong> is not included under Costco negotiated terms. Billed by ${a.billedBy} at $${a.perDay}/day.</div>`;
+
+  // Step 3 member panel
+  document.getElementById('mp-pricing').innerHTML = `
+    <div class="card-row"><label>ADD-ON</label><strong>${a.name}</strong></div>
+    <div class="card-row"><label>PER DAY</label><strong>${a.included ? '$0.00' : '$'+a.perDay.toFixed(2)}</strong></div>
+    <div class="card-row"><label>DAYS</label><strong>${DAYS}</strong></div>
+    <div class="card-row"><label>TOTAL CHARGE</label><strong style="color:${color}">${chargeStr}</strong></div>
+    <div class="card-row"><label>BILLED BY</label><strong>${a.billedBy}</strong></div>`;
+
+  // Step 4 member panel
+  document.getElementById('mp-confirmation').innerHTML = `
+    <div class="card-row"><label>ADD-ON</label><strong>${a.name}</strong></div>
+    <div class="card-row"><label>STATUS</label><strong style="color:var(--green)">ACTIVATED</strong></div>
+    <div class="card-row"><label>CHARGE</label><strong style="color:${color}">${chargeStr}</strong></div>
+    <div class="card-row"><label>BILLED BY</label><strong>${a.billedBy}</strong></div>`;
+
+  // Agency terminals
+  document.getElementById('ap-perkTerminal').innerHTML = a.included
+    ? `<span class="dim">// POST /api/reservations/CTR-DACTIV1/addons</span><br><span class="dim">{ "addon_type": "${key}" }</span><br><br><span class="hi">200 OK</span><br><span class="hi">{ "addon": { "type": "${key}", "charge": 0,</span><br><span class="hi">  "included_for_members": true, "clause": "${a.clause}",</span><br><span class="hi">  "billed_by": "costco_travel" } }</span>`
+    : `<span class="dim">// POST /api/reservations/CTR-DACTIV1/addons</span><br><span class="dim">{ "addon_type": "${key}" }</span><br><br><span class="hi">200 OK</span><br><span class="hi">{ "addon": { "type": "${key}", "per_day": ${a.perDay},</span><br><span class="hi">  "days": ${DAYS}, "charge": ${charge.toFixed(2)},</span><br><span class="hi">  "included_for_members": false,</span><br><span class="hi">  "billed_by": "vendor" } }</span>`;
+
+  document.getElementById('ap-perkResult').innerHTML = `<h3><span>${a.included ? '✅' : '💳'}</span> ${a.included ? 'Included' : 'Vendor Charge'}</h3>
+    <div class="agency-row"><label>ADD-ON</label><strong>${a.name}</strong></div>
+    <div class="agency-row"><label>INCLUDED</label><strong style="color:${a.included ? 'var(--agency-accent)' : '#f87171'}">${a.included ? 'YES — member perk' : 'NO — vendor billed'}</strong></div>
+    <div class="agency-row"><label>BILLED BY</label><strong>${a.billedBy}</strong></div>`;
+
+  document.getElementById('ap-pricingTerminal').innerHTML = a.included
+    ? `<span class="dim">// Addon: ${a.name}</span><br><span class="hi">member_perk = true · charge = $0.00</span><br><span class="dim">No vendor charge applied. Contract clause ${a.clause}.</span>`
+    : `<span class="dim">// Addon: ${a.name}</span><br><span class="hi">per_day = $${a.perDay} · days = ${DAYS}</span><br><span class="hi">total_charge = $${charge.toFixed(2)}</span><br><span class="dim">Billed by vendor at return. Confirm booking.</span>`;
+
+  document.getElementById('ap-confirmTerminal').innerHTML = `<span class="dim">// Add-on activated on CTR-DACTIV1</span><br><span class="hi">${a.name}</span><br><span class="hi">charge: $${charge.toFixed(2)} · billed_by: ${a.billedBy}</span><br><span class="dim">Firestore updated · addon array appended.</span>`;
+  document.getElementById('ap-confirmResult').innerHTML = `<h3><span>✅</span> Activated on Reservation</h3><div class="agency-row"><label>RESERVATION</label><strong>CTR-DACTIV1</strong></div><div class="agency-row"><label>VENDOR</label><strong>Avis · AW-87654321</strong></div><div class="agency-row"><label>ADD-ON</label><strong>${a.name}</strong></div><div class="agency-row"><label>FINAL CHARGE</label><strong style="color:var(--agency-accent)">$${charge.toFixed(2)}</strong></div>`;
+
+  goStep(2);
+}
+</script>
+</body>
+</html>

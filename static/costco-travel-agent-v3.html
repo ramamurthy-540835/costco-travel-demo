@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- CHANGELOG v3: protected change/cancel state machine; future-only relative dates; server-only SerpAPI inventory with quota-safe fallback; live reservation hydration. -->
+<!-- CHANGELOG v3: protected change/cancel state machine; same-day future booking; chat-assisted date prefill; vehicle-only changes; expanded inventory; server-only SerpAPI with safe image fallback. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -70,7 +70,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   <div class="demo-ribbon"><span></span> Google Cloud AI proof of concept · All prices and reservations are synthetic</div>
   <header class="topbar">
     <a class="brand" href="#" aria-label="Costco Travel home"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
-    <nav aria-label="Primary"><button class="nav-link active" data-view="concierge">AI Concierge</button><button class="nav-link" data-view="manage">Manage booking</button><button class="nav-link" data-view="insights">Demo insights</button></nav>
+    <nav aria-label="Primary"><button class="nav-link active" data-view="concierge">AI Concierge</button><button class="nav-link" data-view="manage">Manage booking</button><button class="nav-link" data-view="lifecycle">Rental lifecycle</button><button class="nav-link" data-view="insights">Demo insights</button></nav>
     <button class="account-button" type="button"><span class="account-icon">◎</span><span id="accountLabel">Demo member · Executive</span></button>
   </header>
 
@@ -120,6 +120,81 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       <div id="reservationResult"></div><div id="workflowPanel"></div>
     </section>
 
+    <section id="lifecycle" class="view content-view">
+      <div class="section-heading"><div><div class="eyebrow">UC4–UC8 LIFECYCLE DEMO</div><h2>Rental lifecycle</h2><p>Check-in, add-ons, extensions, return, and billing disputes — all backed by Firestore.</p></div><span class="demo-pill">LIVE FIRESTORE</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px" id="lcResSelect">
+        <div class="form-card" style="padding:16px">
+          <div class="eyebrow" style="margin-bottom:8px">ACTIVE RENTAL FOR DEMO</div>
+          <select id="lcResList" style="width:100%;border:1px solid #cbd5dd;border-radius:3px;padding:10px;font:13px inherit"></select>
+        </div>
+        <div class="form-card" style="padding:16px" id="lcResSummary"><div style="color:var(--muted);font-size:12px">Select a reservation above.</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
+        <div style="background:#fff;border:1px solid var(--line);padding:18px;border-left:4px solid var(--blue)">
+          <div class="eyebrow">UC4 · PICKUP</div><h3 style="font-family:Fraunces,serif;color:var(--navy);font-size:18px;margin:6px 0 8px">Check In</h3>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Simulate vendor counter check-in. Status: CONFIRMED → ACTIVE.</p>
+          <button class="primary" id="lcCheckinBtn" style="width:100%">Check in vehicle</button>
+        </div>
+        <div style="background:#fff;border:1px solid var(--line);padding:18px;border-left:4px solid var(--gold)">
+          <div class="eyebrow">UC6 · ADD-ONS</div><h3 style="font-family:Fraunces,serif;color:var(--navy);font-size:18px;margin:6px 0 8px">Add Services</h3>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Add GPS, child seat, insurance, or free extra driver.</p>
+          <select id="lcAddonSelect" style="width:100%;border:1px solid #cbd5dd;border-radius:3px;padding:9px;font:12px inherit;margin-bottom:8px">
+            <option value="extra_driver">Additional Driver — FREE (member perk)</option>
+            <option value="gps">GPS Navigation — $12.99/day</option>
+            <option value="child_seat">Child Safety Seat — $11.99/day</option>
+            <option value="insurance">Collision Damage Waiver — $18.99/day</option>
+            <option value="wifi">In-Car Wi-Fi — $9.99/day</option>
+            <option value="prepaid_fuel">Prepaid Fuel — $8.99/day</option>
+          </select>
+          <button class="secondary" id="lcAddonBtn" style="width:100%">Add service</button>
+        </div>
+        <div style="background:#fff;border:1px solid var(--line);padding:18px;border-left:4px solid #7baed2">
+          <div class="eyebrow">UC5 · EXTEND</div><h3 style="font-family:Fraunces,serif;color:var(--navy);font-size:18px;margin:6px 0 8px">Extend Rental</h3>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Add days to an ACTIVE rental (mid-rental extension).</p>
+          <input type="date" id="lcExtendDate" style="width:100%;border:1px solid #cbd5dd;border-radius:3px;padding:9px;font:12px inherit;margin-bottom:8px">
+          <button class="secondary" id="lcExtendBtn" style="width:100%">Extend rental</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div style="background:#fff;border:1px solid var(--line);padding:18px;border-left:4px solid var(--green)">
+          <div class="eyebrow">UC7 · RETURN</div><h3 style="font-family:Fraunces,serif;color:var(--navy);font-size:18px;margin:6px 0 8px">Return Vehicle</h3>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 10px">Close the rental. Generates final invoice with all add-ons reconciled.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <label style="font-size:10px;font-weight:700;color:#526477">FUEL LEVEL<select id="lcFuelLevel" style="border:1px solid #cbd5dd;border-radius:3px;padding:8px;font:12px inherit;margin-top:4px;width:100%"><option value="full">Full</option><option value="three_quarters">3/4</option><option value="half">Half</option><option value="quarter">Quarter</option></select></label>
+            <label style="font-size:10px;font-weight:700;color:#526477">MILEAGE<input type="number" id="lcMileage" min="0" max="999999" placeholder="e.g. 1847" style="border:1px solid #cbd5dd;border-radius:3px;padding:8px;font:12px inherit;margin-top:4px;width:100%"></label>
+          </div>
+          <button class="primary" id="lcReturnBtn" style="width:100%;background:var(--green)">Return vehicle</button>
+        </div>
+        <div style="background:#fff;border:1px solid var(--line);padding:18px;border-left:4px solid var(--red)">
+          <div class="eyebrow">UC8 · DISPUTE</div><h3 style="font-family:Fraunces,serif;color:var(--navy);font-size:18px;margin:6px 0 8px">Open Dispute</h3>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 10px">Member contacts Costco Travel about a charge discrepancy.</p>
+          <select id="lcDisputeType" style="width:100%;border:1px solid #cbd5dd;border-radius:3px;padding:9px;font:12px inherit;margin-bottom:8px">
+            <option value="charge_mismatch">Rate mismatch — charged retail vs member rate</option>
+            <option value="unwaived_fee">Unwaived fee — e.g. additional driver charged</option>
+            <option value="double_charge">Double charge on invoice</option>
+            <option value="damage_dispute">Disputed damage assessment</option>
+          </select>
+          <button class="danger" id="lcDisputeBtn" style="width:100%;padding:10px 16px;border-radius:3px">Open dispute with Costco Travel</button>
+        </div>
+      </div>
+      <div id="lcLog" style="background:#fff;border:1px solid var(--line);padding:18px;min-height:80px">
+        <div class="eyebrow" style="margin-bottom:8px">LIFECYCLE EVENT LOG</div>
+        <div id="lcLogItems" style="font-size:12px;color:var(--muted)">No events yet. Select a reservation and try an action above.</div>
+      </div>
+      <div style="margin-top:24px;padding:20px;background:var(--navy);color:#fff;border-radius:4px">
+        <div class="eyebrow" style="color:#7bb8e8;margin-bottom:6px">USE CASE MOCK PAGES</div>
+        <p style="font-size:12px;color:#c2d1df;margin:0 0 12px">Detailed dual-panel demos showing Member + Travel Agency/Vendor view simultaneously.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <a href="/uc1-rental-mock.html" style="background:#173e65;border:1px solid #426481;padding:8px 14px;color:#93c5fd;font-size:11px;font-weight:700;text-decoration:none;border-radius:3px">UC1 · Book a Rental ↗</a>
+          <a href="/uc4-pickup-mock.html" style="background:#173e65;border:1px solid #426481;padding:8px 14px;color:#93c5fd;font-size:11px;font-weight:700;text-decoration:none;border-radius:3px">UC4 · Pickup / Check-In ↗</a>
+          <a href="/uc5-support-mock.html" style="background:#173e65;border:1px solid #426481;padding:8px 14px;color:#93c5fd;font-size:11px;font-weight:700;text-decoration:none;border-radius:3px">UC5 · In-Rental Support ↗</a>
+          <a href="/uc6-addons-mock.html" style="background:#173e65;border:1px solid #426481;padding:8px 14px;color:#93c5fd;font-size:11px;font-weight:700;text-decoration:none;border-radius:3px">UC6 · Add-Ons / Upsell ↗</a>
+          <a href="/uc7-return-mock.html" style="background:#173e65;border:1px solid #426481;padding:8px 14px;color:#93c5fd;font-size:11px;font-weight:700;text-decoration:none;border-radius:3px">UC7 · Vehicle Return ↗</a>
+          <a href="/uc8-dispute-mock.html" style="background:#173e65;border:1px solid #426481;padding:8px 14px;color:#93c5fd;font-size:11px;font-weight:700;text-decoration:none;border-radius:3px">UC8 · Billing Dispute ↗</a>
+        </div>
+      </div>
+    </section>
+
     <section id="insights" class="view content-view">
       <div class="section-heading"><div><div class="eyebrow">EXECUTIVE DEMO</div><h2>Conversation intelligence</h2><p>Illustrative metrics from synthetic searches, accounts, and reservations.</p></div><button id="refreshInsights" class="secondary">Refresh data</button></div>
       <div id="metricGrid" class="metric-grid"></div>
@@ -129,7 +204,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   </main>
 
   <dialog id="authModal" class="modal"><button class="modal-close" aria-label="Close">×</button><div class="modal-brand"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></div><h2>Demo member session</h2><p>This proof of concept presumes the member is already authenticated by Costco SSO. No credentials are collected.</p></dialog>
-  <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2 id="dateModalTitle">Confirm rental dates and times</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Pickup time<input name="pickup_time" type="time" step="1800" required></label><label>Return date<input name="return_date" type="date" required></label><label>Return time<input name="drop_time" type="time" step="1800" required></label><button id="dateSubmit" class="primary full" type="submit">Continue</button></form><div id="bookingResult"></div></dialog>
+  <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2 id="dateModalTitle">Confirm rental dates and times</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Pickup time<select name="pickup_time" required></select></label><label>Return date<input name="return_date" type="date" required></label><label>Return time<select name="drop_time" required></select></label><button id="dateSubmit" class="primary full" type="submit">Continue</button></form><div id="bookingResult"></div></dialog>
   <div id="toast" role="status"></div>
   <script>
 (function attachFlowMachine(root, factory) {
@@ -167,10 +242,16 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const sessionId = globalThis.crypto?.randomUUID?.() || `demo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const TERMINAL_ACTIONS = new Set(['cancel_complete', 'change_complete', 'flow_abandoned']);
 const ALT_CARS = [
-  { car:'Toyota Camry', class:'Intermediate', emoji:'🚙', vendor:'Enterprise', ratePerDay:47, retailPerDay:55, savings:'Save $8/day vs retail', features:['5 seats','Unlimited mileage','Free cancellation'], source:'fallback' },
-  { car:'Toyota RAV4', class:'Standard SUV', emoji:'🚙', vendor:'Avis', ratePerDay:63, retailPerDay:74, savings:'Save $11/day vs retail', features:['5 seats','Unlimited mileage','Member rate'], source:'fallback' },
-  { car:'Chrysler Pacifica', class:'Minivan', emoji:'🚐', vendor:'Alamo', ratePerDay:69, retailPerDay:82, savings:'Save $13/day vs retail', features:['7 seats','Unlimited mileage','Family value'], source:'fallback' },
-  { car:'Chevrolet Tahoe', class:'Full-Size SUV', emoji:'🚙', vendor:'National', ratePerDay:86, retailPerDay:101, savings:'Save $15/day vs retail', features:['7 seats','Unlimited mileage','Road-trip comfort'], source:'fallback' }
+  { car:"Toyota Camry", class:"Intermediate", emoji:"🚙", vendor:"Enterprise", ratePerDay:47, retailPerDay:55, savings:"Save $8/day vs retail", features:["5 seats","Unlimited mileage","Free cancellation"], source:"fallback" },
+  { car:"Nissan Versa", class:"Economy", emoji:"🚗", vendor:"Budget", ratePerDay:36, retailPerDay:43, savings:"Save $7/day vs retail", features:["5 seats","Unlimited mileage","Budget value"], source:"fallback" },
+  { car:"Kia Soul", class:"Compact", emoji:"🚗", vendor:"Alamo", ratePerDay:41, retailPerDay:49, savings:"Save $8/day vs retail", features:["5 seats","Unlimited mileage","City friendly"], source:"fallback" },
+  { car:"Chevrolet Malibu", class:"Full-Size", emoji:"🚘", vendor:"Enterprise", ratePerDay:54, retailPerDay:64, savings:"Save $10/day vs retail", features:["5 seats","Unlimited mileage","Extra comfort"], source:"fallback" },
+  { car:"Toyota RAV4", class:"Standard SUV", emoji:"🚙", vendor:"Avis", ratePerDay:63, retailPerDay:74, savings:"Save $11/day vs retail", features:["5 seats","Unlimited mileage","Member rate"], source:"fallback" },
+  { car:"Chrysler Pacifica", class:"Minivan", emoji:"🚐", vendor:"Alamo", ratePerDay:69, retailPerDay:82, savings:"Save $13/day vs retail", features:["7 seats","Unlimited mileage","Family value"], source:"fallback" },
+  { car:"Chevrolet Tahoe", class:"Full-Size SUV", emoji:"🚙", vendor:"National", ratePerDay:86, retailPerDay:101, savings:"Save $15/day vs retail", features:["7 seats","Unlimited mileage","Road-trip comfort"], source:"fallback" },
+  { car:"BMW 5 Series", class:"Luxury", emoji:"🚘", vendor:"National", ratePerDay:104, retailPerDay:124, savings:"Save $20/day vs retail", features:["5 seats","Unlimited mileage","Premium comfort"], source:"fallback" },
+  { car:"Ford Mustang", class:"Convertible", emoji:"🏎️", vendor:"Avis", ratePerDay:92, retailPerDay:109, savings:"Save $17/day vs retail", features:["4 seats","Unlimited mileage","Open-air driving"], source:"fallback" },
+  { car:"Ford F-150", class:"Pickup", emoji:"🛻", vendor:"Budget", ratePerDay:79, retailPerDay:94, savings:"Save $15/day vs retail", features:["5 seats","Unlimited mileage","Cargo capacity"], source:"fallback" }
 ];
 
 let RESERVATIONS = relativeFallbackReservations();
@@ -183,7 +264,8 @@ const appState = {
   partySize: 2,
   confirmCards: new Set(),
   pickerCount: 0,
-  summaryCount: 0
+  summaryCount: 0,
+  requestedCar: null
 };
 
 function addDays(date, days) { const result = new Date(date); result.setDate(result.getDate() + days); return result; }
@@ -201,7 +283,7 @@ function relativeFallbackReservations() {
   ];
 }
 function normalizeReservation(item) {
-  return { id:item.id, status:String(item.status || 'confirmed').toLowerCase(), carClass:item.car_class || item.carClass, location:item.location_code || item.location, pickupAt:item.pickup_at || item.pickupAt, dropAt:item.drop_at || item.dropAt, ratePerDay:item.rate_per_day ?? item.ratePerDay, retailPerDay:item.retail_per_day ?? item.retailPerDay, total:item.total, memberSavings:item.member_savings ?? item.memberSavings, replacementId:item.replacement_id || item.replacementId, originalReservationId:item.original_reservation_id || item.originalReservationId };
+  return { id:item.id, status:String(item.status || 'confirmed').toLowerCase(), carClass:item.car_class || item.carClass, location:item.location_code || item.location, pickupAt:item.pickup_at || item.pickupAt, dropAt:item.drop_at || item.dropAt, ratePerDay:item.rate_per_day ?? item.ratePerDay, retailPerDay:item.retail_per_day ?? item.retailPerDay, total:item.total, memberSavings:item.member_savings ?? item.memberSavings, replacementId:item.replacement_id || item.replacementId, originalReservationId:item.original_reservation_id || item.originalReservationId, vendor:item.vendor||'', vendor_id:item.vendor_id||'', vendor_confirmation_id:item.vendor_confirmation_id||'', sipp_code:item.sipp_code||'', vehicle_class_id:item.vehicle_class_id||'', member_id:item.member_id||'', addons:item.addons||item.extras||[], disputes:item.disputes||[] };
 }
 function reservationById(id) { return RESERVATIONS.find((item) => item.id.toUpperCase() === String(id || '').toUpperCase()); }
 function formatTripDate(value) { return new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',year:'numeric'}).format(new Date(value)); }
@@ -274,7 +356,23 @@ function dateMentions(message, now = new Date()) {
   const today = new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0);
   return { found, past:dates.some((date) => date < today), dates };
 }
-function inferLocation(message) { const text=message.toLowerCase(); if (/orlando|mco/.test(text)) return 'MCO'; if (/las vegas|\blas\b/.test(text)) return 'LAS'; if (/seattle|sea/.test(text)) return 'SEA'; if (/los angeles|lax/.test(text)) return 'LAX'; return appState.location || 'MCO'; }
+function inferLocation(message) { const text=message.toLowerCase(); if (/orlando|mco/.test(text)) return "MCO"; if (/las vegas|\blas\b/.test(text)) return "LAS"; if (/seattle|sea/.test(text)) return "SEA"; if (/los angeles|lax/.test(text)) return "LAX"; if (/san francisco|sfo/.test(text)) return "SFO"; return appState.location || "MCO"; }
+function inferRequestedCar(message) {
+  const text=message.toLowerCase();
+  const choices=[["Toyota RAV4","Standard SUV"],["Chevrolet Tahoe","Full-Size SUV"],["Chrysler Pacifica","Minivan"],["Toyota Camry","Intermediate"],["Nissan Versa","Economy"],["Kia Soul","Compact"],["Chevrolet Malibu","Full-Size"],["BMW 5 Series","Luxury"],["Ford Mustang","Convertible"],["Ford F-150","Pickup"]];
+  const model=choices.find(([car])=>text.includes(car.toLowerCase())); if (model) return {car:model[0],className:model[1]};
+  const classes=[["full-size suv","Full-Size SUV"],["standard suv","Standard SUV"],["suv","Standard SUV"],["minivan","Minivan"],["compact","Compact"],["economy","Economy"],["luxury","Luxury"],["convertible","Convertible"],["pickup","Pickup"],["full-size","Full-Size"],["intermediate","Intermediate"]];
+  const found=classes.find(([term])=>text.includes(term)); return found?{car:null,className:found[1]}:null;
+}
+function timeMentions(message) {
+  const values=[]; for (const match of message.matchAll(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/gi)) { let hour=+match[1]%12; if (match[3].toLowerCase()==="pm") hour+=12; const minute=+(match[2] || 0); if (hour<24 && minute<60) values.push(String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0")); } return values;
+}
+function bookingPrefill(message, mention=dateMentions(message)) {
+  if (mention.past || !mention.dates.length) return null; const times=timeMentions(message), pickup=mention.dates[0], drop=mention.dates[1] || addDays(pickup,1);
+  return {pickup:localDate(pickup),return:localDate(drop),pickupTime:times[0] || null,dropTime:times[1] || times[0] || null};
+}
+function reservationDates(reservation) { const pickup=new Date(reservation.pickupAt),drop=new Date(reservation.dropAt); return {pickup:localDate(pickup),return:localDate(drop),pickupTime:String(pickup.getHours()).padStart(2,"0")+":"+String(pickup.getMinutes()).padStart(2,"0"),dropTime:String(drop.getHours()).padStart(2,"0")+":"+String(drop.getMinutes()).padStart(2,"0")}; }
+function requestedChangeMode(message) { const dates=/\b(date|dates|pickup|return|time|times)\b/i.test(message),vehicle=/\b(vehicle|car|upgrade|suv|minivan|economy|compact|luxury|convertible|pickup)\b/i.test(message); return dates&&vehicle?"both":dates?"dates":"vehicle"; }
 function isKeepIntent(message) { return /\b(keep|never mind|nevermind|actually keep|do not change|don't change|stop|abandon)\b/i.test(message); }
 function isFlowRelated(message) { return /\b(confirm|yes|change|cancel|date|car|vehicle|keep|reservation|booking)\b/i.test(message); }
 
@@ -301,27 +399,28 @@ function handleAgentAction(response) {
 }
 
 async function handleSend(text) {
-  const input=$('#chatInput'); const message=(text || input.value).trim(); if (!message) return; input.value=''; addMessage(message,'user');
-  if (isKeepIntent(message) && appState.flow.stage!=='idle') { await abandonFlow(); return; }
+  const input=$("#chatInput"); const message=(text || input.value).trim(); if (!message) return; input.value=""; addMessage(message,"user");
+  if (isKeepIntent(message) && appState.flow.stage!=="idle") { await abandonFlow(); return; }
+  const id=(message.match(/\bCTR-[A-Z0-9]+\b/i)||[])[0];
+  if (/\bcancel\b/i.test(message)) { if (id) await startCancel(id); else openManage(); return; }
+  if (/\b(change|modify|update|upgrade)\b/i.test(message)) { if (id) await startChange(id,requestedChangeMode(message),bookingPrefill(message)); else openManage(); return; }
+  if (/\bmanage\b/i.test(message)) { openManage(id); return; }
   const mention=dateMentions(message);
   if (mention.found) {
-    if (mention.past) addWarning('That date has already passed — please pick today or a future date.');
-    else addWarning('For your protection, rental dates must be selected from the calendar.');
-    if (appState.flow.stage==='idle') { appState.location=inferLocation(message); appState.flow=FlowMachine.start('new'); }
+    if (mention.past) addWarning("That date has already passed — please pick today or a future date.");
+    else addWarning("Please verify the requested dates and times in the secure calendar before booking.");
+    appState.location=inferLocation(message); appState.requestedCar=inferRequestedCar(message); appState.flow=FlowMachine.start("new");
+    const prefill=bookingPrefill(message,mention); if (prefill) appState.flow={...appState.flow,newDates:prefill};
     renderDatePicker(); return;
   }
-  if (appState.flow.stage!=='idle' && appState.flow.stage!=='complete') {
+  if (appState.flow.stage!=="idle" && appState.flow.stage!=="complete") {
     if (!isFlowRelated(message)) { await abandonFlow(false); }
-    else { addMessage('Please use the visible workflow buttons to continue, or say “keep my reservation” to exit.'); return; }
+    else { addMessage("Please use the visible workflow buttons to continue, or say ‘keep my reservation’ to exit."); return; }
   }
-  const id=(message.match(/\bCTR-[A-Z0-9]+\b/i)||[])[0];
-  if (/\b(cancel)\b/i.test(message)) { if (id) await startCancel(id); else openManage(); return; }
-  if (/\b(change|modify|update|upgrade)\b/i.test(message)) { if (id) await startChange(id); else openManage(); return; }
-  if (/\bmanage\b/i.test(message)) { openManage(id); return; }
-  if (/\b(find|book|rent|rental|car|suv|minivan|economy)\b/i.test(message)) {
-    appState.location=inferLocation(message); appState.partySize=/family|minivan/i.test(message)?6:2; appState.flow=FlowMachine.start('new'); renderDatePicker(); return;
+  if (/\b(find|book|rent|rental|car|suv|minivan|economy|compact|luxury|convertible|pickup)\b/i.test(message)) {
+    appState.location=inferLocation(message); appState.partySize=/family|minivan/i.test(message)?6:2; appState.requestedCar=inferRequestedCar(message); appState.flow=FlowMachine.start("new"); renderDatePicker(); return;
   }
-  try { await callAgent(message); } catch (error) { addMessage(`I’m sorry—${error.message}`); }
+  try { await callAgent(message); } catch (error) { addMessage("I’m sorry—"+error.message); }
 }
 
 function renderSidebar() {
@@ -339,42 +438,57 @@ function openManage(id) {
   $('#retrieveForm').requestSubmit();
 }
 function renderReservation(reservation) {
-  const actions=reservation.status==='confirmed' ? '<button class="secondary" id="upgradeBooking">Change vehicle</button><button class="danger" id="cancelBooking">Cancel</button>' : '';
-  $('#reservationResult').innerHTML=`<article class="reservation-card"><div><h3>${reservation.carClass} <span class="demo-pill">${titleStatus(reservation.status)}</span></h3><div class="reservation-meta"><div><small>RESERVATION</small><strong>${reservation.id}</strong></div><div><small>LOCATION</small><strong>${reservation.location}</strong></div><div><small>PICKUP</small><strong>${formatTripDate(reservation.pickupAt)}</strong></div><div><small>RETURN</small><strong>${formatTripDate(reservation.dropAt)}</strong></div><div><small>MEMBER SAVINGS</small><strong>${money(reservation.memberSavings)}</strong></div><div><small>ESTIMATED TOTAL</small><strong>${money(reservation.total)}</strong></div></div></div><div class="reservation-actions">${actions}</div></article>`;
-  $('#upgradeBooking')?.addEventListener('click',()=>startChange(reservation.id));
-  $('#cancelBooking')?.addEventListener('click',()=>startCancel(reservation.id));
+  const actions=reservation.status==="confirmed" ? "<button class=\"secondary\" id=\"changeVehicle\">Change vehicle</button><button class=\"secondary\" id=\"changeDates\">Change dates</button><button class=\"danger\" id=\"cancelBooking\">Cancel</button>" : "";
+  const vendor=reservation.vendor||''; const vendorConf=reservation.vendor_confirmation_id||''; const sipp=reservation.sipp_code||''; const vendorId=reservation.vendor_id||''; const memberId=reservation.member_id||'';
+  const vendorRow=vendor?`<div><small>VENDOR</small><strong>${vendor}${vendorId?' · '+vendorId:''}</strong></div><div><small>VENDOR CONF</small><strong>${vendorConf||'—'}</strong></div>`:vendorId?`<div><small>VENDOR ID</small><strong>${vendorId}</strong></div>`:'' ;
+  const memberRow=memberId?`<div><small>MEMBER ID</small><strong>${memberId}</strong></div>`:'';
+  $("#reservationResult").innerHTML=`<article class="reservation-card"><div><h3>${reservation.carClass} <span class="demo-pill">${titleStatus(reservation.status)}</span></h3><div class="reservation-meta"><div><small>RESERVATION</small><strong>${reservation.id}</strong></div><div><small>LOCATION</small><strong>${reservation.location}</strong></div><div><small>PICKUP</small><strong>${formatTripDate(reservation.pickupAt)}</strong></div><div><small>RETURN</small><strong>${formatTripDate(reservation.dropAt)}</strong></div>${vendorRow}${memberRow}<div><small>MEMBER SAVINGS</small><strong>${money(reservation.memberSavings)}</strong></div><div><small>ESTIMATED TOTAL</small><strong>${money(reservation.total)}</strong></div></div></div><div class="reservation-actions">${actions}</div></article>`;
+  $("#changeVehicle")?.addEventListener("click",()=>startChange(reservation.id,"vehicle"));
+  $("#changeDates")?.addEventListener("click",()=>startChange(reservation.id,"dates"));
+  $("#cancelBooking")?.addEventListener("click",()=>startCancel(reservation.id));
 }
 
-async function startChange(resId) {
+async function startChange(resId,mode="vehicle",prefill=null) {
   const reservation=reservationById(resId);
-  if (!reservation) { addWarning(`I couldn't find ${resId}.`); return; }
-  if (reservation.status==='cancelled') { addWarning(`${resId} is already cancelled. I can help book a new car instead.`); return; }
+  if (!reservation) { addWarning(`I couldn\x27t find ${resId}.`); return; }
+  if (reservation.status==="cancelled") { addWarning(`${resId} is already cancelled. I can help book a new car instead.`); return; }
   try {
-    const started=await api(`/api/reservations/${reservation.id}/change/start`,{method:'POST'});
-    if (started.requires_human_review) { appState.flow=FlowMachine.advance(FlowMachine.start('change',reservation.id),'human_review'); humanReviewPanel(started.reason); switchView('manage'); return; }
-    appState.flow=FlowMachine.start('change',reservation.id); appState.flow.replacementId=started.replacement.id;
-    await hydrateReservations(); switchView('manage'); renderReservation(reservationById(reservation.id));
-    flowPanel('Change started',`<p>${reservation.id} is on HOLD while you choose a replacement. It has not been cancelled.</p>`);
-    renderDatePicker();
+    const started=await api(`/api/reservations/${reservation.id}/change/start`,{method:"POST"});
+    if (started.requires_human_review) { appState.flow=FlowMachine.advance(FlowMachine.start("change",reservation.id),"human_review",{changeMode:mode}); humanReviewPanel(started.reason); switchView("manage"); return; }
+    appState.location=reservation.location; appState.requestedCar=null; appState.flow=FlowMachine.start("change",reservation.id); appState.flow.replacementId=started.replacement.id; appState.flow.changeMode=mode;
+    await hydrateReservations(); switchView("manage"); renderReservation(reservationById(reservation.id));
+    flowPanel("Change started",`<p>${reservation.id} is on HOLD while you choose a replacement. It has not been cancelled.</p>`);
+    if (mode==="vehicle") {
+      appState.flow=FlowMachine.advance(appState.flow,"awaiting_car",{newDates:reservationDates(reservation)}); await renderNewOptions();
+    } else {
+      if (prefill) appState.flow={...appState.flow,newDates:prefill}; renderDatePicker();
+    }
   } catch (error) { addWarning(error.message); }
 }
 async function abandonFlow(announce = true) {
-  const flow=appState.flow;
-  if (flow.type==='change' && flow.resId && reservationById(flow.resId)?.status==='hold') {
-    try { await api(`/api/reservations/${flow.resId}/change/abandon`,{method:'POST'}); } catch (_) { /* already restored/terminal */ }
+  const flow=appState.flow,flowType=flow.type,resId=flow.resId;
+  if (flowType==="change" && resId && reservationById(resId)?.status==="hold") {
+    try { await api(`/api/reservations/${resId}/change/abandon`,{method:"POST"}); } catch (_) { /* already restored/terminal */ }
   }
-  closingDatePicker=true; if ($('#bookingModal').open) $('#bookingModal').close(); closingDatePicker=false;
-  appState.flow=FlowMachine.reset(); appState.confirmCards.clear(); await hydrateReservations(); clearWorkflowPanels();
-  if (announce) { addMessage('Your original reservation is confirmed and the pending flow was abandoned.'); handleAgentAction({action:'flow_abandoned'}); }
+  closingDatePicker=true; if ($("#bookingModal").open) $("#bookingModal").close(); closingDatePicker=false;
+  appState.flow=FlowMachine.reset(); appState.requestedCar=null; appState.confirmCards.clear(); await hydrateReservations(); clearWorkflowPanels();
+  if (announce) {
+    const message=flowType==="change" ? `Your original reservation ${resId} remains confirmed. No replacement was booked.` : flowType==="cancel" ? `Cancellation stopped. Reservation ${resId} remains confirmed.` : "No reservation was created. You can start a new search whenever you are ready.";
+    addMessage(message); handleAgentAction({action:"flow_abandoned"});
+  }
 }
 
+function populateTimeChoices(select) { if (select.options.length) return; for (let minutes=0;minutes<24*60;minutes+=30) { const value=String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0"),option=document.createElement("option"); option.value=value; option.textContent=new Date("2000-01-01T"+value+":00").toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}); select.append(option); } }
+function setTimeChoice(select,value) { if (!value) return; if (![...select.options].some((option)=>option.value===value)) { const option=document.createElement("option"); option.value=value; option.textContent=value; select.append(option); } select.value=value; }
 function configureDateInputs() {
-  const form=$('#bookingForm').elements, pickup=form.pickup_date, drop=form.return_date, pickupTime=form.pickup_time, dropTime=form.drop_time;
-  const start=new Date(); start.setMinutes(0,0,0); start.setHours(start.getHours()+2);
-  pickup.min=localDateAfter(0); pickup.value=localDate(start); pickupTime.value=`${String(start.getHours()).padStart(2,'0')}:00`;
-  drop.min=pickup.value; drop.value=localDate(addDays(start,1)); dropTime.value=pickupTime.value;
-  pickup.onchange=()=>{ drop.min=pickup.value; if (!drop.value || drop.value<=pickup.value) drop.value=localDate(addDays(new Date(`${pickup.value}T12:00:00`),1)); };
+  const form=$("#bookingForm").elements,pickup=form.pickup_date,drop=form.return_date,pickupTime=form.pickup_time,dropTime=form.drop_time,preferred=appState.flow.newDates || {};
+  const start=new Date(); start.setMinutes(0,0,0); start.setHours(start.getHours()+2); populateTimeChoices(pickupTime); populateTimeChoices(dropTime);
+  pickup.min=localDateAfter(0); pickup.value=preferred.pickup || localDate(start); setTimeChoice(pickupTime,preferred.pickupTime || String(start.getHours()).padStart(2,"0")+":00");
+  drop.min=pickup.value; drop.value=preferred.return || localDate(addDays(start,1)); setTimeChoice(dropTime,preferred.dropTime || pickupTime.value);
+  $("#selectedRental").textContent=(appState.requestedCar?.car || appState.requestedCar?.className || "Any available vehicle")+" · "+appState.location+". Verify all dates and times before continuing.";
+  pickup.onchange=()=>{ drop.min=pickup.value; if (!drop.value || drop.value<pickup.value) drop.value=localDate(addDays(new Date(pickup.value+"T12:00:00"),1)); };
 }
+
 function renderDatePicker() {
   if (!FlowMachine.canRenderPicker(appState.flow)) return;
   configureDateInputs(); $('#dateModalTitle').textContent=appState.flow.type==='change'?'Select replacement dates and times':'Select rental dates and times'; $('#dateSubmit').textContent='Use these dates and times';
@@ -400,7 +514,7 @@ async function renderNewOptions() {
   let payload;
   try { payload=await api(`/api/cars?location=${encodeURIComponent(appState.location)}&pickup=${encodeURIComponent(dates.pickup)}&return=${encodeURIComponent(dates.return)}&party_size=${appState.partySize}`); }
   catch (_) { payload={source:'fallback',cars:ALT_CARS}; }
-  const cars=Array.isArray(payload)?payload:(payload.cars || ALT_CARS); const source=payload.source || cars[0]?.source || 'fallback';
+  let cars=Array.isArray(payload)?payload:(payload.cars || ALT_CARS); const wanted=appState.requestedCar; if (wanted) cars=[...cars].sort((a,b)=>Number(Boolean(b.car===wanted.car || b.class===wanted.className))-Number(Boolean(a.car===wanted.car || a.class===wanted.className))); const source=payload.source || cars[0]?.source || 'fallback';
   const note=source==='fallback'?'<div class="inventory-note">Showing sample inventory while live rates are unavailable.</div>':'';
   const root=workflowContainer(); root.innerHTML=`${note}<div class="rental-cards flow-car-cards"></div>`; const row=$('.flow-car-cards',root);
   cars.forEach((car,index)=>{
@@ -408,7 +522,8 @@ async function renderNewOptions() {
     const visual=car.image_url?`<img class="car-image" src="${car.image_url}" loading="lazy" alt="${car.car}">`:`<div class="car-emoji">${car.emoji || '🚙'}</div>`;
     const features=(car.features || []).map((feature)=>`✓ ${feature}`).join('<br>');
     card.innerHTML=`${index===0?'<div class="recommend-tag">★ BEST VALUE</div>':''}${visual}<h4>${car.car}</h4><div class="provider">${car.class} · ${car.vendor || 'Rental partner'}</div><div class="rental-price">${money(car.ratePerDay)} <small>/ day member rate</small></div><div class="retail-rate">Retail ${money(car.retailPerDay)}/day</div><div class="saving">${car.savings || `Save ${money(car.retailPerDay-car.ratePerDay)}/day vs retail`}</div><div class="rental-meta">${features}</div><button>Select this car</button>`;
-    $('button',card).onclick=()=>selectCar(car); row.append(card);
+    const image=$("img",card); if (image) image.onerror=()=>image.replaceWith(Object.assign(document.createElement("div"),{className:"car-emoji",textContent:car.emoji || "🚙"}));
+    $("button",card).onclick=()=>selectCar(car); row.append(card);
   });
 }
 async function selectCar(car) {
@@ -484,6 +599,110 @@ $('#refreshInsights').onclick=loadInsights;
 
 fetch('/car-image-attribution.json').then((response)=>response.ok?response.json():{}).then((data)=>{carAttribution=data;}).catch(()=>{});
 hydrateReservations();
+
+// ── Lifecycle view (UC4-UC8) ──────────────────────────────────────────────
+let lcReservations = [];
+let lcSelectedId = null;
+
+function lcLog(message, isError = false) {
+  const log = $('#lcLogItems');
+  const now = new Date().toLocaleTimeString();
+  const color = isError ? '#b21f2d' : 'var(--green)';
+  const entry = document.createElement('div');
+  entry.style.cssText = `border-top:1px solid var(--line);padding:6px 0;color:${color}`;
+  entry.textContent = `[${now}] ${message}`;
+  if (log.textContent.includes('No events')) log.innerHTML = '';
+  log.prepend(entry);
+}
+
+function lcRenderSummary(res) {
+  if (!res) { $('#lcResSummary').innerHTML = '<div style="color:var(--muted);font-size:12px">Reservation not found.</div>'; return; }
+  const statusColor = {confirmed:'var(--green)',active:'var(--blue)',returned:'#748293',cancelled:'var(--red)'}[res.status?.toLowerCase()] || '#748293';
+  const addons = (res.addons || []).map(a => `<span style="font-size:10px;background:#edf8f3;color:#176a4e;padding:2px 6px;border-radius:2px;margin-right:4px">${a.name} ${a.charge > 0 ? `$${a.charge.toFixed(2)}` : 'FREE'}</span>`).join('');
+  $('#lcResSummary').innerHTML = `<div class="eyebrow" style="margin-bottom:6px">SELECTED RESERVATION</div>
+    <div style="font-size:13px;color:var(--navy);font-weight:700">${res.id} <span style="font-size:10px;background:#eef3f7;color:${statusColor};padding:2px 8px;border-radius:99px;font-weight:700">${(res.status||'').toUpperCase()}</span></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">${res.car_class} · ${res.location_code} · ${res.vendor || 'Vendor'}</div>
+    <div style="font-size:10px;color:#7d8b98;margin-top:2px">Vendor conf: <strong>${res.vendor_confirmation_id || '—'}</strong> · SIPP: ${res.sipp_code || '—'}</div>
+    ${addons ? `<div style="margin-top:8px">${addons}</div>` : ''}`;
+}
+
+async function lcHydrate() {
+  try { lcReservations = await api('/api/reservations'); } catch(_) { lcReservations = []; }
+  const sel = $('#lcResList'); const prev = sel.value;
+  sel.innerHTML = lcReservations.filter(r => !['cancelled'].includes(r.status?.toLowerCase()) || r.addons?.length || r.disputes?.length)
+    .map(r => `<option value="${r.id}">${r.id} · ${r.status?.toUpperCase()} · ${r.car_class} (${r.location_code})</option>`).join('');
+  if (prev && sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+  lcSelectedId = sel.value || null;
+  lcRenderSummary(lcReservations.find(r => r.id === lcSelectedId));
+  // Set a sensible default extend date (current drop + 2 days)
+  const cur = lcReservations.find(r => r.id === lcSelectedId);
+  if (cur?.drop_at) {
+    const d = new Date(new Date(cur.drop_at).getTime() + 2*86400000);
+    $('#lcExtendDate').value = localDate(d);
+  } else { $('#lcExtendDate').value = localDateAfter(5); }
+}
+
+$('#lcResList').addEventListener('change', () => {
+  lcSelectedId = $('#lcResList').value;
+  const res = lcReservations.find(r => r.id === lcSelectedId);
+  lcRenderSummary(res);
+  if (res?.drop_at) { const d = new Date(new Date(res.drop_at).getTime() + 2*86400000); $('#lcExtendDate').value = localDate(d); }
+});
+
+$('#lcCheckinBtn').addEventListener('click', async () => {
+  if (!lcSelectedId) { toast('Select a reservation first.'); return; }
+  try {
+    await api(`/api/reservations/${lcSelectedId}/checkin`, {method:'POST'});
+    lcLog(`UC4 Check-in complete: ${lcSelectedId} is now ACTIVE. Vendor counter confirmed identity and released vehicle.`);
+    await lcHydrate(); toast('Vehicle checked out — rental is ACTIVE.');
+  } catch(e) { lcLog(`UC4 Check-in failed: ${e.message}`, true); toast(e.message); }
+});
+
+$('#lcAddonBtn').addEventListener('click', async () => {
+  if (!lcSelectedId) { toast('Select a reservation first.'); return; }
+  const addon = $('#lcAddonSelect').value;
+  try {
+    const r = await api(`/api/reservations/${lcSelectedId}/addons`, {method:'POST', body:JSON.stringify({addon_type:addon})});
+    const a = r.addon;
+    lcLog(`UC6 Add-on: "${a.name}" added. Charge: ${a.charge > 0 ? '$'+a.charge.toFixed(2) : 'FREE (Costco member perk)'}. Billed by: ${a.billed_by}.`);
+    await lcHydrate(); toast(`${a.name} added.`);
+  } catch(e) { lcLog(`UC6 Add-on failed: ${e.message}`, true); toast(e.message); }
+});
+
+$('#lcExtendBtn').addEventListener('click', async () => {
+  if (!lcSelectedId) { toast('Select a reservation first.'); return; }
+  const d = $('#lcExtendDate').value;
+  if (!d) { toast('Pick a new return date.'); return; }
+  try {
+    const res = await api(`/api/reservations/${lcSelectedId}/extend`, {method:'POST', body:JSON.stringify({new_drop_at:d+'T10:00:00'})});
+    lcLog(`UC5 Extension: ${lcSelectedId} extended to ${d}. New total: $${res.total?.toFixed(2)}.`);
+    await lcHydrate(); toast('Rental extended.');
+  } catch(e) { lcLog(`UC5 Extension failed: ${e.message}`, true); toast(e.message); }
+});
+
+$('#lcReturnBtn').addEventListener('click', async () => {
+  if (!lcSelectedId) { toast('Select a reservation first.'); return; }
+  const fuel = $('#lcFuelLevel').value, miles = parseInt($('#lcMileage').value) || null;
+  try {
+    const r = await api(`/api/reservations/${lcSelectedId}/return`, {method:'POST', body:JSON.stringify({fuel_level:fuel, mileage:miles})});
+    const inv = r.final_invoice;
+    lcLog(`UC7 Return: ${lcSelectedId} RETURNED. Member total: $${inv.member_rate_total?.toFixed(2)} + add-ons: $${inv.addon_total?.toFixed(2)} = $${inv.grand_total?.toFixed(2)}. Fuel: ${fuel}. Miles: ${miles||'not recorded'}.`);
+    await lcHydrate(); toast('Vehicle returned — rental closed.');
+  } catch(e) { lcLog(`UC7 Return failed: ${e.message}`, true); toast(e.message); }
+});
+
+$('#lcDisputeBtn').addEventListener('click', async () => {
+  if (!lcSelectedId) { toast('Select a reservation first.'); return; }
+  const type = $('#lcDisputeType').value;
+  const descriptions = {charge_mismatch:'Vendor charged retail rate $64/day instead of negotiated Costco member rate $54/day. Discrepancy of $10/day.', unwaived_fee:'Vendor charged $13/day additional driver fee despite Costco Travel contract clause 4.2 which waives this fee for all Costco members.', double_charge:'Collision damage waiver charged twice on the final invoice — $18.99 × 2 = $37.98 instead of expected $18.99.', damage_dispute:'Damage assessment from vendor is inconsistent with the clean inspection report at pickup. Member disputes the $350 damage charge.'};
+  try {
+    const r = await api(`/api/reservations/${lcSelectedId}/dispute`, {method:'POST', body:JSON.stringify({dispute_type:type, description:descriptions[type]})});
+    lcLog(`UC8 Dispute opened: ${r.dispute.id} (${type}). Costco Travel will escalate to vendor for correction within 3-5 business days.`);
+    await lcHydrate(); toast('Dispute opened — Costco Travel will follow up.');
+  } catch(e) { lcLog(`UC8 Dispute failed: ${e.message}`, true); toast(e.message); }
+});
+
+document.querySelector('.nav-link[data-view="lifecycle"]').addEventListener('click', lcHydrate);
 
 </script>
 </body>

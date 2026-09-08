@@ -23,6 +23,19 @@ Original `CONFIRMED` becomes `HOLD` while a replacement is `PENDING`. Confirmati
 
 `GET /api/cars` validates pickup/return dates before accessing Secret Manager version 2 and SerpAPI. Results are cached for 15 minutes. Any secret, timeout, quota, or upstream error returns normalized sample inventory with `source: fallback`; every card still includes retail price, member rate, and savings. Vehicle images remain private GCS assets signed through ADC and never come from vendor websites.
 
+## Analytics events
+
+With `BQ_ENABLED=true`, reservation and search activity streams to
+`$GOOGLE_CLOUD_PROJECT.$BQ_DATASET.conversation_events` (dataset defaults to
+`costco_travel_ai`, the table Terraform provisions) as typed, PII-free rows:
+`rental_search`, `reservation_created`, `reservation_modified`, `reservation_cancelled`,
+`change_started`, and `change_abandoned`, each with a `success` flag and `latency_ms`
+where applicable. Raw payloads, names, emails, and member numbers are never written.
+Insert failures are logged and counted, never raised. `GET /api/analytics` serves the
+`daily_funnel`, `bookings_by_provider`, and `most_booked_locations` views built by
+`analytics/bigquery.sql`, falling back to a static snapshot flagged `demo_data: true`
+when BigQuery is disabled, unreachable, or empty.
+
 ## Frontend v3
 
 The service serves `static/costco-travel-agent-v3.html`, generated from the maintainable frontend sources by:

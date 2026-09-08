@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UC7 Mock · Vehicle Return / Drop-Off · Costco Travel ↔ Avis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0c2948;--blue:#1d65a6;--red:#d71920;--sand:#f4f0e8;--cream:#fbfaf7;
+  --ink:#172333;--muted:#607184;--line:#dbe2e8;--gold:#c59a45;--green:#16805b;
+  --shadow:0 18px 50px rgba(18,44,70,.12);
+  --agency-bg:#0f2d1e;--agency-border:#1e4a31;--agency-accent:#27c975;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#111827;color:var(--ink);min-height:100vh}
+
+/* ── ribbon & header ── */
+.ribbon{height:28px;background:var(--navy);color:#dce9f5;text-align:center;font-size:11px;
+  letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.ribbon span{width:6px;height:6px;border-radius:50%;background:#6cdfaf;box-shadow:0 0 8px #6cdfaf}
+.header{background:#1e293b;padding:14px 28px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #2d3e50}
+.header-brand{text-decoration:none;line-height:.8;display:flex;flex-direction:column;transform:skew(-6deg)}
+.costco{color:#e31837;font:900 18px Arial,sans-serif;letter-spacing:-1px;border-bottom:3px solid #1676b9}
+.travel{font:bold 10px Arial,sans-serif;letter-spacing:6px;color:#1676b9;margin-top:4px}
+.header h1{color:#e2e8f0;font-family:Fraunces,serif;font-size:16px;font-weight:600}
+.header .uc-badge{margin-left:auto;background:#1e3a5f;border:1px solid #2d5a8e;padding:6px 12px;
+  border-radius:4px;color:#7bb8e8;font-size:10px;font-weight:700;letter-spacing:.1em}
+
+/* ── step nav ── */
+.step-nav{background:#1e293b;border-bottom:1px solid #2d3e50;padding:0 28px;
+  display:flex;align-items:center;gap:0}
+.step-btn{border:0;background:transparent;color:#64748b;font:600 11px inherit;letter-spacing:.08em;
+  padding:14px 20px;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
+.step-btn.active{color:#93c5fd;border-bottom-color:#3b82f6}
+.step-btn.done{color:#4ade80}
+.step-btn:hover:not(.active){color:#94a3b8}
+.step-sep{color:#374151;padding:0 4px;font-size:14px}
+
+/* ── dual panel layout ── */
+.panels{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 150px);overflow:hidden}
+.panel{overflow-y:auto;padding:24px}
+.panel-header{font-size:9px;letter-spacing:.18em;font-weight:700;padding:6px 10px;
+  border-radius:3px;margin-bottom:16px;display:inline-block}
+.member-panel{background:var(--cream)}
+.member-panel .panel-header{background:#e8f0f7;color:var(--blue)}
+.agency-panel{background:#0d1f13;border-left:1px solid var(--agency-border)}
+.agency-panel .panel-header{background:#1a3a24;color:var(--agency-accent)}
+
+/* ── shared card ── */
+.card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:20px;
+  margin-bottom:14px;box-shadow:var(--shadow)}
+.card h3{font-family:Fraunces,serif;color:var(--navy);font-size:20px;margin-bottom:12px}
+.card-row{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.card-row:last-child{border-bottom:none}
+.card-row label{color:var(--muted);font-size:10px;letter-spacing:.06em;font-weight:700}
+.card-row strong{color:var(--ink)}
+.field-group{display:grid;gap:10px;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;font-weight:700;color:#526477;letter-spacing:.06em}
+.field input,.field select,.field textarea{border:1px solid #cbd5dd;border-radius:3px;padding:10px 11px;
+  font:13px inherit;color:var(--ink);background:#fff}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid rgba(29,101,166,.28);outline-offset:2px}
+.field textarea{resize:vertical;min-height:70px}
+.field textarea:disabled{background:#f5f7f9;color:#aab4be;cursor:not-allowed}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.radio-group{display:flex;gap:16px;padding:4px 0}
+.radio-group label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink);
+  font-weight:600;cursor:pointer;letter-spacing:normal}
+.radio-group input[type=radio]{accent-color:var(--blue);width:15px;height:15px}
+
+/* ── member verified badge ── */
+.member-verified{display:flex;align-items:center;gap:10px;background:#edf8f3;
+  border:1px solid #a7d7bf;border-radius:4px;padding:11px 14px;margin-bottom:14px;font-size:12px}
+.member-verified .icon{font-size:20px}
+.member-verified strong{color:#176a4e;display:block}
+.member-verified span{color:#4d8a72;font-size:10px}
+
+/* ── confirmation card ── */
+.confirm-box{background:linear-gradient(135deg,#edf8f3,#f0f9ff);border:1px solid #a7d7bf;
+  border-radius:6px;padding:20px;margin-bottom:14px}
+.confirm-box h3{color:#176a4e;font-family:Fraunces,serif;font-size:18px;margin-bottom:4px}
+.booking-number{font-size:26px;font-weight:700;color:var(--navy);letter-spacing:.05em;
+  font-family:Fraunces,serif;margin:8px 0}
+.confirm-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.confirm-meta>div{background:#fff;border:1px solid var(--line);padding:10px;border-radius:3px}
+.confirm-meta small{font-size:9px;color:var(--muted);letter-spacing:.08em;display:block}
+.confirm-meta strong{font-size:12px;color:var(--navy);display:block;margin-top:3px}
+.exception-box{background:#fff5d9;border:1px solid #e3bd63;border-radius:4px;padding:14px;
+  margin-top:10px;font-size:12px;color:#6f5317}
+
+/* ── invoice styles ── */
+.invoice{border:2px solid var(--navy);border-radius:6px;overflow:hidden;margin-bottom:14px}
+.invoice-header{background:var(--navy);color:#fff;padding:14px 18px}
+.invoice-header h4{font-family:Fraunces,serif;font-size:16px;font-weight:600}
+.invoice-header small{font-size:10px;color:#93b8d8;letter-spacing:.06em}
+.invoice-body{padding:0}
+.invoice-line{display:flex;justify-content:space-between;padding:9px 18px;font-size:12px;
+  border-bottom:1px solid var(--line)}
+.invoice-line:last-child{border-bottom:none}
+.invoice-line .desc{color:var(--ink)}
+.invoice-line .amt{font-weight:700;color:var(--navy);white-space:nowrap}
+.invoice-line .waived{color:var(--green);font-weight:700}
+.invoice-total{background:var(--navy);color:#fff;padding:12px 18px;display:flex;
+  justify-content:space-between;align-items:center}
+.invoice-total span{font-size:12px;letter-spacing:.06em}
+.invoice-total strong{font-size:22px;font-family:Fraunces,serif}
+.savings-callout{background:#edf8f3;border:1px solid #a7d7bf;border-radius:4px;padding:12px 16px;
+  font-size:11px;color:#176a4e;margin-top:4px}
+.savings-callout strong{display:block;font-size:14px;margin-top:4px;color:var(--green)}
+
+/* ── perk checklist ── */
+.perk-check{display:flex;align-items:flex-start;gap:10px;padding:9px 0;
+  border-bottom:1px solid var(--line);font-size:12px}
+.perk-check:last-child{border-bottom:none}
+.perk-check .check-icon{color:var(--green);font-size:16px;font-weight:700;margin-top:1px;flex-shrink:0}
+.perk-check .perk-name{color:var(--ink);font-weight:600}
+.perk-check .perk-clause{color:var(--muted);font-size:10px;display:block;margin-top:2px}
+.perk-check .perk-save{color:var(--green);font-weight:700;font-size:11px;margin-left:auto;
+  flex-shrink:0;white-space:nowrap}
+.perk-note{background:#fffbea;border:1px solid #f0d873;border-radius:4px;padding:11px 14px;
+  font-size:11px;color:#6f5317;margin-top:12px}
+
+/* ── status badge ── */
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;
+  font-size:10px;font-weight:700;letter-spacing:.1em}
+.status-returned{background:#edf8f3;color:#176a4e;border:1px solid #a7d7bf}
+.status-returned::before{content:"";width:7px;height:7px;border-radius:50%;background:#16805b;display:inline-block}
+
+/* ── agency panel styles ── */
+.agency-card{background:#0f2d1e;border:1px solid var(--agency-border);border-radius:6px;
+  padding:18px;margin-bottom:12px}
+.agency-card h3{color:#a7f3c3;font-size:13px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.agency-card h3 span{font-size:16px}
+.agency-row{display:flex;justify-content:space-between;padding:6px 0;
+  border-bottom:1px solid #1a3a2a;font-size:11px}
+.agency-row:last-child{border-bottom:none}
+.agency-row label{color:#5a8a6a;font-size:9px;letter-spacing:.08em;font-weight:700}
+.agency-row strong{color:#d1fae5;font-size:11px}
+.agency-status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+  border-radius:99px;font-size:9px;font-weight:700;letter-spacing:.08em}
+.status-confirmed{background:#1a3a24;color:var(--agency-accent);border:1px solid var(--agency-accent)}
+.status-linked{background:#1e3a5f;color:#7bb8e8;border:1px solid #3b82f6}
+.agency-highlight{background:#1a3a24;border-radius:4px;padding:10px 13px;margin-bottom:10px}
+.agency-highlight strong{color:var(--agency-accent);font-size:15px;display:block}
+.agency-highlight small{color:#5a8a6a;font-size:9px;letter-spacing:.08em}
+.agency-rate-compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.rate-box{background:#081812;border:1px solid #1a3a2a;border-radius:4px;padding:10px;text-align:center}
+.rate-box small{font-size:9px;color:#5a8a6a;letter-spacing:.06em;display:block}
+.rate-box strong{font-size:18px;font-weight:700;display:block;margin-top:3px}
+.rate-box.member strong{color:var(--agency-accent)}
+.rate-box.retail strong{color:#94a3b8;text-decoration:line-through}
+.agency-perk{font-size:10px;color:#6ee7b7;padding:4px 0;display:flex;align-items:center;gap:6px}
+.agency-perk::before{content:"✓";color:var(--agency-accent);font-weight:700}
+.terminal-line{font-family:"Courier New",monospace;font-size:10px;color:#4ade80;
+  background:#060d08;border:1px solid #1a3a2a;border-radius:4px;padding:12px;
+  margin-top:10px;line-height:1.7}
+.terminal-line .dim{color:#3d6b47}
+.terminal-line .hi{color:#a7f3c3}
+.terminal-line .err{color:#f87171}
+.agency-blocked{background:#2d0a0a;border-color:#5a1515}
+.agency-blocked h3{color:#f87171}
+.agency-warn{background:#2d1f00;border-color:#5a3c00}
+.agency-warn h3{color:#fbbf24}
+
+/* ── buttons ── */
+.btn{border:0;border-radius:3px;padding:11px 18px;font:700 12px inherit;cursor:pointer;
+  transition:.18s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:#174f80}
+.btn-secondary{background:#e7eef3;color:var(--navy)}
+.btn-secondary:hover{background:#d6e5ef}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#125f44}
+.btn-danger{background:#c0392b;color:#fff}
+.btn-danger:hover{background:#a93226}
+.btn-row{display:flex;gap:10px;margin-top:14px}
+
+/* ── exception scenario selector ── */
+.scenario-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.scenario-tab{border:1px solid #cbd5dd;background:#fff;border-radius:3px;padding:7px 12px;
+  font:600 10px inherit;color:var(--muted);cursor:pointer;letter-spacing:.04em}
+.scenario-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── step panel visibility ── */
+.step-panel{display:none}.step-panel.active{display:block}
+
+/* ── sync indicator ── */
+.sync-bar{background:#0f1f2e;border-top:1px solid #1e3a5f;padding:8px 28px;
+  font-size:10px;color:#64748b;display:flex;align-items:center;gap:8px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#27c975;
+  box-shadow:0 0 6px #27c975;animation:pulse 1.5s infinite}
+@keyframes pulse{50%{opacity:.4}}
+
+@media(max-width:900px){.panels{grid-template-columns:1fr;height:auto}.agency-panel{border-left:none;border-top:1px solid var(--agency-border)}}
+</style>
+</head>
+<body>
+
+<div class="ribbon"><span></span> UC7 Mock · Vehicle Return / Drop-Off · Dual View (Member + Vendor)</div>
+
+<header class="header">
+  <a class="header-brand" href="#" aria-label="Costco Travel">
+    <span class="costco">COSTCO</span><span class="travel">TRAVEL</span>
+  </a>
+  <h1>UC7 — Vehicle Return / Drop-Off</h1>
+  <div class="uc-badge">MOCK SCENARIO</div>
+</header>
+
+<!-- step nav -->
+<nav class="step-nav" id="stepNav">
+  <button class="step-btn active" data-step="1" onclick="goStep(1)">1 · VEHICLE INSPECTION</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="2" onclick="goStep(2)">2 · PERKS VERIFICATION</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="3" onclick="goStep(3)">3 · FINAL INVOICE</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="4" onclick="goStep(4)">4 · RENTAL CLOSED</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="5" onclick="goStep(5)">5 · EXCEPTIONS</button>
+</nav>
+
+<!-- dual panels -->
+<div class="panels">
+
+  <!-- ══════════════════════ MEMBER / PLATFORM PANEL ══════════════════════ -->
+  <div class="panel member-panel">
+    <div class="panel-header">MEMBER / PLATFORM VIEW</div>
+
+    <!-- STEP 1 · Vehicle Inspection -->
+    <div class="step-panel active" id="mp-step1">
+      <div class="member-verified">
+        <span class="icon">✓</span>
+        <div>
+          <strong>Maria Smith · Executive Member</strong>
+          <span>COST100002 · Active · Returning rental at LAX</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Vehicle Return Inspection</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;
+          background:#f0f6fb;border:1px solid #c4d9ea;border-radius:4px;padding:10px 13px">
+          <div style="font-size:11px">
+            <div style="color:var(--muted);font-size:9px;letter-spacing:.06em;font-weight:700">COSTCO TRAVEL REF</div>
+            <div style="font-weight:700;color:var(--navy);font-family:Fraunces,serif">CTR-DACTIV1</div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--line)"></div>
+          <div style="font-size:11px">
+            <div style="color:var(--muted);font-size:9px;letter-spacing:.06em;font-weight:700">AVIS VENDOR REF</div>
+            <div style="font-weight:700;color:var(--navy)">AW-87654321</div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--line)"></div>
+          <div style="font-size:11px">
+            <div style="color:var(--muted);font-size:9px;letter-spacing:.06em;font-weight:700">VEHICLE</div>
+            <div style="font-weight:700;color:var(--navy)">Toyota RAV4 · LAX</div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--line)"></div>
+          <div style="font-size:11px">
+            <div style="color:var(--muted);font-size:9px;letter-spacing:.06em;font-weight:700">RENTAL PERIOD</div>
+            <div style="font-weight:700;color:var(--navy)">Sep 15–19, 2026 · 4 days</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label>FUEL LEVEL AT RETURN</label>
+            <select id="fuelLevel">
+              <option value="FULL" selected>Full</option>
+              <option value="3/4">3/4</option>
+              <option value="1/2">1/2</option>
+              <option value="1/4">1/4</option>
+              <option value="EMPTY">Empty</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>ODOMETER AT RETURN (miles)</label>
+            <input type="number" id="odometerReturn" value="14694" min="0">
+          </div>
+          <div class="field">
+            <label>DAMAGE NOTED</label>
+            <div class="radio-group">
+              <label><input type="radio" name="damageLevel" value="none" checked onchange="handleDamageChange(this)"> None</label>
+              <label><input type="radio" name="damageLevel" value="minor" onchange="handleDamageChange(this)"> Minor</label>
+              <label><input type="radio" name="damageLevel" value="major" onchange="handleDamageChange(this)"> Major</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>DAMAGE NOTES <span style="color:#aab4be;font-weight:400">(enabled if damage selected)</span></label>
+            <textarea id="damageNotes" disabled placeholder="Describe damage location, type, and severity…"></textarea>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="submitInspection()" style="width:100%">Submit Inspection →</button>
+        <div id="inspectionResult" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- STEP 2 · Perks Applied at Return -->
+    <div class="step-panel" id="mp-step2">
+      <div class="card">
+        <h3>Perks Applied at Return</h3>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:#edf8f3;
+          border:1px solid #a7d7bf;border-radius:20px;padding:7px 16px;margin-bottom:16px">
+          <span style="font-size:14px">✓</span>
+          <span style="font-size:11px;font-weight:700;color:#176a4e;letter-spacing:.04em">Costco Member Perks Applied</span>
+        </div>
+
+        <div class="perk-check">
+          <span class="check-icon">✓</span>
+          <div style="flex:1">
+            <div class="perk-name">Young Driver Surcharge — Waived</div>
+            <span class="perk-clause">Contract clause 4.5 · Applied automatically at settlement</span>
+          </div>
+          <span class="perk-save">saves $26.00</span>
+        </div>
+        <div class="perk-check">
+          <span class="check-icon">✓</span>
+          <div style="flex:1">
+            <div class="perk-name">Unlimited Mileage — Confirmed</div>
+            <span class="perk-clause">Contract clause 3.1 · 1,847 miles driven · $0 overage</span>
+          </div>
+          <span class="perk-save">$0 overage</span>
+        </div>
+        <div class="perk-check">
+          <span class="check-icon">✓</span>
+          <div style="flex:1">
+            <div class="perk-name">Additional Driver — Waived</div>
+            <span class="perk-clause">Contract clause 4.2 · $0 charge for second driver</span>
+          </div>
+          <span class="perk-save">$0 charge</span>
+        </div>
+
+        <div class="perk-note">
+          <strong style="display:block;margin-bottom:4px;color:#6f5317">Note for Members</strong>
+          The young driver waiver and unlimited mileage are applied by Costco Travel contract terms at settlement.
+          If you see these charges on a preliminary invoice, do not be alarmed — they are removed before final billing.
+          If they appear on your <em>final</em> invoice, contact Costco Travel immediately to dispute.
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goStep(3)">View Final Invoice →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 · Final Invoice -->
+    <div class="step-panel" id="mp-step3">
+      <div class="card">
+        <h3>Final Invoice</h3>
+        <div class="invoice">
+          <div class="invoice-header">
+            <h4>Avis Rent A Car — Final Invoice</h4>
+            <small>INV-AW-20260919-87654321 · Costco Travel Booking CTR-DACTIV1 · Issued 2026-09-19</small>
+            <div style="margin-top:8px;font-size:11px;color:#bdd5ed">
+              Maria Smith · COST100002 Executive · Toyota RAV4 SFAR · LAX · Sep 15–19, 2026
+            </div>
+          </div>
+          <div class="invoice-body">
+            <div class="invoice-line">
+              <span class="desc">Base rental — 4 days × $63.00/day <span style="font-size:10px;color:var(--green);font-weight:600">(member rate)</span></span>
+              <span class="amt">$252.00</span>
+            </div>
+            <div class="invoice-line">
+              <span class="desc">Additional driver fee <span style="font-size:10px;color:var(--green);font-weight:600">(WAIVED — Costco perk · clause 4.2)</span></span>
+              <span class="amt waived">$0.00</span>
+            </div>
+            <div class="invoice-line">
+              <span class="desc">Young driver surcharge <span style="font-size:10px;color:var(--green);font-weight:600">(WAIVED — Costco perk · clause 4.5)</span></span>
+              <span class="amt waived">$0.00</span>
+            </div>
+            <div class="invoice-line">
+              <span class="desc">Mileage overage — 1,847 mi <span style="font-size:10px;color:var(--green);font-weight:600">(unlimited — Costco perk · clause 3.1)</span></span>
+              <span class="amt waived">$0.00</span>
+            </div>
+            <div class="invoice-line" style="background:#fafbfc">
+              <span class="desc" style="color:var(--muted)">State tax (6.5%)</span>
+              <span class="amt" style="color:var(--muted)">$16.38</span>
+            </div>
+            <div class="invoice-line" style="background:#fafbfc">
+              <span class="desc" style="color:var(--muted)">Airport concession fee (11.11%)</span>
+              <span class="amt" style="color:var(--muted)">$28.00</span>
+            </div>
+          </div>
+          <div class="invoice-total">
+            <span>TOTAL CHARGED</span>
+            <strong>$296.38</strong>
+          </div>
+        </div>
+
+        <div class="savings-callout">
+          <span style="font-weight:700;color:#176a4e">Without Costco perks, you would have paid:</span>
+          <div style="margin-top:6px;font-size:11px">
+            $252.00 base + $52.00 (4 extra driver days) + $26.00 (young driver surcharge) = <strong>$330.00</strong> before taxes
+          </div>
+          <div style="margin-top:4px;font-size:11px">
+            With taxes &amp; fees: approx. <strong>$374.00</strong> &nbsp;·&nbsp;
+            You paid: <strong>$296.38</strong>
+          </div>
+          <strong>Total Costco Savings: $77.62</strong>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-green" onclick="goStep(4)" style="flex:1">Confirm &amp; Close Rental →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4 · Rental Closed -->
+    <div class="step-panel" id="mp-step4">
+      <div class="confirm-box">
+        <h3>Rental Returned — Closed</h3>
+        <div style="font-size:11px;color:#4d8a72;margin-top:4px">
+          Your vehicle has been successfully returned and the rental is closed.
+        </div>
+        <div style="margin:12px 0">
+          <span class="status-badge status-returned">RETURNED</span>
+        </div>
+        <div class="confirm-meta">
+          <div><small>COSTCO TRAVEL #</small><strong>CTR-DACTIV1</strong></div>
+          <div><small>AVIS VENDOR #</small><strong>AW-87654321</strong></div>
+          <div><small>RETURN DATE</small><strong>Sep 19, 2026 · 15:43</strong></div>
+          <div><small>FINAL TOTAL</small><strong>$296.38</strong></div>
+          <div style="grid-column:1/-1"><small>EMAIL RECEIPT</small><strong>Receipt sent to maria.smith1@example.com</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What Happens Now</h3>
+        <div class="card-row">
+          <label>COSTCO ROLE</label>
+          <strong>Costco has no further role unless you have a billing dispute.</strong>
+        </div>
+        <div class="card-row">
+          <label>BILLING DISPUTES</label>
+          <strong>Return to Costco Travel portal or call 1-800-COSTCO for assistance.</strong>
+        </div>
+        <div class="card-row">
+          <label>RECEIPT</label>
+          <strong>Email receipt issued by Avis. Costco Travel copy retained.</strong>
+        </div>
+        <div class="card-row">
+          <label>REWARDS</label>
+          <strong>Executive member 2% reward applied to next annual statement.</strong>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="goStep(5);selectException('lateFeeConflict',document.querySelector('.scenario-tab'))">File a Dispute</button>
+        <button class="btn btn-secondary" onclick="goStep(1)">Done — New Return</button>
+      </div>
+    </div>
+
+    <!-- STEP 5 · Exceptions -->
+    <div class="step-panel" id="mp-step5">
+      <div class="card">
+        <h3>Exception Scenarios</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Select a scenario to see how the member platform and agency system respond.</p>
+        <div class="scenario-tabs">
+          <button class="scenario-tab active" onclick="selectException('lateFeeConflict',this)">Late Fee Conflict</button>
+          <button class="scenario-tab" onclick="selectException('damageDispute',this)">Damage Dispute</button>
+          <button class="scenario-tab" onclick="selectException('youngDriverFeeApplied',this)">Young Driver Fee Applied</button>
+        </div>
+        <div id="exceptionContent"></div>
+      </div>
+    </div>
+
+  </div><!-- /member-panel -->
+
+  <!-- ══════════════════════ AGENCY / VENDOR PANEL (AVIS) ══════════════════════ -->
+  <div class="panel agency-panel">
+    <div class="panel-header">AGENCY / VENDOR VIEW · AVIS RETURN AGENT</div>
+
+    <!-- STEP 1 · Return Initiated -->
+    <div class="step-panel active" id="ap-step1">
+      <div class="agency-card">
+        <h3><span>🔄</span> Return Initiated</h3>
+        <div class="terminal-line">
+<span class="dim">// Member returning vehicle at LAX — Avis return lane</span><br>
+<span class="hi">GET /api/reservations/CTR-DACTIV1</span><br>
+<span class="dim">→ AV-API v3 · 200 OK</span><br>
+<span class="hi">{ "status": "ACTIVE", "vendor_ref": "AW-87654321",</span><br>
+<span class="hi">&nbsp;&nbsp;"sipp": "SFAR", "vehicle": "Toyota RAV4",</span><br>
+<span class="hi">&nbsp;&nbsp;"member_rate": 63.00, "contract": "COSTCO-CMR-2024",</span><br>
+<span class="hi">&nbsp;&nbsp;"return_due": "2026-09-19T17:00:00" }</span>
+        </div>
+        <div class="agency-row" style="margin-top:10px"><label>RETURN TIME</label><strong>2026-09-19 15:43 (on time)</strong></div>
+        <div class="agency-row"><label>INSPECTOR ID</label><strong>INS-LAX-44</strong></div>
+        <div class="agency-row"><label>CONTRACT</label><strong>COSTCO-CMR-2024</strong></div>
+        <div class="agency-row"><label>MEMBER TIER</label><strong>Executive · COST100002</strong></div>
+        <div class="agency-row"><label>FUEL RECEIVED</label><strong style="color:var(--agency-accent)">FULL — no charge</strong></div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📋</span> Vehicle Details</h3>
+        <div class="agency-row"><label>VEHICLE</label><strong>Toyota RAV4 · SIPP SFAR</strong></div>
+        <div class="agency-row"><label>ODOMETER OUT</label><strong>12,847 miles</strong></div>
+        <div class="agency-row"><label>ODOMETER IN</label><strong>14,694 miles</strong></div>
+        <div class="agency-row"><label>TOTAL MILEAGE</label><strong>1,847 miles</strong></div>
+        <div class="agency-row"><label>MILEAGE POLICY</label><strong style="color:var(--agency-accent)">Unlimited (Costco contract 3.1)</strong></div>
+        <div class="agency-row"><label>DAMAGE</label><strong>NONE — cleared by inspector</strong></div>
+      </div>
+    </div>
+
+    <!-- STEP 2 · Perks Verified at Settlement -->
+    <div class="step-panel" id="ap-step2">
+      <div class="agency-card">
+        <h3><span>✅</span> Perks Verified at Settlement</h3>
+        <div class="agency-perk">Extra driver waived (clause 4.2) — saved member $52.00</div>
+        <div class="agency-perk">Young driver surcharge waived (clause 4.5) — saved $26.00</div>
+        <div class="agency-perk">Unlimited mileage (clause 3.1) — 1,847 mi, $0 overage</div>
+        <div class="agency-perk">Free cancellation window (clause 7.0) — not invoked</div>
+        <div class="terminal-line">
+<span class="dim">// Verify Costco contract perks before settlement</span><br>
+<span class="hi">GET /api/reservations/AW-87654321/perks?contract=COSTCO-CMR-2024</span><br>
+<span class="dim">→ AV-API v3 · 200 OK</span><br>
+<span class="hi">{</span><br>
+<span class="hi">&nbsp;&nbsp;"extra_driver_waived": true,&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">// clause 4.2 — saved $52.00</span></span><br>
+<span class="hi">&nbsp;&nbsp;"young_driver_waived": true,&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">// clause 4.5 — saved $26.00</span></span><br>
+<span class="hi">&nbsp;&nbsp;"mileage": "unlimited",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">// clause 3.1 — 1,847 mi, $0 overage</span></span><br>
+<span class="hi">&nbsp;&nbsp;"cancellation": "free_48h"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">// clause 7.0</span></span><br>
+<span class="hi">}</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>💰</span> Settlement Preview</h3>
+        <div class="agency-row"><label>BASE RENTAL</label><strong>4 × $63.00 = $252.00</strong></div>
+        <div class="agency-row"><label>WAIVERS APPLIED</label><strong style="color:var(--agency-accent)">−$78.00 (perks)</strong></div>
+        <div class="agency-row"><label>TAXES &amp; FEES</label><strong>$44.38</strong></div>
+        <div class="agency-row"><label>PROJECTED TOTAL</label><strong style="color:var(--agency-accent)">$296.38</strong></div>
+      </div>
+    </div>
+
+    <!-- STEP 3 · Invoice Generation -->
+    <div class="step-panel" id="ap-step3">
+      <div class="agency-card">
+        <h3><span>🧾</span> Invoice Generation</h3>
+        <div class="terminal-line">
+<span class="dim">// Generate final invoice</span><br>
+<span class="hi">POST /api/reservations/CTR-DACTIV1/return</span><br>
+<span class="hi">{</span><br>
+<span class="hi">&nbsp;&nbsp;"vendor_ref": "AW-87654321",</span><br>
+<span class="hi">&nbsp;&nbsp;"fuel_level": "FULL",</span><br>
+<span class="hi">&nbsp;&nbsp;"odometer_in": 14694,</span><br>
+<span class="hi">&nbsp;&nbsp;"damage": "NONE",</span><br>
+<span class="hi">&nbsp;&nbsp;"inspector": "INS-LAX-44"</span><br>
+<span class="hi">}</span><br>
+<span class="dim">→ AV-API v3 · 200 OK</span><br>
+<span class="hi">{</span><br>
+<span class="hi">&nbsp;&nbsp;"invoice_id": "INV-AW-20260919-87654321",</span><br>
+<span class="hi">&nbsp;&nbsp;"member_rate_total": 252.00,</span><br>
+<span class="hi">&nbsp;&nbsp;"addon_total": 0.00,</span><br>
+<span class="hi">&nbsp;&nbsp;"young_driver_waived": 26.00,</span><br>
+<span class="hi">&nbsp;&nbsp;"extra_driver_waived": 52.00,</span><br>
+<span class="hi">&nbsp;&nbsp;"taxes_fees": 44.38,</span><br>
+<span class="hi">&nbsp;&nbsp;"grand_total": 296.38,</span><br>
+<span class="hi">&nbsp;&nbsp;"status": "SETTLED"</span><br>
+<span class="hi">}</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📊</span> Rate Comparison</h3>
+        <div class="agency-rate-compare">
+          <div class="rate-box member">
+            <small>MEMBER PAID</small>
+            <strong>$296.38</strong>
+          </div>
+          <div class="rate-box retail">
+            <small>WITHOUT PERKS</small>
+            <strong>$374.00</strong>
+          </div>
+        </div>
+        <div class="agency-row" style="margin-top:10px"><label>TOTAL SAVINGS</label>
+          <strong style="color:var(--agency-accent)">$77.62 saved via Costco contract</strong>
+        </div>
+        <div class="agency-row"><label>INVOICE ID</label><strong>INV-AW-20260919-87654321</strong></div>
+        <div class="agency-row"><label>STATUS</label>
+          <span class="agency-status status-confirmed">SETTLED</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4 · Rental Closed -->
+    <div class="step-panel" id="ap-step4">
+      <div class="agency-card">
+        <h3><span>🎉</span> Rental Closed</h3>
+        <div class="agency-highlight">
+          <small>RESERVATION STATUS</small>
+          <strong>RETURNED</strong>
+        </div>
+        <div class="agency-highlight">
+          <small>INVOICE TOTAL</small>
+          <strong>$296.38 · SETTLED</strong>
+        </div>
+        <div class="terminal-line">
+<span class="dim">// Update reservation status</span><br>
+<span class="hi">PATCH /api/reservations/AW-87654321/status</span><br>
+<span class="hi">{ "status": "RETURNED", "closed_at": "2026-09-19T15:43:00Z" }</span><br>
+<span class="dim">→ 200 OK · status: RETURNED</span><br>
+<br>
+<span class="dim">// Costco Travel notified via webhook</span><br>
+<span class="hi">POST costcotravel.api/webhook/rental-closed</span><br>
+<span class="hi">{ "costco_ref": "CTR-DACTIV1", "status": "RETURNED",</span><br>
+<span class="hi">&nbsp;&nbsp;"invoice_total": 296.38 }</span><br>
+<span class="dim">→ 200 OK</span>
+        </div>
+        <div class="agency-row" style="margin-top:10px"><label>COSTCO REF</label><strong>CTR-DACTIV1</strong></div>
+        <div class="agency-row"><label>VENDOR REF</label><strong>AW-87654321</strong></div>
+        <div class="agency-row"><label>CLOSED AT</label><strong>2026-09-19T15:43:00Z</strong></div>
+        <div class="agency-row"><label>WEBHOOK</label>
+          <span class="agency-status status-confirmed">DELIVERED · 200 OK</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 · Agency exception view -->
+    <div class="step-panel" id="ap-step5">
+      <div id="ap-exceptionDetail"></div>
+    </div>
+
+  </div><!-- /agency-panel -->
+</div><!-- /panels -->
+
+<div class="sync-bar">
+  <div class="sync-dot"></div>
+  <span>Platform ↔ Agency sync active · Dual-view mock · Steps reflect both systems simultaneously</span>
+</div>
+
+<script>
+/* ── Navigation ── */
+function goStep(n) {
+  document.querySelectorAll('.step-btn').forEach(function(b) {
+    var s = +b.dataset.step;
+    b.classList.toggle('active', s === n);
+    b.classList.toggle('done', s < n);
+  });
+  document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });
+  var mp = document.getElementById('mp-step' + n);
+  var ap = document.getElementById('ap-step' + n);
+  if (mp) mp.classList.add('active');
+  if (ap) ap.classList.add('active');
+  if (n === 5) {
+    selectException('lateFeeConflict', document.querySelector('.scenario-tab'));
+  }
+}
+
+/* ── Step 1 · Damage radio ── */
+function handleDamageChange(radio) {
+  var textarea = document.getElementById('damageNotes');
+  if (radio.value === 'none') {
+    textarea.disabled = true;
+    textarea.value = '';
+    textarea.placeholder = 'Describe damage location, type, and severity…';
+  } else {
+    textarea.disabled = false;
+    textarea.focus();
+    textarea.placeholder = radio.value === 'minor'
+      ? 'e.g. Small scratch on rear bumper, approx 3 inches…'
+      : 'e.g. Large dent on driver door, cracked windshield…';
+  }
+}
+
+/* ── Step 1 · Submit Inspection ── */
+function submitInspection() {
+  var fuel = document.getElementById('fuelLevel').value;
+  var odometer = document.getElementById('odometerReturn').value;
+  var damage = document.querySelector('input[name="damageLevel"]:checked').value;
+  var damageNotes = document.getElementById('damageNotes').value.trim();
+  var result = document.getElementById('inspectionResult');
+
+  if (!odometer || isNaN(+odometer) || +odometer < 12000) {
+    result.innerHTML = '<div class="member-verified" style="background:#fff0f1;border-color:#dfb7bc">' +
+      '<span class="icon" style="color:#8e2430">⚠</span>' +
+      '<div><strong style="color:#8e2430">Invalid odometer reading</strong>' +
+      '<span style="color:#8e2430">Please enter a valid return mileage (at least 12,000).</span></div></div>';
+    return;
+  }
+  if (damage !== 'none' && !damageNotes) {
+    result.innerHTML = '<div class="member-verified" style="background:#fff0f1;border-color:#dfb7bc">' +
+      '<span class="icon" style="color:#8e2430">⚠</span>' +
+      '<div><strong style="color:#8e2430">Damage notes required</strong>' +
+      '<span style="color:#8e2430">Please describe the damage before submitting.</span></div></div>';
+    return;
+  }
+
+  result.innerHTML = '<div class="member-verified">' +
+    '<span class="icon">✓</span>' +
+    '<div><strong>Inspection Submitted</strong>' +
+    '<span>Fuel: ' + fuel + ' · Odometer: ' + (+odometer).toLocaleString() + ' mi · Damage: ' + damage.charAt(0).toUpperCase() + damage.slice(1) + '</span></div></div>';
+
+  setTimeout(function() { goStep(2); }, 900);
+}
+
+/* ── Step 5 · Exceptions ── */
+var EXCEPTIONS = {
+  lateFeeConflict: {
+    mp: '<div class="exception-box">' +
+      '<strong>⚠ Late Return Fee Conflict</strong>' +
+      '<p style="margin-top:8px">Maria returned the vehicle at <strong>15:43 on Sep 19</strong> — 2 hours and 17 minutes before the 17:00 due time. In this scenario, imagine the return was at <strong>18:43</strong> — 1 hour 43 minutes late.</p>' +
+      '<p style="margin-top:8px">Avis attempts to charge an extra day rate of <strong>$89.00</strong> for the late return.</p>' +
+      '<p style="margin-top:8px"><strong>Costco Contract Position (clause 6.2):</strong> A grace period of 2 hours applies for members. Since the return is under 2 hours late, no extra day charge should apply — only a maximum hourly rate of $12.50/hr × 1.72 hrs = $21.50.</p>' +
+      '<p style="margin-top:8px"><strong>Member Action:</strong> Do not accept the extra-day charge. Reference Costco Travel booking CTR-DACTIV1 and contract clause 6.2. Contact Costco Travel at 1-800-COSTCO if vendor does not remove the charge.</p>' +
+      '</div>',
+    ap: '<div class="agency-card agency-warn">' +
+      '<h3><span>⚠</span> Late Return — Contract Grace Period Review</h3>' +
+      '<div class="terminal-line">' +
+      '<span class="dim">// Late return flag detected</span><br>' +
+      '<span class="hi">GET /api/reservations/AW-87654321/return-time</span><br>' +
+      '<span class="hi">{ "due": "2026-09-19T17:00:00", "actual": "2026-09-19T18:43:00",</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"late_minutes": 103, "grace_period_minutes": 120 }</span><br>' +
+      '<br>' +
+      '<span class="dim">// Grace period check — clause 6.2</span><br>' +
+      '<span class="hi">103 min late &lt; 120 min grace period</span><br>' +
+      '<span class="hi">→ extra_day_charge: NOT_APPLICABLE</span><br>' +
+      '<span class="hi">→ hourly_rate_charge: $12.50 × 1.72 hrs = $21.50</span><br>' +
+      '<br>' +
+      '<span class="dim">// Correct action: apply hourly rate only</span><br>' +
+      '<span class="hi">PATCH /api/invoices/INV-AW-20260919-87654321</span><br>' +
+      '<span class="hi">{ "late_fee_adjustment": 21.50, "extra_day_voided": true }</span><br>' +
+      '<span class="dim">→ 200 OK · Invoice updated</span>' +
+      '</div>' +
+      '</div>'
+  },
+  damageDispute: {
+    mp: '<div class="exception-box" style="background:#eef4fb;border-color:#7baed8;color:#1e3a5f">' +
+      '<strong>ℹ Damage Dispute — Pre-existing Scratch</strong>' +
+      '<p style="margin-top:8px">At return, the Avis inspector notes a <strong>scratch on the rear quarter panel</strong> and flags it as new damage, attempting to initiate a damage claim.</p>' +
+      '<p style="margin-top:8px">Maria disputes this — the scratch was present at pickup and is documented in the <strong>pre-rental walk-around photos</strong> taken on Sep 15, 2026 at 09:14 AM (on file with Costco Travel booking CTR-DACTIV1).</p>' +
+      '<p style="margin-top:8px"><strong>Member Steps:</strong></p>' +
+      '<ol style="margin-top:6px;padding-left:18px;line-height:1.8">' +
+      '<li>Request the pre-rental inspection report from Avis counter (document number INS-LAX-09152026-01)</li>' +
+      '<li>Show pickup photos (timestamped, geotagged) from the Costco Travel app</li>' +
+      '<li>If vendor still pursues claim, escalate to Costco Travel — reference CTR-DACTIV1</li>' +
+      '<li>Costco Travel will mediate using contract clause 9.1 (pre-existing damage protection)</li>' +
+      '</ol>' +
+      '</div>',
+    ap: '<div class="agency-card agency-blocked">' +
+      '<h3><span>⚠</span> Damage Claim Flagged — Pre-existing Review</h3>' +
+      '<div class="terminal-line">' +
+      '<span class="dim">// Damage noted at return inspection</span><br>' +
+      '<span class="hi">POST /api/damage-claims/new</span><br>' +
+      '<span class="hi">{ "vendor_ref": "AW-87654321", "damage_code": "SCRATCH_RQ",</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"location": "rear_quarter_panel", "inspector": "INS-LAX-44" }</span><br>' +
+      '<br>' +
+      '<span class="dim">// Check pre-rental inspection record</span><br>' +
+      '<span class="hi">GET /api/inspections/INS-LAX-09152026-01</span><br>' +
+      '<span class="hi">{ "damage_code": "SCRATCH_RQ",</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"status": "PRE_EXISTING",</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"recorded_at": "2026-09-15T09:14:00Z",</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"photo_refs": ["PH-001","PH-002"] }</span><br>' +
+      '<br>' +
+      '<span class="dim">// Pre-existing damage confirmed — void claim</span><br>' +
+      '<span class="hi">PATCH /api/damage-claims/DC-AW-8765-001</span><br>' +
+      '<span class="hi">{ "status": "VOIDED", "reason": "PRE_EXISTING_DOCUMENTED" }</span><br>' +
+      '<span class="dim">→ 200 OK · Claim voided · No charge to member</span>' +
+      '</div>' +
+      '</div>'
+  },
+  youngDriverFeeApplied: {
+    mp: '<div class="exception-box">' +
+      '<strong>⚠ Young Driver Fee Incorrectly Charged</strong>' +
+      '<p style="margin-top:8px">Maria\'s final invoice from Avis shows a <strong>Young Driver Surcharge of $26.00</strong>, despite Costco Travel contract clause 4.5 explicitly waiving this fee for all Costco members.</p>' +
+      '<p style="margin-top:8px"><strong>Why this happens:</strong> Avis\'s local counter system may not automatically apply all contract waivers — the Costco perk injection sometimes requires a manual override at settlement.</p>' +
+      '<p style="margin-top:8px"><strong>Member Action:</strong></p>' +
+      '<ol style="margin-top:6px;padding-left:18px;line-height:1.8">' +
+      '<li>Do <em>not</em> sign or accept any invoice showing the young driver charge</li>' +
+      '<li>Show the counter agent your Costco Travel booking (CTR-DACTIV1) and ask them to apply the COSTCO-CMR-2024 waiver</li>' +
+      '<li>If not resolved at counter, pay under protest and immediately contact Costco Travel — they will process a $26.00 refund via contract dispute escalation</li>' +
+      '</ol>' +
+      '</div>',
+    ap: '<div class="agency-card agency-blocked">' +
+      '<h3><span>🚫</span> Young Driver Fee — Incorrect Charge Detected</h3>' +
+      '<div class="terminal-line">' +
+      '<span class="dim">// Invoice generated with incorrect young driver fee</span><br>' +
+      '<span class="hi">GET /api/invoices/INV-AW-20260919-87654321</span><br>' +
+      '<span class="hi">{</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"young_driver_fee": 26.00,&nbsp;&nbsp;&nbsp;</span><span class="err">// ERROR: should be 0.00</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"contract": "COSTCO-CMR-2024",</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"waiver_applied": false&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="err">// waiver not applied at counter</span><br>' +
+      '<span class="hi">}</span><br>' +
+      '<br>' +
+      '<span class="dim">// Correction via Costco escalation</span><br>' +
+      '<span class="hi">PATCH /api/invoices/INV-AW-20260919-87654321</span><br>' +
+      '<span class="hi">{ "young_driver_fee": 0.00, "waiver_applied": true,</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"correction_ref": "COSTCO-ESC-20260919-001",</span><br>' +
+      '<span class="hi">&nbsp;&nbsp;"clause": "4.5" }</span><br>' +
+      '<span class="dim">→ 200 OK · Invoice corrected · Refund: $26.00</span>' +
+      '</div>' +
+      '</div>'
+  }
+};
+
+function selectException(key, btn) {
+  document.querySelectorAll('.scenario-tab').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var ex = EXCEPTIONS[key];
+  if (!ex) return;
+  var ec = document.getElementById('exceptionContent');
+  var ae = document.getElementById('ap-exceptionDetail');
+  if (ec) ec.innerHTML = ex.mp;
+  if (ae) ae.innerHTML = ex.ap;
+}
+
+/* ── Init ── */
+document.addEventListener('DOMContentLoaded', function() {
+  selectException('lateFeeConflict', document.querySelector('.scenario-tab'));
+});
+selectException('lateFeeConflict', null);
+</script>
+</body>
+</html>

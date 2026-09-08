@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UC1 Mock · Member Books a Rental · Costco Travel ↔ Travel Agency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0c2948;--blue:#1d65a6;--red:#d71920;--sand:#f4f0e8;--cream:#fbfaf7;
+  --ink:#172333;--muted:#607184;--line:#dbe2e8;--gold:#c59a45;--green:#16805b;
+  --shadow:0 18px 50px rgba(18,44,70,.12);
+  --agency-bg:#0f2d1e;--agency-border:#1e4a31;--agency-accent:#27c975;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#111827;color:var(--ink);min-height:100vh}
+
+/* ── ribbon & header ── */
+.ribbon{height:28px;background:var(--navy);color:#dce9f5;text-align:center;font-size:11px;
+  letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.ribbon span{width:6px;height:6px;border-radius:50%;background:#6cdfaf;box-shadow:0 0 8px #6cdfaf}
+.header{background:#1e293b;padding:14px 28px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #2d3e50}
+.header-brand{text-decoration:none;line-height:.8;display:flex;flex-direction:column;transform:skew(-6deg)}
+.costco{color:#e31837;font:900 18px Arial,sans-serif;letter-spacing:-1px;border-bottom:3px solid #1676b9}
+.travel{font:bold 10px Arial,sans-serif;letter-spacing:6px;color:#1676b9;margin-top:4px}
+.header h1{color:#e2e8f0;font-family:Fraunces,serif;font-size:16px;font-weight:600}
+.header .uc-badge{margin-left:auto;background:#1e3a5f;border:1px solid #2d5a8e;padding:6px 12px;
+  border-radius:4px;color:#7bb8e8;font-size:10px;font-weight:700;letter-spacing:.1em}
+
+/* ── step nav ── */
+.step-nav{background:#1e293b;border-bottom:1px solid #2d3e50;padding:0 28px;
+  display:flex;align-items:center;gap:0}
+.step-btn{border:0;background:transparent;color:#64748b;font:600 11px inherit;letter-spacing:.08em;
+  padding:14px 20px;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
+.step-btn.active{color:#93c5fd;border-bottom-color:#3b82f6}
+.step-btn.done{color:#4ade80}
+.step-btn:hover:not(.active){color:#94a3b8}
+.step-sep{color:#374151;padding:0 4px;font-size:14px}
+
+/* ── dual panel layout ── */
+.panels{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 150px);overflow:hidden}
+.panel{overflow-y:auto;padding:24px}
+.panel-header{font-size:9px;letter-spacing:.18em;font-weight:700;padding:6px 10px;
+  border-radius:3px;margin-bottom:16px;display:inline-block}
+.member-panel{background:var(--cream)}
+.member-panel .panel-header{background:#e8f0f7;color:var(--blue)}
+.agency-panel{background:#0d1f13;border-left:1px solid var(--agency-border)}
+.agency-panel .panel-header{background:#1a3a24;color:var(--agency-accent)}
+
+/* ── shared card ── */
+.card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:20px;
+  margin-bottom:14px;box-shadow:var(--shadow)}
+.card h3{font-family:Fraunces,serif;color:var(--navy);font-size:20px;margin-bottom:12px}
+.card-row{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.card-row:last-child{border-bottom:none}
+.card-row label{color:var(--muted);font-size:10px;letter-spacing:.06em;font-weight:700}
+.card-row strong{color:var(--ink)}
+.field-group{display:grid;gap:10px;margin-bottom:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;font-weight:700;color:#526477;letter-spacing:.06em}
+.field input,.field select{border:1px solid #cbd5dd;border-radius:3px;padding:10px 11px;
+  font:13px inherit;color:var(--ink);background:#fff}
+.field input:focus,.field select:focus{outline:2px solid rgba(29,101,166,.28);outline-offset:2px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── member verified badge ── */
+.member-verified{display:flex;align-items:center;gap:10px;background:#edf8f3;
+  border:1px solid #a7d7bf;border-radius:4px;padding:11px 14px;margin-bottom:14px;font-size:12px}
+.member-verified .icon{font-size:20px}
+.member-verified strong{color:#176a4e;display:block}
+.member-verified span{color:#4d8a72;font-size:10px}
+.member-blocked{background:#fff0f1;border-color:#dfb7bc;color:#8e2430}
+
+/* ── vendor cards grid ── */
+.vendor-grid{display:grid;gap:10px}
+.vendor-card{border:1px solid var(--line);border-radius:5px;padding:13px;background:#fff;
+  cursor:pointer;transition:.2s;position:relative}
+.vendor-card:hover{border-color:#9eb9cd;transform:translateY(-2px);box-shadow:0 10px 22px rgba(18,44,70,.1)}
+.vendor-card.selected{border-color:var(--gold);box-shadow:inset 0 3px var(--gold),0 8px 20px rgba(197,154,69,.15)}
+.vendor-card.recommended::before{content:"RECOMMENDED";position:absolute;top:8px;right:8px;
+  font-size:7px;font-weight:700;letter-spacing:.1em;color:#8a681f;background:#f4ead4;padding:2px 6px;border-radius:2px}
+.vendor-name{font-size:13px;font-weight:700;color:var(--navy)}
+.vendor-class{font-size:10px;color:var(--muted);margin-top:1px}
+.vendor-price-row{display:flex;align-items:baseline;gap:6px;margin-top:8px}
+.vendor-price{font-size:21px;font-weight:700;color:var(--navy)}
+.vendor-retail{font-size:10px;color:#748291;text-decoration:line-through}
+.vendor-savings{font-size:10px;color:var(--green);font-weight:700}
+.perks{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.perk{font-size:9px;background:#edf8f3;color:#176a4e;padding:3px 7px;border-radius:2px;font-weight:600}
+.perk.gold{background:#f4ead4;color:#8a681f}
+
+/* ── confirmation card ── */
+.confirm-box{background:linear-gradient(135deg,#edf8f3,#f0f9ff);border:1px solid #a7d7bf;
+  border-radius:6px;padding:20px;margin-bottom:14px}
+.confirm-box h3{color:#176a4e;font-family:Fraunces,serif;font-size:18px;margin-bottom:4px}
+.booking-number{font-size:26px;font-weight:700;color:var(--navy);letter-spacing:.05em;
+  font-family:Fraunces,serif;margin:8px 0}
+.confirm-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.confirm-meta>div{background:#fff;border:1px solid var(--line);padding:10px;border-radius:3px}
+.confirm-meta small{font-size:9px;color:var(--muted);letter-spacing:.08em;display:block}
+.confirm-meta strong{font-size:12px;color:var(--navy);display:block;margin-top:3px}
+.exception-box{background:#fff5d9;border:1px solid #e3bd63;border-radius:4px;padding:14px;
+  margin-top:10px;font-size:12px;color:#6f5317}
+
+/* ── agency panel styles ── */
+.agency-card{background:#0f2d1e;border:1px solid var(--agency-border);border-radius:6px;
+  padding:18px;margin-bottom:12px}
+.agency-card h3{color:#a7f3c3;font-size:13px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.agency-card h3 span{font-size:16px}
+.agency-row{display:flex;justify-content:space-between;padding:6px 0;
+  border-bottom:1px solid #1a3a2a;font-size:11px}
+.agency-row:last-child{border-bottom:none}
+.agency-row label{color:#5a8a6a;font-size:9px;letter-spacing:.08em;font-weight:700}
+.agency-row strong{color:#d1fae5;font-size:11px}
+.agency-status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+  border-radius:99px;font-size:9px;font-weight:700;letter-spacing:.08em}
+.status-pending{background:#1a3a24;color:#6ee7b7;border:1px solid #27c975}
+.status-confirmed{background:#1a3a24;color:var(--agency-accent);border:1px solid var(--agency-accent)}
+.status-linked{background:#1e3a5f;color:#7bb8e8;border:1px solid #3b82f6}
+.agency-highlight{background:#1a3a24;border-radius:4px;padding:10px 13px;margin-bottom:10px}
+.agency-highlight strong{color:var(--agency-accent);font-size:15px;display:block}
+.agency-highlight small{color:#5a8a6a;font-size:9px;letter-spacing:.08em}
+.agency-rate-compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.rate-box{background:#081812;border:1px solid #1a3a2a;border-radius:4px;padding:10px;text-align:center}
+.rate-box small{font-size:9px;color:#5a8a6a;letter-spacing:.06em;display:block}
+.rate-box strong{font-size:18px;font-weight:700;display:block;margin-top:3px}
+.rate-box.member strong{color:var(--agency-accent)}
+.rate-box.retail strong{color:#94a3b8;text-decoration:line-through}
+.agency-perk{font-size:10px;color:#6ee7b7;padding:4px 0;display:flex;align-items:center;gap:6px}
+.agency-perk::before{content:"✓";color:var(--agency-accent);font-weight:700}
+.terminal-line{font-family:"Courier New",monospace;font-size:10px;color:#4ade80;
+  background:#060d08;border:1px solid #1a3a2a;border-radius:4px;padding:12px;
+  margin-top:10px;line-height:1.7}
+.terminal-line .dim{color:#3d6b47}
+.terminal-line .hi{color:#a7f3c3}
+.terminal-line .err{color:#f87171}
+.agency-blocked{background:#2d0a0a;border-color:#5a1515}
+.agency-blocked h3{color:#f87171}
+
+/* ── buttons ── */
+.btn{border:0;border-radius:3px;padding:11px 18px;font:700 12px inherit;cursor:pointer;
+  transition:.18s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:#174f80}
+.btn-secondary{background:#e7eef3;color:var(--navy)}
+.btn-secondary:hover{background:#d6e5ef}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#125f44}
+.btn-row{display:flex;gap:10px;margin-top:14px}
+
+/* ── exception scenario selector ── */
+.scenario-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.scenario-tab{border:1px solid #cbd5dd;background:#fff;border-radius:3px;padding:7px 12px;
+  font:600 10px inherit;color:var(--muted);cursor:pointer;letter-spacing:.04em}
+.scenario-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── step panel visibility ── */
+.step-panel{display:none}.step-panel.active{display:block}
+
+/* ── sync indicator ── */
+.sync-bar{background:#0f1f2e;border-top:1px solid #1e3a5f;padding:8px 28px;
+  font-size:10px;color:#64748b;display:flex;align-items:center;gap:8px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#27c975;
+  box-shadow:0 0 6px #27c975;animation:pulse 1.5s infinite}
+@keyframes pulse{50%{opacity:.4}}
+
+@media(max-width:900px){.panels{grid-template-columns:1fr;height:auto}.agency-panel{border-left:none;border-top:1px solid var(--agency-border)}}
+</style>
+</head>
+<body>
+
+<div class="ribbon"><span></span> UC1 Mock · Member Books a Rental Through Costco Travel · Dual View (Platform + Travel Agency)</div>
+
+<header class="header">
+  <a class="header-brand" href="#" aria-label="Costco Travel">
+    <span class="costco">COSTCO</span><span class="travel">TRAVEL</span>
+  </a>
+  <h1>UC1 — Member Books a Rental Car</h1>
+  <div class="uc-badge">MOCK SCENARIO</div>
+</header>
+
+<!-- step nav -->
+<nav class="step-nav" id="stepNav">
+  <button class="step-btn active" data-step="1" onclick="goStep(1)">1 · MEMBER LOGIN</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="2" onclick="goStep(2)">2 · SEARCH &amp; RATES</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="3" onclick="goStep(3)">3 · SELECT &amp; CONFIRM</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="4" onclick="goStep(4)">4 · CONFIRMATION</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="5" onclick="goStep(5)">5 · EXCEPTIONS</button>
+</nav>
+
+<!-- dual panels -->
+<div class="panels">
+
+  <!-- ══════════════════════ MEMBER / PLATFORM PANEL ══════════════════════ -->
+  <div class="panel member-panel">
+    <div class="panel-header">MEMBER / PLATFORM VIEW</div>
+
+    <!-- STEP 1 · Login -->
+    <div class="step-panel active" id="mp-step1">
+      <div class="card">
+        <h3>Sign in to Costco Travel</h3>
+        <div class="field-group">
+          <div class="field">
+            <label>COSTCO MEMBERSHIP NUMBER</label>
+            <input type="text" id="memberIdInput" value="COST100002" placeholder="e.g. COST100002">
+          </div>
+          <div class="field">
+            <label>LAST NAME</label>
+            <input type="text" id="lastNameInput" value="Smith" placeholder="Last name">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="verifyMember()" style="width:100%">Verify Membership →</button>
+        <div id="memberResult" style="margin-top:12px"></div>
+      </div>
+      <div class="card" style="font-size:12px;color:var(--muted)">
+        <strong style="color:var(--navy);display:block;margin-bottom:8px">Test Members</strong>
+        <div class="card-row"><label>ACTIVE EXECUTIVE</label><strong>COST100002 · Maria Smith</strong></div>
+        <div class="card-row"><label>ACTIVE GOLD STAR</label><strong>COST100004 · Priya Smith</strong></div>
+        <div class="card-row"><label>INACTIVE (exception)</label><strong>COST100001 · John Smith</strong></div>
+      </div>
+    </div>
+
+    <!-- STEP 2 · Search & Rates -->
+    <div class="step-panel" id="mp-step2">
+      <div id="mp-memberBadge2"></div>
+      <div class="card">
+        <h3>Search Rental Cars</h3>
+        <div class="field-group">
+          <div class="field">
+            <label>PICKUP LOCATION</label>
+            <select id="locationSelect">
+              <option value="LAX">Los Angeles (LAX)</option>
+              <option value="LAS">Las Vegas (LAS)</option>
+              <option value="MCO">Orlando (MCO)</option>
+              <option value="SEA">Seattle (SEA)</option>
+              <option value="JFK">New York (JFK)</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>PICKUP DATE</label>
+              <input type="date" id="pickupDate" value="2026-09-15">
+            </div>
+            <div class="field">
+              <label>RETURN DATE</label>
+              <input type="date" id="returnDate" value="2026-09-19">
+            </div>
+          </div>
+          <div class="field">
+            <label>TRAVELERS</label>
+            <select id="partySize">
+              <option value="1">1 traveler</option>
+              <option value="2" selected>2 travelers</option>
+              <option value="3">3 travelers</option>
+              <option value="4">4 travelers</option>
+              <option value="5">5 travelers</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="searchRates()" style="width:100%">Search Member Rates →</button>
+      </div>
+      <div id="mp-rateResults"></div>
+    </div>
+
+    <!-- STEP 3 · Select & Confirm -->
+    <div class="step-panel" id="mp-step3">
+      <div id="mp-memberBadge3"></div>
+      <div class="card" id="selectedVendorCard">
+        <h3>Your Selection</h3>
+        <div id="selectionDetail"></div>
+      </div>
+      <div class="card">
+        <h3>Costco Member Perks Included</h3>
+        <div class="card-row"><label>ADDITIONAL DRIVER</label><strong style="color:var(--green)">Free (save ~$13/day)</strong></div>
+        <div class="card-row"><label>YOUNG DRIVER FEE</label><strong style="color:var(--green)">Waived for members</strong></div>
+        <div class="card-row"><label>MILEAGE</label><strong style="color:var(--green)">Unlimited included</strong></div>
+        <div class="card-row"><label>CANCELLATION</label><strong>Free up to 24h before pickup</strong></div>
+        <div class="card-row"><label>BOOKING NUMBER</label><strong style="font-family:Fraunces,serif">Will be assigned at confirmation</strong></div>
+      </div>
+      <button class="btn btn-green" onclick="confirmBooking()" style="width:100%;margin-top:4px;font-size:14px;padding:14px">
+        Confirm Reservation
+      </button>
+    </div>
+
+    <!-- STEP 4 · Confirmation -->
+    <div class="step-panel" id="mp-step4">
+      <div class="confirm-box">
+        <h3>Reservation Confirmed</h3>
+        <div style="font-size:11px;color:#4d8a72;margin-top:4px">Your booking is confirmed. You'll receive an email shortly.</div>
+        <div class="booking-number" id="costcoBookingNum">CTR-2026-UC1-8821</div>
+        <div style="font-size:10px;color:var(--muted)">Costco Travel booking number</div>
+        <div class="confirm-meta" id="confirmMeta"></div>
+      </div>
+      <div class="card">
+        <h3>What Happens Next</h3>
+        <div class="card-row"><label>VENDOR CONFIRMATION</label><strong id="vendorConfNum">EZ-7824631</strong></div>
+        <div class="card-row"><label>LINKED SYSTEM</label><strong>Vendor reservation management system</strong></div>
+        <div class="card-row"><label>PICKUP INSTRUCTIONS</label><strong>Show Costco Travel # and valid ID at counter</strong></div>
+        <div class="card-row"><label>MODIFY / CANCEL</label><strong>Manage via Costco Travel or vendor direct</strong></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep(1)">New Search</button>
+        <button class="btn btn-primary" onclick="goStep(4)">View Booking Details</button>
+      </div>
+    </div>
+
+    <!-- STEP 5 · Exceptions -->
+    <div class="step-panel" id="mp-step5">
+      <div class="card">
+        <h3>Exception Scenarios</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Select a scenario to see how the platform and agency respond.</p>
+        <div class="scenario-tabs">
+          <button class="scenario-tab active" onclick="selectException('lapsed',this)">Lapsed Membership</button>
+          <button class="scenario-tab" onclick="selectException('noRate',this)">Rate Unavailable</button>
+          <button class="scenario-tab" onclick="selectException('fallback',this)">Fallback Rate</button>
+        </div>
+        <div id="exceptionContent"></div>
+      </div>
+    </div>
+
+  </div><!-- /member-panel -->
+
+  <!-- ══════════════════════ TRAVEL AGENCY PANEL ══════════════════════ -->
+  <div class="panel agency-panel">
+    <div class="panel-header">TRAVEL AGENCY / VENDOR VIEW</div>
+
+    <!-- STEP 1 · Login (agency) -->
+    <div class="step-panel active" id="ap-step1">
+      <div class="agency-card">
+        <h3><span>🔐</span> Incoming Request</h3>
+        <div class="terminal-line">
+<span class="dim">// Costco Travel Booking Engine → Vendor Reservation API</span><br>
+<span class="dim">POST /api/membership/verify</span><br>
+<span class="dim">Host: api.costcotravel.com</span><br>
+<br>
+<span class="dim">Awaiting member verification...</span><br>
+<span class="hi" id="ap-verifyOutput">Idle — no request sent yet.</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📋</span> Vendor Partner Config</h3>
+        <div class="agency-row"><label>PARTNERS LOADED</label><strong>Avis · Budget · Enterprise · Alamo · National</strong></div>
+        <div class="agency-row"><label>NEGOTIATED CONTRACT</label><strong>Costco Member Rate Agreement v2024</strong></div>
+        <div class="agency-row"><label>PERKS CONTRACT</label><strong>Free addl. driver · No young-driver fee · Unlimited miles</strong></div>
+        <div class="agency-row"><label>RATE FEED STATUS</label><strong style="color:var(--agency-accent)">LIVE</strong></div>
+      </div>
+    </div>
+
+    <!-- STEP 2 · Agency rate feed -->
+    <div class="step-panel" id="ap-step2">
+      <div class="agency-card">
+        <h3><span>📡</span> Rate Request Sent to Partners</h3>
+        <div class="terminal-line" id="ap-searchTerminal">
+<span class="dim">// Outbound availability + rate query</span><br>
+<span class="hi">GET /rates?location=LAX&amp;pickup=2026-09-15&amp;return=2026-09-19&amp;contract=COSTCO-CMR-2024</span><br>
+<br>
+<span class="dim">Partners queried:</span><br>
+&nbsp;&nbsp;<span class="hi">→ Avis (AV-API v3)</span> <span class="dim">200 OK · 4 classes available</span><br>
+&nbsp;&nbsp;<span class="hi">→ Enterprise (EZ-API v4)</span> <span class="dim">200 OK · 6 classes available</span><br>
+&nbsp;&nbsp;<span class="hi">→ Budget (BU-API v2)</span> <span class="dim">200 OK · 3 classes available</span><br>
+&nbsp;&nbsp;<span class="hi">→ Alamo (AL-API v3)</span> <span class="dim">200 OK · 5 classes available</span><br>
+&nbsp;&nbsp;<span class="hi">→ National (NC-API v2)</span> <span class="dim">200 OK · 4 classes available</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>💰</span> Negotiated vs Retail Rates (LAX · 4 days)</h3>
+        <div id="ap-rateTable"></div>
+      </div>
+      <div class="agency-card">
+        <h3><span>✅</span> Costco Perks Injected</h3>
+        <div class="agency-perk">Free additional driver (contract clause 4.2)</div>
+        <div class="agency-perk">Young-driver surcharge waived (contract clause 4.5)</div>
+        <div class="agency-perk">Unlimited mileage (contract clause 3.1)</div>
+        <div class="agency-perk">Free cancellation up to 24h (contract clause 7.0)</div>
+      </div>
+    </div>
+
+    <!-- STEP 3 · Agency sees selection -->
+    <div class="step-panel" id="ap-step3">
+      <div class="agency-card">
+        <h3><span>🎯</span> Member Selection Received</h3>
+        <div id="ap-selectionDetail"></div>
+        <div class="terminal-line" id="ap-selectionTerminal">
+<span class="dim">// Member selected Enterprise · Full-Size</span><br>
+<span class="hi">POST /api/booking/stage</span><br>
+<span class="dim">body: { vendor:"Enterprise", class:"Full-Size", member:"COST100002", contract:"COSTCO-CMR-2024" }</span><br>
+<br>
+<span class="dim">Response:</span><br>
+<span class="hi">200 OK · hold_id: EZ-HOLD-7824631 · expires_in: 600s</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>🔒</span> Inventory Hold</h3>
+        <div class="agency-row"><label>HOLD ID</label><strong>EZ-HOLD-7824631</strong></div>
+        <div class="agency-row"><label>EXPIRES IN</label><strong id="holdCountdown">10:00</strong></div>
+        <div class="agency-row"><label>CAR CLASS</label><strong>Full-Size (Toyota Camry or similar)</strong></div>
+        <div class="agency-row"><label>VENDOR SYSTEM</label><strong>Enterprise Reservation Mgmt v4</strong></div>
+      </div>
+    </div>
+
+    <!-- STEP 4 · Agency sees confirmed booking -->
+    <div class="step-panel" id="ap-step4">
+      <div class="agency-card">
+        <h3><span>🎉</span> Booking Confirmed — Both Systems</h3>
+        <div class="agency-highlight">
+          <small>COSTCO TRAVEL BOOKING NUMBER</small>
+          <strong>CTR-2026-UC1-8821</strong>
+        </div>
+        <div class="agency-highlight">
+          <small>VENDOR (ENTERPRISE) CONFIRMATION</small>
+          <strong>EZ-7824631</strong>
+        </div>
+        <div class="agency-row" style="margin-top:8px"><label>SYNC STATUS</label>
+          <span class="agency-status status-confirmed">CONFIRMED IN BOTH SYSTEMS</span>
+        </div>
+        <div class="agency-row"><label>COSTCO CONTRACT</label><strong>COSTCO-CMR-2024</strong></div>
+        <div class="agency-row"><label>MEMBER TIER</label><strong>Executive</strong></div>
+        <div class="agency-row"><label>PERKS APPLIED</label><strong style="color:var(--agency-accent)">All 4 perks active</strong></div>
+      </div>
+      <div class="agency-card">
+        <h3><span>💳</span> Rate Reconciliation</h3>
+        <div class="agency-rate-compare">
+          <div class="rate-box retail">
+            <small>RETAIL RATE</small>
+            <strong>$64.00/day</strong>
+          </div>
+          <div class="rate-box member">
+            <small>MEMBER RATE</small>
+            <strong>$54.00/day</strong>
+          </div>
+        </div>
+        <div class="agency-row" style="margin-top:10px"><label>TOTAL MEMBER SAVINGS</label>
+          <strong style="color:var(--agency-accent)">$40.00 (4 days)</strong>
+        </div>
+        <div class="agency-row"><label>REVENUE TO ENTERPRISE</label><strong>$216.00</strong></div>
+        <div class="agency-row"><label>COSTCO COMMISSION</label><strong>Billed monthly per contract</strong></div>
+      </div>
+      <div class="terminal-line">
+<span class="dim">// Final webhook to vendor</span><br>
+<span class="hi">POST enterprise-reservations.api/confirm</span><br>
+<span class="dim">{ hold_id:"EZ-HOLD-7824631", costco_ref:"CTR-2026-UC1-8821", member_tier:"Executive", perks_active:true }</span><br>
+<br>
+<span class="hi">201 CREATED · reservation_id: EZ-7824631 · status: CONFIRMED</span>
+      </div>
+    </div>
+
+    <!-- STEP 5 · Agency exception view -->
+    <div class="step-panel" id="ap-step5">
+      <div id="ap-exceptionDetail"></div>
+    </div>
+
+  </div><!-- /agency-panel -->
+</div><!-- /panels -->
+
+<div class="sync-bar">
+  <div class="sync-dot"></div>
+  <span>Platform ↔ Agency sync active · Dual-view mock · Steps reflect both systems simultaneously</span>
+</div>
+
+<script>
+/* ── State ── */
+const MEMBERS = {
+  COST100002: {name:"Maria Smith", tier:"Executive", status:"Active",  email:"maria.smith1@example.com"},
+  COST100004: {name:"Priya Smith",  tier:"Gold Star",  status:"Active",  email:"priya.smith3@example.com"},
+  COST100001: {name:"John Smith",   tier:"Gold Star",  status:"Inactive",email:"john.smith0@example.com"},
+};
+const VENDORS = [
+  {vendor:"Enterprise", class:"Full-Size",   car:"Toyota Camry",     memberRate:54.00, retail:64.00, recommended:true},
+  {vendor:"Avis",       class:"Intermediate",car:"Nissan Altima",    memberRate:47.00, retail:55.00, recommended:false},
+  {vendor:"National",   class:"Standard SUV",car:"Toyota RAV4",      memberRate:63.00, retail:74.00, recommended:false},
+  {vendor:"Alamo",      class:"Compact",     car:"Kia Soul",         memberRate:41.00, retail:49.00, recommended:false},
+  {vendor:"Budget",     class:"Economy",     car:"Nissan Versa",     memberRate:36.00, retail:43.00, recommended:false},
+];
+const PERKS = ["Free additional driver","No young-driver fee","Unlimited mileage","Free cancellation (24h)"];
+
+let currentStep = 1;
+let verifiedMember = null;
+let selectedVendor = null;
+let holdTimer = null;
+let holdSeconds = 600;
+
+/* ── Navigation ── */
+function goStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.step-btn').forEach(b => {
+    const s = +b.dataset.step;
+    b.classList.toggle('active', s === n);
+    b.classList.toggle('done', s < n);
+  });
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('mp-step'+n).classList.add('active');
+  document.getElementById('ap-step'+n).classList.add('active');
+  if (n === 2) populateStep2();
+  if (n === 3) populateStep3();
+  if (n === 4) populateStep4();
+  if (n === 5) { selectException('lapsed', document.querySelector('.scenario-tab')); }
+}
+
+/* ── Step 1 · Verify Member ── */
+function verifyMember() {
+  const id = document.getElementById('memberIdInput').value.trim().toUpperCase();
+  const ln = document.getElementById('lastNameInput').value.trim().toLowerCase();
+  const m = MEMBERS[id];
+  const resultEl = document.getElementById('memberResult');
+  const apEl = document.getElementById('ap-verifyOutput');
+
+  if (!m || !m.name.toLowerCase().includes(ln)) {
+    resultEl.innerHTML = `<div class="member-verified member-blocked">
+      <span class="icon">✗</span>
+      <div><strong>Member not found</strong><span>Check your membership number and last name.</span></div>
+    </div>`;
+    apEl.innerHTML = `<span class="err">404 Member not found · id=${id} · booking blocked</span>`;
+    return;
+  }
+  verifiedMember = {...m, id};
+  if (m.status === 'Inactive') {
+    resultEl.innerHTML = `<div class="member-verified member-blocked">
+      <span class="icon">⚠</span>
+      <div><strong>Membership Lapsed — ${m.name}</strong>
+        <span>${m.tier} · Status: Inactive — Please renew at costco.com to book.</span></div>
+    </div>`;
+    apEl.innerHTML = `<span class="err">403 Membership inactive · id=${id} · booking blocked\nRedirect member to renewal portal.</span>`;
+    return;
+  }
+  resultEl.innerHTML = `<div class="member-verified">
+    <span class="icon">✓</span>
+    <div><strong>${m.name} · ${m.tier} Member</strong>
+      <span>${id} · Status: Active · Negotiated rates unlocked</span></div>
+  </div>`;
+  apEl.innerHTML = `<span class="hi">200 OK · member_id=${id} · tier=${m.tier} · status=Active\nNegotiated rate contract: COSTCO-CMR-2024 · Perks unlocked.</span>`;
+
+  setTimeout(() => goStep(2), 800);
+}
+
+/* ── Step 2 · Rates ── */
+function populateStep2() {
+  if (!verifiedMember) verifiedMember = MEMBERS['COST100002'];
+  ['mp-memberBadge2','mp-memberBadge3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="member-verified" style="margin-bottom:12px">
+      <span class="icon">✓</span>
+      <div><strong>${verifiedMember.name} · ${verifiedMember.tier}</strong>
+        <span>${verifiedMember.id} · Active</span></div>
+    </div>`;
+  });
+}
+
+function searchRates() {
+  const loc = document.getElementById('locationSelect').value;
+  const pickup = document.getElementById('pickupDate').value;
+  const ret = document.getElementById('returnDate').value;
+  const days = Math.max(1, Math.round((new Date(ret) - new Date(pickup)) / 86400000));
+  const rr = document.getElementById('mp-rateResults');
+  rr.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">Searching member rates…</div>';
+
+  setTimeout(() => {
+    rr.innerHTML = `<div class="card"><h3>Member Rates · ${loc} · ${days} day${days!==1?'s':''}</h3>
+      <div class="vendor-grid">${VENDORS.map((v,i) => `
+        <div class="vendor-card ${v.recommended?'recommended':''}" onclick="selectVendor(${i})" id="vc-${i}">
+          ${v.recommended?'':''}
+          <div style="display:flex;justify-content:space-between;align-items:start">
+            <div><div class="vendor-name">${v.vendor}</div><div class="vendor-class">${v.class} · ${v.car}</div></div>
+            <span class="agency-status status-confirmed" style="font-size:8px">AVAILABLE</span>
+          </div>
+          <div class="vendor-price-row">
+            <span class="vendor-price">$${(v.memberRate*days).toFixed(2)}</span>
+            <span class="vendor-retail">$${(v.retail*days).toFixed(2)}</span>
+          </div>
+          <div class="vendor-savings">Save $${((v.retail - v.memberRate)*days).toFixed(2)} vs retail (${(((v.retail-v.memberRate)/v.retail)*100).toFixed(0)}% off)</div>
+          <div class="perks">
+            <span class="perk">$${v.memberRate.toFixed(2)}/day</span>
+            ${PERKS.map(p=>`<span class="perk gold">${p}</span>`).join('')}
+          </div>
+        </div>`).join('')}
+      </div></div>`;
+
+    // agency rate table
+    document.getElementById('ap-rateTable').innerHTML = VENDORS.map(v => `
+      <div class="agency-rate-compare" style="margin-bottom:8px">
+        <div style="color:#a7f3c3;font-size:11px;font-weight:700;align-self:center">${v.vendor} · ${v.class}</div>
+        <div class="rate-box retail" style="font-size:10px"><small>RETAIL</small><strong style="font-size:14px">$${v.retail}/day</strong></div>
+        <div class="rate-box member" style="font-size:10px"><small>MEMBER</small><strong style="font-size:14px">$${v.memberRate}/day</strong></div>
+      </div>`).join('');
+  }, 600);
+}
+
+function selectVendor(i) {
+  selectedVendor = {...VENDORS[i]};
+  document.querySelectorAll('.vendor-card').forEach((c,j) => c.classList.toggle('selected', j===i));
+  goStep(3);
+}
+
+/* ── Step 3 · Selection detail ── */
+function populateStep3() {
+  if (!selectedVendor) selectedVendor = VENDORS[0];
+  const loc = document.getElementById('locationSelect')?.value || 'LAX';
+  const pickup = document.getElementById('pickupDate')?.value || '2026-09-15';
+  const ret = document.getElementById('returnDate')?.value || '2026-09-19';
+  const days = Math.max(1, Math.round((new Date(ret) - new Date(pickup)) / 86400000));
+  const sv = selectedVendor;
+
+  document.getElementById('selectionDetail').innerHTML = `
+    <div class="card-row"><label>VENDOR</label><strong>${sv.vendor}</strong></div>
+    <div class="card-row"><label>VEHICLE CLASS</label><strong>${sv.class} (${sv.car} or similar)</strong></div>
+    <div class="card-row"><label>LOCATION</label><strong>${loc}</strong></div>
+    <div class="card-row"><label>PICKUP</label><strong>${pickup}</strong></div>
+    <div class="card-row"><label>RETURN</label><strong>${ret}</strong></div>
+    <div class="card-row"><label>DAYS</label><strong>${days}</strong></div>
+    <div class="card-row"><label>MEMBER RATE</label><strong style="color:var(--green)">$${sv.memberRate.toFixed(2)}/day</strong></div>
+    <div class="card-row"><label>RETAIL RATE</label><strong style="text-decoration:line-through;color:var(--muted)">$${sv.retail.toFixed(2)}/day</strong></div>
+    <div class="card-row"><label>TOTAL</label><strong style="font-size:15px;color:var(--navy)">$${(sv.memberRate*days).toFixed(2)}</strong></div>
+    <div class="card-row"><label>SAVINGS</label><strong style="color:var(--green)">Save $${((sv.retail-sv.memberRate)*days).toFixed(2)}</strong></div>`;
+
+  document.getElementById('ap-selectionDetail').innerHTML = `
+    <div class="agency-row"><label>VENDOR</label><strong>${sv.vendor}</strong></div>
+    <div class="agency-row"><label>CLASS</label><strong>${sv.class}</strong></div>
+    <div class="agency-row"><label>LOCATION</label><strong>${loc}</strong></div>
+    <div class="agency-row"><label>DATES</label><strong>${pickup} → ${ret}</strong></div>
+    <div class="agency-row"><label>MEMBER RATE</label><strong style="color:var(--agency-accent)">$${sv.memberRate}/day</strong></div>
+    <div class="agency-row"><label>CONTRACT</label><strong>COSTCO-CMR-2024</strong></div>`;
+
+  startHoldCountdown();
+}
+
+function startHoldCountdown() {
+  if (holdTimer) clearInterval(holdTimer);
+  holdSeconds = 600;
+  holdTimer = setInterval(() => {
+    holdSeconds = Math.max(0, holdSeconds - 1);
+    const el = document.getElementById('holdCountdown');
+    if (el) el.textContent = `${Math.floor(holdSeconds/60)}:${String(holdSeconds%60).padStart(2,'0')}`;
+    if (holdSeconds === 0) clearInterval(holdTimer);
+  }, 1000);
+}
+
+/* ── Step 4 · Confirmation ── */
+function confirmBooking() {
+  if (holdTimer) clearInterval(holdTimer);
+  goStep(4);
+}
+
+function populateStep4() {
+  if (!selectedVendor) selectedVendor = VENDORS[0];
+  if (!verifiedMember) verifiedMember = {name:"Maria Smith",tier:"Executive",id:"COST100002"};
+  const loc = document.getElementById('locationSelect')?.value || 'LAX';
+  const pickup = document.getElementById('pickupDate')?.value || '2026-09-15';
+  const ret = document.getElementById('returnDate')?.value || '2026-09-19';
+  const days = Math.max(1, Math.round((new Date(ret) - new Date(pickup)) / 86400000));
+  const sv = selectedVendor;
+
+  document.getElementById('confirmMeta').innerHTML = `
+    <div><small>MEMBER</small><strong>${verifiedMember.name}</strong></div>
+    <div><small>TIER</small><strong>${verifiedMember.tier}</strong></div>
+    <div><small>VENDOR</small><strong>${sv.vendor}</strong></div>
+    <div><small>CLASS</small><strong>${sv.class}</strong></div>
+    <div><small>PICKUP</small><strong>${loc} · ${pickup}</strong></div>
+    <div><small>RETURN</small><strong>${ret}</strong></div>
+    <div><small>TOTAL</small><strong>$${(sv.memberRate*days).toFixed(2)}</strong></div>
+    <div><small>SAVINGS</small><strong style="color:var(--green)">$${((sv.retail-sv.memberRate)*days).toFixed(2)} saved</strong></div>`;
+}
+
+/* ── Step 5 · Exceptions ── */
+const EXCEPTIONS = {
+  lapsed: {
+    mp: `<div class="exception-box">
+      <strong>⚠ Membership Lapsed — Booking Blocked</strong>
+      <p style="margin-top:8px">Member COST100001 (John Smith) has an Inactive Gold Star membership.
+      The booking engine verifies membership status before displaying rates.
+      This member is redirected to <strong>costco.com/renew</strong> before they can proceed.</p>
+      <p style="margin-top:8px"><strong>Trigger:</strong> Membership lapsed or unverified.<br>
+      <strong>Platform behavior:</strong> Rates and booking UI are blocked. A renewal prompt is shown.<br>
+      <strong>Resolution:</strong> Member renews → status flips to Active → rates unlocked.</p>
+    </div>`,
+    ap: `<div class="agency-card agency-blocked">
+      <h3><span>🚫</span> Booking Request Rejected</h3>
+      <div class="terminal-line">
+<span class="dim">POST /api/membership/verify</span><br>
+<span class="err">403 FORBIDDEN</span><br>
+<span class="err">{ "error": "MEMBERSHIP_INACTIVE", "member_id": "COST100001",</span><br>
+<span class="err">  "message": "Membership expired. Redirect to renewal." }</span><br>
+<br>
+<span class="dim">No rate query sent to vendor partners.</span><br>
+<span class="dim">No hold placed. No PNR created.</span>
+      </div>
+    </div>`
+  },
+  noRate: {
+    mp: `<div class="exception-box">
+      <strong>⚠ Negotiated Rate Unavailable for Requested Dates</strong>
+      <p style="margin-top:8px">The Costco-negotiated contract rate for the requested location/dates
+      is sold out or temporarily unavailable at all partner vendors.</p>
+      <p style="margin-top:8px"><strong>Trigger:</strong> Inventory exhausted during peak demand.<br>
+      <strong>Platform behavior:</strong> "Negotiated rate unavailable" message shown.<br>
+      <strong>Resolution:</strong> Member can adjust dates, choose alternate location, or check back.</p>
+    </div>`,
+    ap: `<div class="agency-card agency-blocked">
+      <h3><span>📭</span> No Negotiated Inventory</h3>
+      <div class="terminal-line">
+<span class="dim">GET /rates?location=LAX&contract=COSTCO-CMR-2024&pickup=2026-12-24</span><br>
+<span class="err">200 OK · negotiated_available: false</span><br>
+<span class="hi">{ "fallback_available": false, "reason": "peak_demand_exhausted",</span><br>
+<span class="hi">  "vendors_checked": ["Avis","Enterprise","Budget","Alamo","National"],</span><br>
+<span class="hi">  "all_sold_out": true }</span><br>
+<br>
+<span class="dim">→ No fallback offered. Member notified to adjust search.</span>
+      </div>
+    </div>`
+  },
+  fallback: {
+    mp: `<div class="exception-box" style="background:#eef4fb;border-color:#7baed8;color:#1e3a5f">
+      <strong>ℹ Negotiated Rate Unavailable · Standard Rate Offered</strong>
+      <p style="margin-top:8px">Costco-negotiated inventory is exhausted at the primary vendor, but
+      a published retail rate is available. Platform discloses this to the member.</p>
+      <p style="margin-top:8px"><strong>Trigger:</strong> Costco contract rate not available; retail rate exists.<br>
+      <strong>Platform behavior:</strong> Displays retail rate with clear disclosure banner:
+      "Member rate unavailable — standard rate applies."<br>
+      <strong>Member choice:</strong> Proceed at retail or search alternate dates/location.</p>
+    </div>`,
+    ap: `<div class="agency-card">
+      <h3><span>🔄</span> Fallback to Standard Rate</h3>
+      <div class="terminal-line">
+<span class="dim">GET /rates?location=LAX&contract=COSTCO-CMR-2024&pickup=2026-12-26</span><br>
+<span class="hi">200 OK · negotiated_available: false · retail_available: true</span><br>
+<span class="hi">{ "fallback_rate": 89.00, "currency": "USD",</span><br>
+<span class="hi">  "disclosure": "STANDARD_RATE_APPLIED",</span><br>
+<span class="hi">  "perks_active": false,</span><br>
+<span class="hi">  "vendor": "Enterprise" }</span><br>
+<br>
+<span class="dim">→ Platform shows disclosure. Perks NOT applied at standard rate.</span><br>
+<span class="dim">→ Booking proceeds if member accepts.</span>
+      </div>
+    </div>`
+  }
+};
+
+function selectException(key, btn) {
+  document.querySelectorAll('.scenario-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const ex = EXCEPTIONS[key];
+  document.getElementById('exceptionContent').innerHTML = ex.mp;
+  document.getElementById('ap-exceptionDetail').innerHTML = ex.ap;
+}
+
+/* ── Init ── */
+selectException('lapsed', null);
+</script>
+</body>
+</html>

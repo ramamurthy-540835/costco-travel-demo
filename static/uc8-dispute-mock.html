@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UC8 — Billing Dispute / Post-Rental Support · Costco Travel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0c2948;--blue:#1d65a6;--red:#d71920;--cream:#fbfaf7;--ink:#172333;--muted:#607184;--line:#dbe2e8;--gold:#c59a45;--green:#16805b;--shadow:0 18px 50px rgba(18,44,70,.12);--agency-border:#1e4a31;--agency-accent:#27c975}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#111827;color:var(--ink);min-height:100vh}
+.ribbon{height:28px;background:var(--navy);color:#dce9f5;text-align:center;font-size:11px;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.ribbon span{width:6px;height:6px;border-radius:50%;background:#6cdfaf;box-shadow:0 0 8px #6cdfaf}
+.header{background:#1e293b;padding:14px 28px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #2d3e50}
+.header-brand{text-decoration:none;line-height:.8;display:flex;flex-direction:column;transform:skew(-6deg)}
+.costco{color:#e31837;font:900 18px Arial,sans-serif;letter-spacing:-1px;border-bottom:3px solid #1676b9}
+.travel{font:bold 10px Arial,sans-serif;letter-spacing:6px;color:#1676b9;margin-top:4px}
+.header h1{color:#e2e8f0;font-family:Fraunces,serif;font-size:16px;font-weight:600}
+.header .uc-badge{margin-left:auto;background:#1e3a5f;border:1px solid #2d5a8e;padding:6px 12px;border-radius:4px;color:#7bb8e8;font-size:10px;font-weight:700;letter-spacing:.1em}
+.step-nav{background:#1e293b;border-bottom:1px solid #2d3e50;padding:0 28px;display:flex;align-items:center;gap:0}
+.step-btn{border:0;background:transparent;color:#64748b;font:600 11px inherit;letter-spacing:.08em;padding:14px 20px;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
+.step-btn.active{color:#93c5fd;border-bottom-color:#3b82f6}
+.step-btn.done{color:#4ade80}
+.step-btn:hover:not(.active){color:#94a3b8}
+.step-sep{color:#374151;padding:0 4px;font-size:14px}
+.panels{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 150px);overflow:hidden}
+.panel{overflow-y:auto;padding:24px}
+.panel-header{font-size:9px;letter-spacing:.18em;font-weight:700;padding:6px 10px;border-radius:3px;margin-bottom:16px;display:inline-block}
+.member-panel{background:var(--cream)}
+.member-panel .panel-header{background:#e8f0f7;color:var(--blue)}
+.agency-panel{background:#0d1f13;border-left:1px solid var(--agency-border)}
+.agency-panel .panel-header{background:#1a3a24;color:var(--agency-accent)}
+.card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:20px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h3{font-family:Fraunces,serif;color:var(--navy);font-size:20px;margin-bottom:12px}
+.card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.card-row:last-child{border-bottom:none}
+.card-row label{color:var(--muted);font-size:10px;letter-spacing:.06em;font-weight:700}
+.agency-card{background:#0f2d1e;border:1px solid var(--agency-border);border-radius:6px;padding:18px;margin-bottom:12px}
+.agency-card h3{color:#a7f3c3;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.agency-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a3a2a;font-size:11px}
+.agency-row:last-child{border-bottom:none}
+.agency-row label{color:#5a8a6a;font-size:9px;letter-spacing:.08em;font-weight:700}
+.agency-row strong{color:#d1fae5}
+.terminal-line{font-family:"Courier New",monospace;font-size:10px;color:#4ade80;background:#060d08;border:1px solid #1a3a2a;border-radius:4px;padding:12px;margin-top:10px;line-height:1.7}
+.terminal-line .dim{color:#3d6b47}
+.terminal-line .hi{color:#a7f3c3}
+.terminal-line .err{color:#f87171}
+.terminal-line .warn{color:#fbbf24}
+.btn{border:0;border-radius:3px;padding:11px 18px;font:700 12px inherit;cursor:pointer;transition:.18s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:#174f80}
+.btn-secondary{background:#e7eef3;color:var(--navy)}
+.btn-secondary:hover{background:#d6e5ef}
+.btn-danger{border:1px solid #dfb7bc;background:#fff;color:#b21f2d;padding:11px 18px;font-weight:700;cursor:pointer}
+.btn-danger:hover{background:#b21f2d;color:#fff}
+.btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.step-panel{display:none}.step-panel.active{display:block}
+.scenario-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.scenario-tab{border:1px solid #cbd5dd;background:#fff;border-radius:3px;padding:7px 14px;font:600 10px inherit;color:var(--muted);cursor:pointer;letter-spacing:.04em}
+.scenario-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.dispute-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:9px;font-weight:700;background:#fff0f1;color:#b21f2d;border:1px solid #dfb7bc}
+.dispute-badge.open{background:#fff5d9;color:#b45309;border-color:#e3bd63}
+.dispute-badge.resolved{background:#edf8f3;color:#176a4e;border-color:#a7d7bf}
+.comparison-grid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:12px 0}
+.comparison-grid>div{background:#f4f7f9;border:1px solid var(--line);padding:13px;border-radius:4px}
+.comparison-grid>div.conflict{background:#fff0f1;border-color:#dfb7bc}
+.comparison-grid>div.contract{background:#edf8f3;border-color:#a7d7bf}
+.comparison-grid small{display:block;font-size:9px;color:var(--muted);letter-spacing:.07em;font-weight:700}
+.comparison-grid strong{display:block;font-size:14px;font-weight:700;margin-top:4px}
+.alert-box{background:#fff5d9;border:1px solid #e3bd63;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#6f5317}
+.success-box{background:#edf8f3;border:1px solid #a7d7bf;border-radius:4px;padding:14px;margin-bottom:14px;font-size:12px;color:#176a4e}
+.dispute-id-box{background:linear-gradient(135deg,#fff5d9,#fff9ed);border:1px solid #e3bd63;border-radius:6px;padding:18px;margin-bottom:14px}
+.dispute-id-box h3{color:#b45309;font-family:Fraunces,serif;font-size:16px;margin-bottom:4px}
+.dispute-number{font-size:26px;font-weight:700;color:var(--navy);font-family:Fraunces,serif;letter-spacing:.05em;margin:6px 0}
+.sync-bar{background:#0f1f2e;border-top:1px solid #1e3a5f;padding:8px 28px;font-size:10px;color:#64748b;display:flex;align-items:center;gap:8px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#27c975;box-shadow:0 0 6px #27c975;animation:pulse 1.5s infinite}
+@keyframes pulse{50%{opacity:.4}}
+@media(max-width:900px){.panels{grid-template-columns:1fr;height:auto}.agency-panel{border-left:none;border-top:1px solid var(--agency-border)}}
+</style>
+</head>
+<body>
+<div class="ribbon"><span></span> UC8 Mock · Billing Dispute / Post-Rental Support · Dual View (Member + Costco Travel)</div>
+<header class="header">
+  <a class="header-brand" href="/"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
+  <h1>UC8 — Billing Dispute / Post-Rental Support</h1>
+  <div class="uc-badge">MOCK SCENARIO</div>
+</header>
+<nav class="step-nav" id="stepNav">
+  <button class="step-btn active" data-step="1" onclick="goStep(1)">1 · INVOICE REVIEW</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="2" onclick="goStep(2)">2 · COSTCO CONTACT</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="3" onclick="goStep(3)">3 · TERMS COMPARISON</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="4" onclick="goStep(4)">4 · ESCALATION</button>
+  <span class="step-sep">›</span>
+  <button class="step-btn" data-step="5" onclick="goStep(5)">5 · EXCEPTIONS</button>
+</nav>
+<div class="panels">
+  <div class="panel member-panel">
+    <div class="panel-header">MEMBER / PLATFORM VIEW</div>
+
+    <!-- Step 1 -->
+    <div class="step-panel active" id="mp-step1">
+      <div class="card">
+        <h3>Completed Rental</h3>
+        <div class="card-row"><label>RESERVATION</label><strong>CTR-DACTIV1</strong></div>
+        <div class="card-row"><label>VENDOR</label><strong>Avis · AW-87654321</strong></div>
+        <div class="card-row"><label>VEHICLE</label><strong>Toyota RAV4 · Standard SUV (SFAR)</strong></div>
+        <div class="card-row"><label>RENTAL DAYS</label><strong>2 days</strong></div>
+        <div class="card-row"><label>STATUS</label><strong>RETURNED</strong></div>
+      </div>
+      <div class="card">
+        <h3>Select a Dispute Scenario</h3>
+        <div class="scenario-tabs">
+          <button class="scenario-tab active" onclick="selectDispute('rate',this)">Rate Mismatch</button>
+          <button class="scenario-tab" onclick="selectDispute('fee',this)">Unwaived Fee</button>
+          <button class="scenario-tab" onclick="selectDispute('double',this)">Double Charge</button>
+        </div>
+        <div id="disputeScenario">
+          <div class="alert-box"><strong>Rate Mismatch</strong> — Vendor invoice shows $64/day (retail) instead of the negotiated Costco member rate of $63/day. Discrepancy: $1/day × 2 days = $2 overcharged.</div>
+          <div class="comparison-grid">
+            <div class="conflict"><small>VENDOR INVOICE</small><strong style="color:var(--red)">$64.00/day</strong><span style="font-size:10px;color:var(--muted)">Retail rate charged</span></div>
+            <b style="text-align:center;color:var(--muted)">vs</b>
+            <div class="contract"><small>COSTCO BOOKING</small><strong style="color:var(--green)">$63.00/day</strong><span style="font-size:10px;color:var(--muted)">Member rate confirmed</span></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-danger" onclick="goStep(2)">Contact Costco Travel →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-panel" id="mp-step2">
+      <div class="card">
+        <h3>Contact Costco Travel</h3>
+        <div class="alert-box">Call or chat Costco Travel — not the vendor directly. Costco Travel is your advocate and holds the original booking terms.</div>
+        <div class="card-row"><label>PHONE</label><strong>1-866-921-7925</strong></div>
+        <div class="card-row"><label>HOURS</label><strong>Mon–Fri 7AM–10PM PT · Sat–Sun 7AM–8PM PT</strong></div>
+        <div class="card-row"><label>REFERENCE</label><strong>CTR-DACTIV1 + Costco membership COST100002</strong></div>
+        <div class="card-row"><label>HAVE READY</label><strong>Vendor invoice + Costco Travel confirmation email</strong></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goStep(3)">Costco pulls booking terms →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-panel" id="mp-step3">
+      <div class="card">
+        <h3>Terms Comparison</h3>
+        <div id="mp-termsComparison">
+          <div class="comparison-grid">
+            <div class="conflict"><small>VENDOR INVOICE</small><strong style="color:var(--red)" id="vendorSide">$64.00/day</strong><span style="font-size:10px;color:var(--muted)">Charged to card</span></div>
+            <b style="text-align:center;color:var(--muted)">vs</b>
+            <div class="contract"><small>COSTCO BOOKING TERMS</small><strong style="color:var(--green)" id="contractSide">$63.00/day</strong><span style="font-size:10px;color:var(--muted)">Original confirmed rate</span></div>
+          </div>
+          <div class="card-row"><label>DISCREPANCY</label><strong style="color:var(--red)" id="discrepancyAmt">$2.00 overcharge</strong></div>
+          <div class="card-row"><label>BOOKING EVIDENCE</label><strong>Firestore record CTR-DACTIV1 + email confirmation</strong></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="goStep(4)">Escalate to vendor →</button></div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-panel" id="mp-step4">
+      <div class="dispute-id-box">
+        <h3>Dispute Opened</h3>
+        <div class="dispute-number" id="disputeId">DSP-A8K2MQ</div>
+        <div style="font-size:10px;color:#b45309">Costco Travel dispute reference number</div>
+      </div>
+      <div class="card">
+        <h3>What Happens Next</h3>
+        <div class="card-row"><label>STEP 1</label><strong>Costco Travel escalates to vendor (Avis)</strong></div>
+        <div class="card-row"><label>STEP 2</label><strong>Vendor reviews booking terms vs invoice</strong></div>
+        <div class="card-row"><label>STEP 3</label><strong>Correction or refund issued to member</strong></div>
+        <div class="card-row"><label>SLA</label><strong>3–5 business days per contract clause 12.1</strong></div>
+        <div class="card-row"><label>STATUS</label><span class="dispute-badge open">OPEN</span></div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-panel" id="mp-step5">
+      <div class="card">
+        <h3>Exception Scenarios</h3>
+        <div class="scenario-tabs">
+          <button class="scenario-tab active" onclick="selectException('vendorDisputes',this)">Vendor Disputes Terms</button>
+          <button class="scenario-tab" onclick="selectException('expectGap',this)">Expectation vs Actual</button>
+        </div>
+        <div id="exceptionDetail">
+          <div class="alert-box"><strong>Vendor Disputes Costco Terms</strong> — Vendor claims their internal record shows a different contract rate. Costco Travel produces the signed contract clause as evidence. If unresolved, escalated to the Costco/Vendor commercial relationship manager.</div>
+          <div class="card-row"><label>EVIDENCE</label><strong>Signed contract COSTCO-CMR-2024 clause 2.1</strong></div>
+          <div class="card-row"><label>ESCALATION PATH</label><strong>Commercial relationship manager within 10 days</strong></div>
+          <div class="card-row"><label>MEMBER IMPACT</label><strong>Refund held pending resolution</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel agency-panel">
+    <div class="panel-header">COSTCO TRAVEL MEMBER SERVICES VIEW</div>
+
+    <!-- Step 1 agency -->
+    <div class="step-panel active" id="ap-step1">
+      <div class="agency-card">
+        <h3><span>📋</span> Booking Record</h3>
+        <div class="agency-row"><label>RESERVATION</label><strong>CTR-DACTIV1</strong></div>
+        <div class="agency-row"><label>MEMBER</label><strong>Maria Smith · COST100002 · Executive</strong></div>
+        <div class="agency-row"><label>VENDOR</label><strong>Avis · AW-87654321</strong></div>
+        <div class="agency-row"><label>RATE CONFIRMED</label><strong style="color:var(--agency-accent)">$63.00/day (COSTCO-CMR-2024)</strong></div>
+        <div class="agency-row"><label>STATUS</label><strong>RETURNED</strong></div>
+      </div>
+      <div class="agency-card">
+        <h3><span>🔍</span> Dispute Trigger Analysis</h3>
+        <div class="terminal-line" id="ap-disputeTrigger">
+<span class="dim">// Scenario: Rate Mismatch</span><br>
+<span class="err">vendor_invoice_rate = $64.00/day</span><br>
+<span class="hi">costco_booking_rate = $63.00/day</span><br>
+<span class="err">discrepancy = $2.00 overcharge</span><br>
+<span class="dim">dispute_type: charge_mismatch</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 agency -->
+    <div class="step-panel" id="ap-step2">
+      <div class="agency-card">
+        <h3><span>📞</span> Member Contact Received</h3>
+        <div class="terminal-line">
+<span class="dim">// Member contacts Costco Travel (not vendor)</span><br>
+<span class="hi">POST /api/support/contact</span><br>
+<span class="dim">{ "member": "COST100002",</span><br>
+<span class="dim">  "reservation": "CTR-DACTIV1",</span><br>
+<span class="dim">  "type": "billing_dispute" }</span><br>
+<br>
+<span class="hi">201 CREATED · case_id: CT-CASE-2026-09112</span><br>
+<span class="dim">agent_assigned: Member Services Team</span><br>
+<span class="dim">pulling_booking_terms: CTR-DACTIV1 ...</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>🛡</span> Why Costco Travel First</h3>
+        <div class="agency-row"><label>SOURCE OF TRUTH</label><strong>Costco Travel booking record</strong></div>
+        <div class="agency-row"><label>ADVOCATE ROLE</label><strong>Costco holds vendor accountable</strong></div>
+        <div class="agency-row"><label>CONTRACT ACCESS</label><strong>Direct access to COSTCO-CMR-2024</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 3 agency -->
+    <div class="step-panel" id="ap-step3">
+      <div class="agency-card">
+        <h3><span>⚖</span> Terms Comparison</h3>
+        <div class="terminal-line">
+<span class="dim">// GET /api/reservations/CTR-DACTIV1</span><br>
+<span class="hi">booking_terms: { rate_per_day: 63.00,</span><br>
+<span class="hi">&nbsp;&nbsp;total: 126.00, vendor: "Avis",</span><br>
+<span class="hi">&nbsp;&nbsp;vendor_conf: "AW-87654321",</span><br>
+<span class="hi">&nbsp;&nbsp;contract: "COSTCO-CMR-2024" }</span><br>
+<br>
+<span class="err">vendor_invoice: { rate_per_day: 64.00, total: 128.00 }</span><br>
+<br>
+<span class="err">DISCREPANCY CONFIRMED: $2.00 overcharge</span><br>
+<span class="dim">→ Escalating to Avis dispute team.</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📊</span> Evidence Package</h3>
+        <div class="agency-row"><label>BOOKING RECORD</label><strong>Firestore · CTR-DACTIV1</strong></div>
+        <div class="agency-row"><label>CONTRACT</label><strong>COSTCO-CMR-2024 · clause 2.1</strong></div>
+        <div class="agency-row"><label>VENDOR INVOICE</label><strong>AW-87654321 · $128.00</strong></div>
+        <div class="agency-row"><label>DELTA</label><strong style="color:#f87171">$2.00 overcharge confirmed</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 4 agency -->
+    <div class="step-panel" id="ap-step4">
+      <div class="agency-card">
+        <h3><span>🚀</span> Escalation to Vendor</h3>
+        <div class="terminal-line">
+<span class="dim">// POST /api/reservations/CTR-DACTIV1/dispute</span><br>
+<span class="dim">{ "dispute_type": "charge_mismatch",</span><br>
+<span class="dim">  "description": "Vendor charged $64/day vs confirmed member rate $63/day. Overcharge: $2.00",</span><br>
+<span class="dim">  "evidence": { "booking_rate": 63.00, "vendor_invoice_rate": 64.00, "contract": "COSTCO-CMR-2024" } }</span><br>
+<br>
+<span class="hi">201 CREATED · dispute_id: DSP-A8K2MQ</span><br>
+<span class="hi">status: OPEN · sla_days: 3–5</span><br>
+<span class="dim">Avis dispute team notified. Refund SLA initiated.</span>
+        </div>
+      </div>
+      <div class="agency-card">
+        <h3><span>📋</span> Dispute Summary</h3>
+        <div class="agency-row"><label>DISPUTE ID</label><strong>DSP-A8K2MQ</strong></div>
+        <div class="agency-row"><label>TYPE</label><strong id="ap-disputeType">charge_mismatch</strong></div>
+        <div class="agency-row"><label>STATUS</label><strong>OPEN</strong></div>
+        <div class="agency-row"><label>SLA</label><strong>3–5 business days (clause 12.1)</strong></div>
+        <div class="agency-row"><label>EXPECTED RESOLUTION</label><strong>Avis credit $2.00 to member card</strong></div>
+      </div>
+    </div>
+
+    <!-- Step 5 agency -->
+    <div class="step-panel" id="ap-step5">
+      <div class="agency-card" id="ap-exceptionDetail">
+        <h3><span>⚠</span> Vendor Disputes Costco Terms</h3>
+        <div class="terminal-line">
+<span class="dim">// Vendor disputes contract interpretation</span><br>
+<span class="warn">Avis: internal_rate=$64.00 · claim: standard_rate_period</span><br>
+<span class="hi">Costco: contract_rate=$63.00 · evidence: signed COSTCO-CMR-2024</span><br>
+<br>
+<span class="dim">Escalation path:</span><br>
+<span class="hi">Level 1: Avis dispute team</span><br>
+<span class="hi">Level 2: Costco Travel commercial manager</span><br>
+<span class="hi">Level 3: Contract arbitration (if unresolved &gt;10 days)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="sync-bar"><div class="sync-dot"></div><span>Platform ↔ Costco Travel Member Services sync active · UC8 Billing Dispute Mock</span></div>
+
+<script>
+let currentStep = 1;
+const DISPUTES = {
+  rate: {
+    mp: '<div class="alert-box"><strong>Rate Mismatch</strong> — Vendor invoice shows $64/day (retail) instead of the negotiated Costco member rate of $63/day. Discrepancy: $1/day × 2 days = $2 overcharged.</div><div class="comparison-grid"><div class="conflict"><small>VENDOR INVOICE</small><strong style="color:var(--red)">$64.00/day</strong><span style="font-size:10px;color:var(--muted)">Retail rate charged</span></div><b style="text-align:center;color:var(--muted)">vs</b><div class="contract"><small>COSTCO BOOKING</small><strong style="color:var(--green)">$63.00/day</strong><span style="font-size:10px;color:var(--muted)">Member rate confirmed</span></div></div>',
+    vendor: '$64.00/day', contract: '$63.00/day', discrepancy: '$2.00 overcharge',
+    triggerCode: '<span class="dim">// Scenario: Rate Mismatch</span><br><span class="err">vendor_invoice_rate = $64.00/day</span><br><span class="hi">costco_booking_rate = $63.00/day</span><br><span class="err">discrepancy = $2.00 overcharge</span><br><span class="dim">dispute_type: charge_mismatch</span>',
+    type: 'charge_mismatch'
+  },
+  fee: {
+    mp: '<div class="alert-box"><strong>Unwaived Fee</strong> — Vendor charged $13/day additional driver fee despite Costco Travel contract clause 4.2 which waives this for all members. Overcharge: $13/day × 2 days = $26.</div><div class="comparison-grid"><div class="conflict"><small>VENDOR INVOICE</small><strong style="color:var(--red)">+$26.00 additional driver</strong><span style="font-size:10px;color:var(--muted)">$13/day × 2 days charged</span></div><b style="text-align:center;color:var(--muted)">vs</b><div class="contract"><small>COSTCO CONTRACT</small><strong style="color:var(--green)">$0 (clause 4.2)</strong><span style="font-size:10px;color:var(--muted)">Free for all members</span></div></div>',
+    vendor: '+$26.00 (additional driver fee)', contract: '$0 — clause 4.2 member perk', discrepancy: '$26.00 overcharge',
+    triggerCode: '<span class="dim">// Scenario: Unwaived Fee</span><br><span class="err">vendor_charge: extra_driver_fee = $26.00</span><br><span class="hi">costco_contract: extra_driver = $0 (clause 4.2)</span><br><span class="err">discrepancy = $26.00 overcharge</span><br><span class="dim">dispute_type: unwaived_fee</span>',
+    type: 'unwaived_fee'
+  },
+  double: {
+    mp: '<div class="alert-box"><strong>Double Charge</strong> — Collision Damage Waiver appears twice on the final invoice: $18.99 × 2 = $37.98 instead of expected $18.99. Overcharge: $18.99.</div><div class="comparison-grid"><div class="conflict"><small>VENDOR INVOICE</small><strong style="color:var(--red)">$37.98 CDW (×2)</strong><span style="font-size:10px;color:var(--muted)">Billed twice in error</span></div><b style="text-align:center;color:var(--muted)">vs</b><div class="contract"><small>EXPECTED CHARGE</small><strong style="color:var(--green)">$18.99 CDW (×1)</strong><span style="font-size:10px;color:var(--muted)">One-time add-on</span></div></div>',
+    vendor: '$37.98 (CDW billed twice)', contract: '$18.99 (single add-on)', discrepancy: '$18.99 double-charge',
+    triggerCode: '<span class="dim">// Scenario: Double Charge</span><br><span class="err">vendor_invoice: cdw_charge = $37.98 (×2)</span><br><span class="hi">booking_addons: insurance = $18.99 (×1)</span><br><span class="err">discrepancy = $18.99 double-billed</span><br><span class="dim">dispute_type: double_charge</span>',
+    type: 'double_charge'
+  }
+};
+const EXCEPTIONS = {
+  vendorDisputes: {
+    mp: '<div class="alert-box"><strong>Vendor Disputes Costco Terms</strong> — Vendor claims their internal record shows a different contract rate. Costco Travel produces the signed contract clause as evidence.</div><div class="card-row"><label>EVIDENCE</label><strong>Signed contract COSTCO-CMR-2024 clause 2.1</strong></div><div class="card-row"><label>ESCALATION PATH</label><strong>Commercial relationship manager within 10 days</strong></div><div class="card-row"><label>MEMBER IMPACT</label><strong>Refund held pending resolution</strong></div>',
+    ap: '<h3><span>⚠</span> Vendor Disputes Terms</h3><div class="terminal-line"><span class="dim">// Vendor disputes contract interpretation</span><br><span class="warn">Avis: internal_rate=$64.00 · claim: standard_rate_period</span><br><span class="hi">Costco: contract_rate=$63.00 · evidence: signed COSTCO-CMR-2024</span><br><br><span class="dim">Level 1: Avis dispute team</span><br><span class="hi">Level 2: Costco Travel commercial manager</span><br><span class="hi">Level 3: Contract arbitration (&gt;10 days)</span></div>'
+  },
+  expectGap: {
+    mp: '<div class="alert-box"><strong>Expectation vs Actual</strong> — Member expected Costco Travel\'s cancellation policy (48h free) but vendor counter agent only offered their own 24h policy. Perceived benefit exceeds actual contract terms.</div><div class="card-row"><label>MEMBER BELIEF</label><strong>48h free cancellation from Costco advertising</strong></div><div class="card-row"><label>VENDOR POLICY</label><strong>24h — vendor counter uses their own standard</strong></div><div class="card-row"><label>REALITY</label><strong>Costco contract clause 7.0 gives 48h but must cancel via Costco Travel</strong></div><div class="card-row"><label>LESSON</label><strong>Always cancel through Costco Travel, not vendor direct</strong></div>',
+    ap: '<h3><span>📊</span> Expectation Gap</h3><div class="agency-row"><label>ISSUE</label><strong>Member cancelled at vendor counter directly</strong></div><div class="agency-row"><label>VENDOR APPLIED</label><strong>24h policy (vendor standard)</strong></div><div class="agency-row"><label>COSTCO CLAUSE 7.0</label><strong>48h free — but only via Costco Travel portal</strong></div><div class="agency-row"><label>RESOLUTION</label><strong>Costco Travel escalates as courtesy (not contractual)</strong></div>'
+  }
+};
+
+let currentDispute = 'rate';
+
+function selectDispute(key, btn) {
+  currentDispute = key;
+  document.querySelectorAll('#mp-step1 .scenario-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const d = DISPUTES[key];
+  document.getElementById('disputeScenario').innerHTML = d.mp;
+  document.getElementById('ap-disputeTrigger').innerHTML = d.triggerCode;
+  document.getElementById('vendorSide').textContent = d.vendor;
+  document.getElementById('contractSide').textContent = d.contract;
+  document.getElementById('discrepancyAmt').textContent = d.discrepancy;
+  document.getElementById('ap-disputeType').textContent = d.type;
+}
+
+function selectException(key, btn) {
+  document.querySelectorAll('#mp-step5 .scenario-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const ex = EXCEPTIONS[key];
+  document.getElementById('exceptionDetail').innerHTML = ex.mp;
+  document.getElementById('ap-exceptionDetail').innerHTML = ex.ap;
+}
+
+function goStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.step-btn').forEach(b => {
+    const s = +b.dataset.step;
+    b.classList.toggle('active', s === n);
+    b.classList.toggle('done', s < n);
+  });
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('mp-step'+n).classList.add('active');
+  document.getElementById('ap-step'+n).classList.add('active');
+  if (n === 5) selectException('vendorDisputes', document.querySelector('#mp-step5 .scenario-tab'));
+}
+
+// Init
+selectDispute('rate', null);
+</script>
+</body>
+</html>

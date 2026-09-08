@@ -3,10 +3,16 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const sessionId = globalThis.crypto?.randomUUID?.() || `demo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const TERMINAL_ACTIONS = new Set(['cancel_complete', 'change_complete', 'flow_abandoned']);
 const ALT_CARS = [
-  { car:'Toyota Camry', class:'Intermediate', emoji:'🚙', vendor:'Enterprise', ratePerDay:47, retailPerDay:55, savings:'Save $8/day vs retail', features:['5 seats','Unlimited mileage','Free cancellation'], source:'fallback' },
-  { car:'Toyota RAV4', class:'Standard SUV', emoji:'🚙', vendor:'Avis', ratePerDay:63, retailPerDay:74, savings:'Save $11/day vs retail', features:['5 seats','Unlimited mileage','Member rate'], source:'fallback' },
-  { car:'Chrysler Pacifica', class:'Minivan', emoji:'🚐', vendor:'Alamo', ratePerDay:69, retailPerDay:82, savings:'Save $13/day vs retail', features:['7 seats','Unlimited mileage','Family value'], source:'fallback' },
-  { car:'Chevrolet Tahoe', class:'Full-Size SUV', emoji:'🚙', vendor:'National', ratePerDay:86, retailPerDay:101, savings:'Save $15/day vs retail', features:['7 seats','Unlimited mileage','Road-trip comfort'], source:'fallback' }
+  { car:"Toyota Camry", class:"Intermediate", emoji:"🚙", vendor:"Enterprise", ratePerDay:47, retailPerDay:55, savings:"Save $8/day vs retail", features:["5 seats","Unlimited mileage","Free cancellation"], source:"fallback" },
+  { car:"Nissan Versa", class:"Economy", emoji:"🚗", vendor:"Budget", ratePerDay:36, retailPerDay:43, savings:"Save $7/day vs retail", features:["5 seats","Unlimited mileage","Budget value"], source:"fallback" },
+  { car:"Kia Soul", class:"Compact", emoji:"🚗", vendor:"Alamo", ratePerDay:41, retailPerDay:49, savings:"Save $8/day vs retail", features:["5 seats","Unlimited mileage","City friendly"], source:"fallback" },
+  { car:"Chevrolet Malibu", class:"Full-Size", emoji:"🚘", vendor:"Enterprise", ratePerDay:54, retailPerDay:64, savings:"Save $10/day vs retail", features:["5 seats","Unlimited mileage","Extra comfort"], source:"fallback" },
+  { car:"Toyota RAV4", class:"Standard SUV", emoji:"🚙", vendor:"Avis", ratePerDay:63, retailPerDay:74, savings:"Save $11/day vs retail", features:["5 seats","Unlimited mileage","Member rate"], source:"fallback" },
+  { car:"Chrysler Pacifica", class:"Minivan", emoji:"🚐", vendor:"Alamo", ratePerDay:69, retailPerDay:82, savings:"Save $13/day vs retail", features:["7 seats","Unlimited mileage","Family value"], source:"fallback" },
+  { car:"Chevrolet Tahoe", class:"Full-Size SUV", emoji:"🚙", vendor:"National", ratePerDay:86, retailPerDay:101, savings:"Save $15/day vs retail", features:["7 seats","Unlimited mileage","Road-trip comfort"], source:"fallback" },
+  { car:"BMW 5 Series", class:"Luxury", emoji:"🚘", vendor:"National", ratePerDay:104, retailPerDay:124, savings:"Save $20/day vs retail", features:["5 seats","Unlimited mileage","Premium comfort"], source:"fallback" },
+  { car:"Ford Mustang", class:"Convertible", emoji:"🏎️", vendor:"Avis", ratePerDay:92, retailPerDay:109, savings:"Save $17/day vs retail", features:["4 seats","Unlimited mileage","Open-air driving"], source:"fallback" },
+  { car:"Ford F-150", class:"Pickup", emoji:"🛻", vendor:"Budget", ratePerDay:79, retailPerDay:94, savings:"Save $15/day vs retail", features:["5 seats","Unlimited mileage","Cargo capacity"], source:"fallback" }
 ];
 
 let RESERVATIONS = relativeFallbackReservations();
@@ -19,7 +25,8 @@ const appState = {
   partySize: 2,
   confirmCards: new Set(),
   pickerCount: 0,
-  summaryCount: 0
+  summaryCount: 0,
+  requestedCar: null
 };
 
 function addDays(date, days) { const result = new Date(date); result.setDate(result.getDate() + days); return result; }
@@ -110,7 +117,23 @@ function dateMentions(message, now = new Date()) {
   const today = new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0);
   return { found, past:dates.some((date) => date < today), dates };
 }
-function inferLocation(message) { const text=message.toLowerCase(); if (/orlando|mco/.test(text)) return 'MCO'; if (/las vegas|\blas\b/.test(text)) return 'LAS'; if (/seattle|sea/.test(text)) return 'SEA'; if (/los angeles|lax/.test(text)) return 'LAX'; return appState.location || 'MCO'; }
+function inferLocation(message) { const text=message.toLowerCase(); if (/orlando|mco/.test(text)) return "MCO"; if (/las vegas|\blas\b/.test(text)) return "LAS"; if (/seattle|sea/.test(text)) return "SEA"; if (/los angeles|lax/.test(text)) return "LAX"; if (/san francisco|sfo/.test(text)) return "SFO"; return appState.location || "MCO"; }
+function inferRequestedCar(message) {
+  const text=message.toLowerCase();
+  const choices=[["Toyota RAV4","Standard SUV"],["Chevrolet Tahoe","Full-Size SUV"],["Chrysler Pacifica","Minivan"],["Toyota Camry","Intermediate"],["Nissan Versa","Economy"],["Kia Soul","Compact"],["Chevrolet Malibu","Full-Size"],["BMW 5 Series","Luxury"],["Ford Mustang","Convertible"],["Ford F-150","Pickup"]];
+  const model=choices.find(([car])=>text.includes(car.toLowerCase())); if (model) return {car:model[0],className:model[1]};
+  const classes=[["full-size suv","Full-Size SUV"],["standard suv","Standard SUV"],["suv","Standard SUV"],["minivan","Minivan"],["compact","Compact"],["economy","Economy"],["luxury","Luxury"],["convertible","Convertible"],["pickup","Pickup"],["full-size","Full-Size"],["intermediate","Intermediate"]];
+  const found=classes.find(([term])=>text.includes(term)); return found?{car:null,className:found[1]}:null;
+}
+function timeMentions(message) {
+  const values=[]; for (const match of message.matchAll(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/gi)) { let hour=+match[1]%12; if (match[3].toLowerCase()==="pm") hour+=12; const minute=+(match[2] || 0); if (hour<24 && minute<60) values.push(String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0")); } return values;
+}
+function bookingPrefill(message, mention=dateMentions(message)) {
+  if (mention.past || !mention.dates.length) return null; const times=timeMentions(message), pickup=mention.dates[0], drop=mention.dates[1] || addDays(pickup,1);
+  return {pickup:localDate(pickup),return:localDate(drop),pickupTime:times[0] || null,dropTime:times[1] || times[0] || null};
+}
+function reservationDates(reservation) { const pickup=new Date(reservation.pickupAt),drop=new Date(reservation.dropAt); return {pickup:localDate(pickup),return:localDate(drop),pickupTime:String(pickup.getHours()).padStart(2,"0")+":"+String(pickup.getMinutes()).padStart(2,"0"),dropTime:String(drop.getHours()).padStart(2,"0")+":"+String(drop.getMinutes()).padStart(2,"0")}; }
+function requestedChangeMode(message) { const dates=/\b(date|dates|pickup|return|time|times)\b/i.test(message),vehicle=/\b(vehicle|car|upgrade|suv|minivan|economy|compact|luxury|convertible|pickup)\b/i.test(message); return dates&&vehicle?"both":dates?"dates":"vehicle"; }
 function isKeepIntent(message) { return /\b(keep|never mind|nevermind|actually keep|do not change|don't change|stop|abandon)\b/i.test(message); }
 function isFlowRelated(message) { return /\b(confirm|yes|change|cancel|date|car|vehicle|keep|reservation|booking)\b/i.test(message); }
 
@@ -137,27 +160,28 @@ function handleAgentAction(response) {
 }
 
 async function handleSend(text) {
-  const input=$('#chatInput'); const message=(text || input.value).trim(); if (!message) return; input.value=''; addMessage(message,'user');
-  if (isKeepIntent(message) && appState.flow.stage!=='idle') { await abandonFlow(); return; }
+  const input=$("#chatInput"); const message=(text || input.value).trim(); if (!message) return; input.value=""; addMessage(message,"user");
+  if (isKeepIntent(message) && appState.flow.stage!=="idle") { await abandonFlow(); return; }
+  const id=(message.match(/\bCTR-[A-Z0-9]+\b/i)||[])[0];
+  if (/\bcancel\b/i.test(message)) { if (id) await startCancel(id); else openManage(); return; }
+  if (/\b(change|modify|update|upgrade)\b/i.test(message)) { if (id) await startChange(id,requestedChangeMode(message),bookingPrefill(message)); else openManage(); return; }
+  if (/\bmanage\b/i.test(message)) { openManage(id); return; }
   const mention=dateMentions(message);
   if (mention.found) {
-    if (mention.past) addWarning('That date has already passed — please pick today or a future date.');
-    else addWarning('For your protection, rental dates must be selected from the calendar.');
-    if (appState.flow.stage==='idle') { appState.location=inferLocation(message); appState.flow=FlowMachine.start('new'); }
+    if (mention.past) addWarning("That date has already passed — please pick today or a future date.");
+    else addWarning("Please verify the requested dates and times in the secure calendar before booking.");
+    appState.location=inferLocation(message); appState.requestedCar=inferRequestedCar(message); appState.flow=FlowMachine.start("new");
+    const prefill=bookingPrefill(message,mention); if (prefill) appState.flow={...appState.flow,newDates:prefill};
     renderDatePicker(); return;
   }
-  if (appState.flow.stage!=='idle' && appState.flow.stage!=='complete') {
+  if (appState.flow.stage!=="idle" && appState.flow.stage!=="complete") {
     if (!isFlowRelated(message)) { await abandonFlow(false); }
-    else { addMessage('Please use the visible workflow buttons to continue, or say “keep my reservation” to exit.'); return; }
+    else { addMessage("Please use the visible workflow buttons to continue, or say ‘keep my reservation’ to exit."); return; }
   }
-  const id=(message.match(/\bCTR-[A-Z0-9]+\b/i)||[])[0];
-  if (/\b(cancel)\b/i.test(message)) { if (id) await startCancel(id); else openManage(); return; }
-  if (/\b(change|modify|update|upgrade)\b/i.test(message)) { if (id) await startChange(id); else openManage(); return; }
-  if (/\bmanage\b/i.test(message)) { openManage(id); return; }
-  if (/\b(find|book|rent|rental|car|suv|minivan|economy)\b/i.test(message)) {
-    appState.location=inferLocation(message); appState.partySize=/family|minivan/i.test(message)?6:2; appState.flow=FlowMachine.start('new'); renderDatePicker(); return;
+  if (/\b(find|book|rent|rental|car|suv|minivan|economy|compact|luxury|convertible|pickup)\b/i.test(message)) {
+    appState.location=inferLocation(message); appState.partySize=/family|minivan/i.test(message)?6:2; appState.requestedCar=inferRequestedCar(message); appState.flow=FlowMachine.start("new"); renderDatePicker(); return;
   }
-  try { await callAgent(message); } catch (error) { addMessage(`I’m sorry—${error.message}`); }
+  try { await callAgent(message); } catch (error) { addMessage("I’m sorry—"+error.message); }
 }
 
 function renderSidebar() {
@@ -175,42 +199,54 @@ function openManage(id) {
   $('#retrieveForm').requestSubmit();
 }
 function renderReservation(reservation) {
-  const actions=reservation.status==='confirmed' ? '<button class="secondary" id="upgradeBooking">Change vehicle</button><button class="danger" id="cancelBooking">Cancel</button>' : '';
-  $('#reservationResult').innerHTML=`<article class="reservation-card"><div><h3>${reservation.carClass} <span class="demo-pill">${titleStatus(reservation.status)}</span></h3><div class="reservation-meta"><div><small>RESERVATION</small><strong>${reservation.id}</strong></div><div><small>LOCATION</small><strong>${reservation.location}</strong></div><div><small>PICKUP</small><strong>${formatTripDate(reservation.pickupAt)}</strong></div><div><small>RETURN</small><strong>${formatTripDate(reservation.dropAt)}</strong></div><div><small>MEMBER SAVINGS</small><strong>${money(reservation.memberSavings)}</strong></div><div><small>ESTIMATED TOTAL</small><strong>${money(reservation.total)}</strong></div></div></div><div class="reservation-actions">${actions}</div></article>`;
-  $('#upgradeBooking')?.addEventListener('click',()=>startChange(reservation.id));
-  $('#cancelBooking')?.addEventListener('click',()=>startCancel(reservation.id));
+  const actions=reservation.status==="confirmed" ? "<button class=\"secondary\" id=\"changeVehicle\">Change vehicle</button><button class=\"secondary\" id=\"changeDates\">Change dates</button><button class=\"danger\" id=\"cancelBooking\">Cancel</button>" : "";
+  $("#reservationResult").innerHTML=`<article class="reservation-card"><div><h3>${reservation.carClass} <span class="demo-pill">${titleStatus(reservation.status)}</span></h3><div class="reservation-meta"><div><small>RESERVATION</small><strong>${reservation.id}</strong></div><div><small>LOCATION</small><strong>${reservation.location}</strong></div><div><small>PICKUP</small><strong>${formatTripDate(reservation.pickupAt)}</strong></div><div><small>RETURN</small><strong>${formatTripDate(reservation.dropAt)}</strong></div><div><small>MEMBER SAVINGS</small><strong>${money(reservation.memberSavings)}</strong></div><div><small>ESTIMATED TOTAL</small><strong>${money(reservation.total)}</strong></div></div></div><div class="reservation-actions">${actions}</div></article>`;
+  $("#changeVehicle")?.addEventListener("click",()=>startChange(reservation.id,"vehicle"));
+  $("#changeDates")?.addEventListener("click",()=>startChange(reservation.id,"dates"));
+  $("#cancelBooking")?.addEventListener("click",()=>startCancel(reservation.id));
 }
 
-async function startChange(resId) {
+async function startChange(resId,mode="vehicle",prefill=null) {
   const reservation=reservationById(resId);
-  if (!reservation) { addWarning(`I couldn't find ${resId}.`); return; }
-  if (reservation.status==='cancelled') { addWarning(`${resId} is already cancelled. I can help book a new car instead.`); return; }
+  if (!reservation) { addWarning(`I couldn\x27t find ${resId}.`); return; }
+  if (reservation.status==="cancelled") { addWarning(`${resId} is already cancelled. I can help book a new car instead.`); return; }
   try {
-    const started=await api(`/api/reservations/${reservation.id}/change/start`,{method:'POST'});
-    if (started.requires_human_review) { appState.flow=FlowMachine.advance(FlowMachine.start('change',reservation.id),'human_review'); humanReviewPanel(started.reason); switchView('manage'); return; }
-    appState.flow=FlowMachine.start('change',reservation.id); appState.flow.replacementId=started.replacement.id;
-    await hydrateReservations(); switchView('manage'); renderReservation(reservationById(reservation.id));
-    flowPanel('Change started',`<p>${reservation.id} is on HOLD while you choose a replacement. It has not been cancelled.</p>`);
-    renderDatePicker();
+    const started=await api(`/api/reservations/${reservation.id}/change/start`,{method:"POST"});
+    if (started.requires_human_review) { appState.flow=FlowMachine.advance(FlowMachine.start("change",reservation.id),"human_review",{changeMode:mode}); humanReviewPanel(started.reason); switchView("manage"); return; }
+    appState.location=reservation.location; appState.requestedCar=null; appState.flow=FlowMachine.start("change",reservation.id); appState.flow.replacementId=started.replacement.id; appState.flow.changeMode=mode;
+    await hydrateReservations(); switchView("manage"); renderReservation(reservationById(reservation.id));
+    flowPanel("Change started",`<p>${reservation.id} is on HOLD while you choose a replacement. It has not been cancelled.</p>`);
+    if (mode==="vehicle") {
+      appState.flow=FlowMachine.advance(appState.flow,"awaiting_car",{newDates:reservationDates(reservation)}); await renderNewOptions();
+    } else {
+      if (prefill) appState.flow={...appState.flow,newDates:prefill}; renderDatePicker();
+    }
   } catch (error) { addWarning(error.message); }
 }
 async function abandonFlow(announce = true) {
-  const flow=appState.flow;
-  if (flow.type==='change' && flow.resId && reservationById(flow.resId)?.status==='hold') {
-    try { await api(`/api/reservations/${flow.resId}/change/abandon`,{method:'POST'}); } catch (_) { /* already restored/terminal */ }
+  const flow=appState.flow,flowType=flow.type,resId=flow.resId;
+  if (flowType==="change" && resId && reservationById(resId)?.status==="hold") {
+    try { await api(`/api/reservations/${resId}/change/abandon`,{method:"POST"}); } catch (_) { /* already restored/terminal */ }
   }
-  closingDatePicker=true; if ($('#bookingModal').open) $('#bookingModal').close(); closingDatePicker=false;
-  appState.flow=FlowMachine.reset(); appState.confirmCards.clear(); await hydrateReservations(); clearWorkflowPanels();
-  if (announce) { addMessage('Your original reservation is confirmed and the pending flow was abandoned.'); handleAgentAction({action:'flow_abandoned'}); }
+  closingDatePicker=true; if ($("#bookingModal").open) $("#bookingModal").close(); closingDatePicker=false;
+  appState.flow=FlowMachine.reset(); appState.requestedCar=null; appState.confirmCards.clear(); await hydrateReservations(); clearWorkflowPanels();
+  if (announce) {
+    const message=flowType==="change" ? `Your original reservation ${resId} remains confirmed. No replacement was booked.` : flowType==="cancel" ? `Cancellation stopped. Reservation ${resId} remains confirmed.` : "No reservation was created. You can start a new search whenever you are ready.";
+    addMessage(message); handleAgentAction({action:"flow_abandoned"});
+  }
 }
 
+function populateTimeChoices(select) { if (select.options.length) return; for (let minutes=0;minutes<24*60;minutes+=30) { const value=String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0"),option=document.createElement("option"); option.value=value; option.textContent=new Date("2000-01-01T"+value+":00").toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}); select.append(option); } }
+function setTimeChoice(select,value) { if (!value) return; if (![...select.options].some((option)=>option.value===value)) { const option=document.createElement("option"); option.value=value; option.textContent=value; select.append(option); } select.value=value; }
 function configureDateInputs() {
-  const form=$('#bookingForm').elements, pickup=form.pickup_date, drop=form.return_date, pickupTime=form.pickup_time, dropTime=form.drop_time;
-  const start=new Date(); start.setMinutes(0,0,0); start.setHours(start.getHours()+2);
-  pickup.min=localDateAfter(0); pickup.value=localDate(start); pickupTime.value=`${String(start.getHours()).padStart(2,'0')}:00`;
-  drop.min=pickup.value; drop.value=localDate(addDays(start,1)); dropTime.value=pickupTime.value;
-  pickup.onchange=()=>{ drop.min=pickup.value; if (!drop.value || drop.value<=pickup.value) drop.value=localDate(addDays(new Date(`${pickup.value}T12:00:00`),1)); };
+  const form=$("#bookingForm").elements,pickup=form.pickup_date,drop=form.return_date,pickupTime=form.pickup_time,dropTime=form.drop_time,preferred=appState.flow.newDates || {};
+  const start=new Date(); start.setMinutes(0,0,0); start.setHours(start.getHours()+2); populateTimeChoices(pickupTime); populateTimeChoices(dropTime);
+  pickup.min=localDateAfter(0); pickup.value=preferred.pickup || localDate(start); setTimeChoice(pickupTime,preferred.pickupTime || String(start.getHours()).padStart(2,"0")+":00");
+  drop.min=pickup.value; drop.value=preferred.return || localDate(addDays(start,1)); setTimeChoice(dropTime,preferred.dropTime || pickupTime.value);
+  $("#selectedRental").textContent=(appState.requestedCar?.car || appState.requestedCar?.className || "Any available vehicle")+" · "+appState.location+". Verify all dates and times before continuing.";
+  pickup.onchange=()=>{ drop.min=pickup.value; if (!drop.value || drop.value<pickup.value) drop.value=localDate(addDays(new Date(pickup.value+"T12:00:00"),1)); };
 }
+
 function renderDatePicker() {
   if (!FlowMachine.canRenderPicker(appState.flow)) return;
   configureDateInputs(); $('#dateModalTitle').textContent=appState.flow.type==='change'?'Select replacement dates and times':'Select rental dates and times'; $('#dateSubmit').textContent='Use these dates and times';
@@ -236,7 +272,7 @@ async function renderNewOptions() {
   let payload;
   try { payload=await api(`/api/cars?location=${encodeURIComponent(appState.location)}&pickup=${encodeURIComponent(dates.pickup)}&return=${encodeURIComponent(dates.return)}&party_size=${appState.partySize}`); }
   catch (_) { payload={source:'fallback',cars:ALT_CARS}; }
-  const cars=Array.isArray(payload)?payload:(payload.cars || ALT_CARS); const source=payload.source || cars[0]?.source || 'fallback';
+  let cars=Array.isArray(payload)?payload:(payload.cars || ALT_CARS); const wanted=appState.requestedCar; if (wanted) cars=[...cars].sort((a,b)=>Number(Boolean(b.car===wanted.car || b.class===wanted.className))-Number(Boolean(a.car===wanted.car || a.class===wanted.className))); const source=payload.source || cars[0]?.source || 'fallback';
   const note=source==='fallback'?'<div class="inventory-note">Showing sample inventory while live rates are unavailable.</div>':'';
   const root=workflowContainer(); root.innerHTML=`${note}<div class="rental-cards flow-car-cards"></div>`; const row=$('.flow-car-cards',root);
   cars.forEach((car,index)=>{
@@ -244,7 +280,8 @@ async function renderNewOptions() {
     const visual=car.image_url?`<img class="car-image" src="${car.image_url}" loading="lazy" alt="${car.car}">`:`<div class="car-emoji">${car.emoji || '🚙'}</div>`;
     const features=(car.features || []).map((feature)=>`✓ ${feature}`).join('<br>');
     card.innerHTML=`${index===0?'<div class="recommend-tag">★ BEST VALUE</div>':''}${visual}<h4>${car.car}</h4><div class="provider">${car.class} · ${car.vendor || 'Rental partner'}</div><div class="rental-price">${money(car.ratePerDay)} <small>/ day member rate</small></div><div class="retail-rate">Retail ${money(car.retailPerDay)}/day</div><div class="saving">${car.savings || `Save ${money(car.retailPerDay-car.ratePerDay)}/day vs retail`}</div><div class="rental-meta">${features}</div><button>Select this car</button>`;
-    $('button',card).onclick=()=>selectCar(car); row.append(card);
+    const image=$("img",card); if (image) image.onerror=()=>image.replaceWith(Object.assign(document.createElement("div"),{className:"car-emoji",textContent:car.emoji || "🚙"}));
+    $("button",card).onclick=()=>selectCar(car); row.append(card);
   });
 }
 async function selectCar(car) {

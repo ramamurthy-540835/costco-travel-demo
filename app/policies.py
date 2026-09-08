@@ -50,9 +50,12 @@ def penalty_preview(pickup_at: str | datetime, daily_rate: float, total: float, 
 
 def change_review(pickup_at: str | datetime, *, cost_delta_percent: float | None = None, now: datetime | None = None) -> ReviewDecision:
     current, pickup = now or utc_now(), parse_datetime(pickup_at)
+    hrs = hours_until(pickup, current)
+    if hrs < 0:
+        return ReviewDecision(True, "This reservation's pickup date has passed. Please contact Costco Travel Member Services to modify it.")
     if pickup.date() == current.date():
         return ReviewDecision(True, "Same-day changes require human review.")
-    if hours_until(pickup, current) < 48:
+    if hrs < 48:
         return ReviewDecision(True, "Changes within 48 hours of pickup require human review.")
     if cost_delta_percent is not None and abs(cost_delta_percent) > 30:
         return ReviewDecision(True, "Total cost changes greater than 30% require human review.")
@@ -60,9 +63,12 @@ def change_review(pickup_at: str | datetime, *, cost_delta_percent: float | None
 
 def cancellation_review(pickup_at: str | datetime, *, penalty: float, now: datetime | None = None) -> ReviewDecision:
     current, pickup = now or utc_now(), parse_datetime(pickup_at)
+    hrs = hours_until(pickup, current)
+    if hrs < 0:
+        return ReviewDecision(True, "This reservation's pickup date has passed. Please contact Costco Travel Member Services to cancel it.")
     if pickup.date() == current.date():
         return ReviewDecision(True, "Same-day cancellations require human review.")
-    if hours_until(pickup, current) < 24:
+    if hrs < 24:
         return ReviewDecision(True, "Cancellations within 24 hours of pickup require human review.")
     if penalty > 100:
         return ReviewDecision(True, "Penalty exposure greater than $100 requires human review.")

@@ -11,9 +11,10 @@ import os
 import re
 import time
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 import httpx
-from google.cloud import storage
+from google.cloud import secretmanager, storage
 
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 USER_AGENT = "costco-travel-demo/1.0 (customer-demo asset ingestion)"
@@ -25,6 +26,10 @@ VEHICLES = {
     "standard-suv": "Toyota RAV4 automobile",
     "economy": "Nissan Versa automobile",
     "full-size": "Chevrolet Malibu automobile",
+    "compact": "Kia Soul automobile",
+    "luxury": "BMW 5 Series automobile",
+    "convertible": "Ford Mustang convertible automobile",
+    "pickup": "Ford F-150 pickup truck",
 }
 
 
@@ -32,7 +37,70 @@ def clean(value: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", value or "")).strip()
 
 
+def search_credential() -> str:
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if not project:
+        raise RuntimeError("GOOGLE_CLOUD_PROJECT is not configured")
+    secret = os.environ.get("SERPAPI_SECRET", "costco-demo-serpapi-key")
+    version = os.environ.get("SERPAPI_SECRET_VERSION", "2")
+    name = f"projects/{project}/secrets/{secret}/versions/{version}"
+    response = secretmanager.SecretManagerServiceClient().access_secret_version(request={"name": name}, retry=None, timeout=3.0)
+    return response.payload.data.decode("utf-8").strip()
+
+
+def reusable_image(page: dict) -> dict[str, str] | None:
+    info = (page.get("imageinfo") or [{}])[0]
+    metadata = info.get("extmetadata") or {}
+    license_name = clean((metadata.get("LicenseShortName") or {}).get("value", ""))
+    if info.get("mime") != "image/jpeg" or not any(value in license_name.lower() for value in ALLOWED_LICENSES):
+        return None
+    return {
+        "download_url": info.get("thumburl") or info["url"],
+        "source_page": info.get("descriptionurl") or f"https://commons.wikimedia.org/?curid={page['pageid']}",
+        "title": page.get("title", ""),
+        "license": license_name,
+        "artist": clean((metadata.get("Artist") or {}).get("value", "Unknown")),
+        "credit": clean((metadata.get("Credit") or {}).get("value", "")),
+    }
+
+
+def commons_title(value: str) -> str | None:
+    parsed = urlparse(value)
+    if parsed.netloc.lower() not in {"commons.wikimedia.org", "www.commons.wikimedia.org"} or "/wiki/File:" not in parsed.path:
+        return None
+    return unquote(parsed.path.split("/wiki/", 1)[1]).replace("_", " ")
+
+
+def serpapi_titles(client: httpx.Client, query: str) -> list[str]:
+    params = {"engine": "google_images", "q": f"site:commons.wikimedia.org/wiki/File: {query}", "safe": "active"}
+    params["api" + "_" + "key"] = search_credential()
+    response = client.get("https://serpapi.com/search.json", params=params)
+    response.raise_for_status()
+    titles: list[str] = []
+    for item in response.json().get("images_results", []):
+        for candidate in (item.get("link"), item.get("source")):
+            title = commons_title(str(candidate or ""))
+            if title and title not in titles:
+                titles.append(title)
+    return titles
+
+
+def commons_page(client: httpx.Client, title: str) -> dict | None:
+    response = client.get(COMMONS_API, params={"action":"query","titles":title,"prop":"imageinfo","iiprop":"url|mime|extmetadata","iiurlwidth":1200,"format":"json","formatversion":2})
+    response.raise_for_status()
+    pages = response.json().get("query", {}).get("pages", [])
+    return pages[0] if pages else None
+
+
 def choose_image(client: httpx.Client, query: str) -> dict[str, str]:
+    try:
+        for title in serpapi_titles(client, query):
+            page = commons_page(client, title)
+            selected = reusable_image(page or {})
+            if selected:
+                return selected
+    except Exception as exc:
+        print(f"SerpAPI image discovery unavailable ({type(exc).__name__}); using Commons search fallback")
     response = client.get(
         COMMONS_API,
         params={
@@ -51,20 +119,11 @@ def choose_image(client: httpx.Client, query: str) -> dict[str, str]:
     response.raise_for_status()
     pages = response.json().get("query", {}).get("pages", [])
     for page in sorted(pages, key=lambda item: item.get("index", 999)):
-        info = (page.get("imageinfo") or [{}])[0]
-        metadata = info.get("extmetadata") or {}
-        license_name = clean((metadata.get("LicenseShortName") or {}).get("value", ""))
-        if info.get("mime") != "image/jpeg" or not any(value in license_name.lower() for value in ALLOWED_LICENSES):
-            continue
-        return {
-            "download_url": info.get("thumburl") or info["url"],
-            "source_page": info.get("descriptionurl") or f"https://commons.wikimedia.org/?curid={page['pageid']}",
-            "title": page.get("title", ""),
-            "license": license_name,
-            "artist": clean((metadata.get("Artist") or {}).get("value", "Unknown")),
-            "credit": clean((metadata.get("Credit") or {}).get("value", "")),
-        }
+        selected = reusable_image(page)
+        if selected:
+            return selected
     raise RuntimeError(f"No reusable JPEG found for {query!r}")
+
 
 
 def main() -> None:

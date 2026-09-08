@@ -38,6 +38,10 @@ def test_cancel_preview_no_change_and_confirm_hitl():
     assert service.cancel_preview("CTR-CANFAR1",NOW)["tier"]=="free" and repo.get("CTR-CANFAR1")["status"]=="CONFIRMED"
     with pytest.raises(ReservationError) as caught: service.cancel_confirm("CTR-CANNEAR",NOW)
     assert caught.value.status_code==409 and repo.get("CTR-CANNEAR")["status"]=="CONFIRMED"
+def test_inventory_contains_all_customer_demo_classes():
+    classes={item["class"] for item in rank_cars(days=3,party_size=2)}
+    assert {"Economy","Compact","Intermediate","Full-Size","Standard SUV","Full-Size SUV","Minivan","Luxury","Convertible","Pickup"} <= classes
+
 def test_group_recommendations():
     results=rank_cars(days=7,party_size=6); assert results[0]["class"] in {"Minivan","Full-Size SUV"}; assert results[0]["reason"]=="Recommended for your trip"; assert all(x["seats"]>=6 and x["savings_per_day"]>0 for x in results)
 def test_create_rejects_past_pickup():

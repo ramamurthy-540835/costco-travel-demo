@@ -38,6 +38,14 @@ def test_cancel_starts_at_explicit_confirmation():
     assert value["stage"] == "awaiting_confirm"
 
 
+def test_frontend_has_flow_specific_exit_copy_and_split_change_controls():
+    app = (ROOT / "static/app.js").read_text()
+    assert "No reservation was created" in app
+    assert "Cancellation stopped" in app
+    assert "Change vehicle" in app and "Change dates" in app
+    assert 'startChange(reservation.id,"vehicle")' in app
+
+
 def test_frontend_has_date_gate_and_no_hardcoded_trip_dates():
     app = (ROOT / "static/app.js").read_text()
     html = (ROOT / "static/index.html").read_text()
@@ -45,3 +53,5 @@ def test_frontend_has_date_gate_and_no_hardcoded_trip_dates():
     assert "pickup.min=localDateAfter(0)" in app
     assert 'name="pickup_time"' in html and 'name="drop_time"' in html
     assert "from 2026-" not in html and "2025" not in html
+    assert "populateTimeChoices" in app and "bookingPrefill" in app
+    assert 'type="time"' not in html and html.count('<select name="') >= 2

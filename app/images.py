@@ -8,7 +8,7 @@ from google.auth.transport.requests import Request
 from google.cloud import storage
 from .recommend import slug
 
-CLASS_OBJECTS={"Intermediate":"cars/intermediate.jpg","Minivan":"cars/minivan.jpg","Full-Size SUV":"cars/full-size-suv.jpg","Standard SUV":"cars/standard-suv.jpg","Economy":"cars/economy.jpg","Full-Size":"cars/full-size.jpg"}
+CLASS_OBJECTS={"Intermediate":"cars/intermediate.jpg","Economy":"cars/economy.jpg","Compact":"cars/compact.jpg","Full-Size":"cars/full-size.jpg","Standard SUV":"cars/standard-suv.jpg","Full-Size SUV":"cars/full-size-suv.jpg","Minivan":"cars/minivan.jpg","Luxury":"cars/luxury.jpg","Convertible":"cars/convertible.jpg","Pickup":"cars/pickup.jpg"}
 
 @lru_cache(maxsize=1)
 def _storage_client():
