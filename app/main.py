@@ -25,6 +25,7 @@ class ChatInput(BaseModel):
     client_context:str|None=None
     flow:dict|None=None
     messages:list[dict[str,str]]=Field(default_factory=list)
+    member_id:str|None=Field(default=None,max_length=20)
 class ReservationInput(BaseModel):
     car_class:str; location_code:str=Field(min_length=3,max_length=8); pickup_at:str; drop_at:str; pickup_time:str|None=None; drop_time:str|None=None
 class ChangeInput(BaseModel):
@@ -59,14 +60,14 @@ def chat(body:ChatInput,reservations:Annotated[ReservationService,Depends(reserv
     if "sabre" in body.message.lower():
         try: sabre_context=search_documentation(body.message)
         except SabreMcpError: LOGGER.warning("Sabre documentation MCP unavailable")
-    member_id=body.client_context and "MBR-00001"  # default demo member; real SSO would inject this
-    inventory=rank_cars(days=4,party_size=2); system=build_system_prompt(live,inventory,body.flow,sabre_context,member_id="MBR-00001")
+    member_id=body.member_id or "MBR-00001"  # injected by SSO; fallback to demo member
+    inventory=rank_cars(days=4,party_size=2); system=build_system_prompt(live,inventory,body.flow,sabre_context,member_id=member_id)
     history=body.messages[-10:] if body.messages else [{"role":"user","content":body.message}]
     try:
         result=agent_reply(system,history)
         try:
             from .firestore_db import write_member_activity
-            write_member_activity("MBR-00001","chat_session",{"message":body.message[:200],"action":result.get("action")},session_id=body.session_id,source="agent_chat")
+            write_member_activity(member_id,"chat_session",{"message":body.message[:200],"action":result.get("action")},session_id=body.session_id,source="agent_chat")
         except Exception: pass
         return result
     except Exception as exc:
