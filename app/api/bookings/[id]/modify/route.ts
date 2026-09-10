@@ -101,20 +101,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const deltaCents =
     Math.round(newTotalPrice * 100) - Math.round(booking.pricingSnapshot.totalPrice * 100);
 
+  const stripeAPI = getStripe();
+
   if (body.dryRun === true) {
+    // A price increase needs its own PaymentIntent up front so the chat UI
+    // can render a real Stripe payment form for the delta — the eventual
+    // non-dryRun call re-validates paymentIntent.amount against a freshly
+    // recomputed deltaCents (see below), so this intent can only ever be
+    // used to pay exactly this modification, never anything else.
+    let clientSecret: string | null = null;
+    let paymentIntentId: string | null = null;
+    if (deltaCents > 0) {
+      const paymentIntent = await stripeAPI.paymentIntents.create({
+        amount: deltaCents,
+        currency: quote.currency.toLowerCase(),
+        automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+        metadata: { bookingId: String(booking._id), kind: 'modification' },
+      });
+      clientSecret = paymentIntent.client_secret;
+      paymentIntentId = paymentIntent.id;
+    }
     return NextResponse.json(
       {
+        bookingId: String(booking._id),
+        inventoryId,
+        vendorId,
+        from,
+        to,
         deltaCents,
         newTotalPrice,
-        vendorId,
         dailyRate: quote.dailyRate,
         perkIds: quote.perkIds,
+        ...(clientSecret && paymentIntentId ? { clientSecret, paymentIntentId } : {}),
       },
       { status: 200 },
     );
   }
-
-  const stripeAPI = getStripe();
 
   if (deltaCents > 0) {
     if (!body.paymentIntentId) {

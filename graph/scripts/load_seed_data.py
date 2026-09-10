@@ -30,7 +30,7 @@ VEHICLE_CLASS_ALIASES = {
 VEHICLE_CLASS_SYNONYMS = {
     "Economy": ["cheapest car", "basic car", "small car"],
     "Compact": ["small sedan", "city car"],
-    "Mid-size": ["medium car", "standard sedan"],
+    "Mid-size": ["medium car", "standard sedan", "sedan"],
     "Full-size": ["large sedan", "big car"],
     "SUV": ["crossover", "4x4", "truck-like"],
     "Minivan": ["family van", "people carrier"],

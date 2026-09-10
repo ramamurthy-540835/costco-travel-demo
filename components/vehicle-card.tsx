@@ -12,19 +12,24 @@ export function CardImage({
   className,
   make,
   model,
+  compact = false,
 }: {
   className: string;
   make?: string;
   model?: string;
+  compact?: boolean;
 }) {
   const [errored, setErrored] = useState(false);
   const src = (make && model && VEHICLE_IMAGE_MAP[`${make} ${model}`]) || CLASS_IMAGE_MAP[className];
   const alt = make && model ? `${make} ${model}` : className;
+  const sizeClasses = compact ? 'h-24 w-full' : 'h-40 w-full sm:h-full sm:w-48';
 
   if (errored || !src) {
     return (
-      <div className="flex h-40 w-full items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 sm:h-full sm:w-48">
-        <Car className="size-10 text-primary/60" strokeWidth={1.5} />
+      <div
+        className={`flex items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ${sizeClasses}`}
+      >
+        <Car className={compact ? 'size-6 text-primary/60' : 'size-10 text-primary/60'} strokeWidth={1.5} />
       </div>
     );
   }
@@ -34,7 +39,7 @@ export function CardImage({
     <img
       src={src}
       alt={alt}
-      className="h-40 w-full rounded-lg object-cover sm:h-auto sm:w-48"
+      className={`rounded-lg object-cover ${compact ? sizeClasses : 'h-40 w-full sm:h-auto sm:w-48'}`}
       onError={() => setErrored(true)}
     />
   );
@@ -46,12 +51,14 @@ export function VehicleCard({
   pickupDate,
   returnDate,
   returnTo,
+  compact = false,
 }: {
   result: InventorySearchResult;
   nights?: number;
   pickupDate?: string;
   returnDate?: string;
   returnTo?: string;
+  compact?: boolean;
 }) {
   const { inventory, vehicleClass, vendor, negotiatedTerm, perks } = result;
   const dailyRate = (inventory.daily_rate as number | undefined) ?? 0;
@@ -61,17 +68,46 @@ export function VehicleCard({
   const includedMiles = negotiatedTerm?.included_miles as string | number | undefined;
   const cancellationWindow = negotiatedTerm?.cancellation_window_hours as number | undefined;
   const depositAmount = inventory.deposit_amount as number | undefined;
+  const make = inventory.vehicle_make as string | undefined;
+  const model = inventory.vehicle_model as string | undefined;
+
+  if (compact) {
+    return (
+      <div
+        className="flex flex-col gap-2 rounded-xl border-l-4 bg-card p-3 ring-1 ring-foreground/10"
+        style={{ borderLeftColor: accentColor }}
+      >
+        <CardImage className={vehicleClass.class_name} make={make} model={model} compact />
+        <h2 className="text-sm font-medium">{vehicleClass.class_name}</h2>
+        {Boolean(make || model) && <p className="text-xs text-muted-foreground">{make} {model}</p>}
+        <p className="text-xs text-muted-foreground">
+          {vendor.provider}
+          {typeof vendor.rating === 'number' ? ` · ★ ${vendor.rating as number}` : ''}
+        </p>
+        {perks.slice(0, 2).map((p) => (
+          <span key={p.perk_id} className="text-xs text-muted-foreground">
+            ✓ {p.name as string}
+          </span>
+        ))}
+        <div>
+          <p className="text-xs text-muted-foreground">
+            {nights} {nights === 1 ? 'day' : 'days'}: ${(dailyRate * nights).toFixed(2)}
+          </p>
+          <p className="text-base font-medium">${dailyRate.toFixed(2)}/day</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Say &quot;book the {make || model || vehicleClass.class_name}&quot; to reserve this one.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
       className="flex flex-col gap-4 rounded-xl border-l-4 bg-card p-4 ring-1 ring-foreground/10 sm:flex-row"
       style={{ borderLeftColor: accentColor }}
     >
-      <CardImage
-        className={vehicleClass.class_name}
-        make={inventory.vehicle_make as string | undefined}
-        model={inventory.vehicle_model as string | undefined}
-      />
+      <CardImage className={vehicleClass.class_name} make={make} model={model} />
       <div className="flex flex-1 flex-col gap-2">
         <h2 className="font-heading text-lg font-medium">{vehicleClass.class_name}</h2>
 
@@ -117,9 +153,9 @@ export function VehicleCard({
           )}
         </div>
 
-        {Boolean(inventory.vehicle_make || inventory.vehicle_model) && (
+        {Boolean(make || model) && (
           <p className="text-sm text-muted-foreground">
-            {inventory.vehicle_make as string | undefined} {inventory.vehicle_model as string | undefined}
+            {make} {model}
           </p>
         )}
 

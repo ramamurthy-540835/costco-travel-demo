@@ -47,3 +47,19 @@ CREATE INDEX IF NOT EXISTS member_id_idx ON rental_graph."Member" USING gin (pro
 CREATE INDEX IF NOT EXISTS vendor_provider_idx ON rental_graph."Vendor" USING gin (properties);
 CREATE INDEX IF NOT EXISTS reservation_id_idx ON rental_graph."Reservation" USING gin (properties);
 CREATE INDEX IF NOT EXISTS negotiated_term_idx ON rental_graph."NegotiatedTerm" USING gin (properties);
+
+-- Semantic fallback for vehicle-class discovery (09-04 plan section 5) — a
+-- plain relational table in the public schema, not a graph vertex, since
+-- pgvector's ANN indexes/operators are unrelated to AGE's agtype storage.
+-- Populated by graph/scripts/backfill_embeddings.py.
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS public.vehicle_class_embeddings (
+  class_name text PRIMARY KEY,
+  description text,
+  embedding vector(1536)
+);
+
+CREATE INDEX IF NOT EXISTS vehicle_class_embeddings_ivfflat_idx
+  ON public.vehicle_class_embeddings USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 10);

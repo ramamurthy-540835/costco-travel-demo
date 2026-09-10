@@ -4,6 +4,7 @@ import './globals.css'
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/header";
+import { AssistantLauncher } from "@/components/assistant-launcher";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -23,6 +24,7 @@ export default function RootLayout({
         <body>
           <Header />
           {children}
+          <AssistantLauncher />
         </body>
       </html>
     </ClerkProvider>

@@ -26,7 +26,13 @@ export async function POST(req: NextRequest) {
     : await stripeAPI.customers.create({ email: receiptEmail, name: customerName });
 
   const paymentIntent = await stripeAPI.paymentIntents.create({
-    amount: Math.floor(amount * 100),
+    // Must match the Math.round(...*100) used everywhere the expected charge
+    // is computed (computeBookingTotal in tools.ts, /api/bookings' own
+    // validation) — Math.floor here previously truncated a cent whenever
+    // floating-point summation of dailyRate*nights + addon fees landed just
+    // under a whole cent (e.g. 114.999999997), causing a false "Charged
+    // amount does not match the negotiated rate" rejection on booking.
+    amount: Math.round(amount * 100),
     currency: currency.toLowerCase(),
     receipt_email: receiptEmail,
     description,

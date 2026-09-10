@@ -8,7 +8,7 @@ Build a member-centric, multi-vendor rental-car brokerage platform: a rental-dom
 
 **v0.1 Ontology & Discovery/Checkout Core** (v0.1.0)
 Status: In progress
-Phases: 7 of 12 complete, Phase 8 not started
+Phases: 9 of 12 complete, Phase 10 (Agent Lab & Observability/Evals) not started
 
 ## Phases
 
@@ -21,11 +21,26 @@ Phases: 7 of 12 complete, Phase 8 not started
 | 5 | Add-On Integrity (UC6) | 05-01 | Complete | 2026-09-03 |
 | 6 | Regression Test Infrastructure | 06-01 through 06-06 | Complete | 2026-09-04 |
 | 7 | Agent-Grounding Ontology & Knowledge-Graph Enrichment | 07-01, 07-02, 07-03 | Complete | 2026-09-07 |
-| 8 | Vendor Agent (A2A Inventory/Modification/Cancellation) | TBD | Not started | - |
-| 9 | Customer/Driver Assistant Agent | TBD | Not started | - |
+| 8 | Vendor Agent (A2A Inventory/Modification/Cancellation) | 08-01 | Complete | - |
+| 9 | Customer/Driver Assistant Agent | 09-01, 09-02, 09-03 | Complete | 2026-09-08 |
 | 10 | Agent Lab & Observability/Evals (Phoenix) | TBD | Not started | - |
 | 11 | Unified Agent-Service Deployment | TBD | Not started | - |
 | 12 | Vendor Fulfillment Touchpoints (UC4, UC5, UC7, UC8) | TBD | Not started | - |
+
+## Technical Debt
+
+Tracked items found during a manual + Playwright UI audit of the Phase 9 Customer Assistant's full discovery→booking→modification→cancellation flow (2026-09-10), triggered by a user report of "no car rental options in Las Vegas." Deliberately not fixed inline where the fix requires knowing *why* the agent behaves a certain way — that needs real trace visibility, which doesn't exist until Phase 10 ships. Revisit this list once Phase 10's Phoenix instrumentation is live.
+
+| ID | Status | Item | Notes |
+|----|--------|------|-------|
+| TD-1 | Fixed | Unnecessary 5th ("vehicle class") slot-filling question blocked `search_inventory` even once all 4 required slots were known | Root cause of the "no options in Las Vegas" report — search itself was fine. Prompt-hardened in `chat-loop.ts`. Fixed by inspection/re-test, not trace-verified. |
+| TD-2 | Fixed | Silent addonId drop: a near-miss id (e.g. `"gps"` vs. real `"gps_navigation"`) was filtered out of the booking/addon total with zero error signal | Fixed at 3 layers: `computeBookingTotal`, `propose_booking`'s error return (`tools.ts`), and `app/api/bookings/[id]/addons/route.ts`. Re-verified live via browser — GPS now appears correctly in the real total. Strongest confirmed contributor to the original Stripe "negotiated rate" mismatch report. |
+| TD-3 | Fixed | Duplicate proposal/payment cards: an earlier message's `.proposal` was never cleared when a later `propose_booking`/`propose_addons` call produced a new one, so two live `BookingSummaryCard` + Stripe payment forms could mount simultaneously | Confirmed via `assistant-booking.spec.ts` failing with `getByText('Base rate')` resolving to 2 elements, and independently via 2 simultaneous Stripe `elements-inner-accessory-target` iframes in a manual Playwright probe. Fixed in `assistant-chat.tsx`'s `tool_result` handler. |
+| TD-4 | Needs Phoenix tracing | `propose_booking` appears to be called more than once per booking flow in some runs — after TD-3's fix, `assistant-booking.spec.ts` now intermittently fails with a real `POST /api/bookings` 400 (amount/PaymentIntent mismatch) instead of the earlier duplicate-card symptom | The prompt says `propose_booking` should fire exactly once, right after the extras question is answered. Need to see the actual tool-call sequence in a real conversation to know why a second call happens and whether the fix belongs in the prompt (suppress the second call) or the backend (invalidate/replace the prior PaymentIntent when a new proposal supersedes it for the same conversation). **This is very likely the actual mechanism behind the user's original Stripe "negotiated rate" screenshot** — TD-2 was a confirmed contributor but doesn't fully explain it. |
+| TD-5 | Not investigated | `propose_addons` vs. `propose_booking` tool confusion: in one isolated curl test with a fresh conversation and no real booking yet, the model called `propose_addons` with a hallucinated `bookingId` (an inventoryId-shaped string, not a real Mongo ObjectId) instead of `propose_booking` | Possibly an artifact of that test's truncated conversation history rather than an independent bug — needs a real trace to confirm reproducibility. |
+| TD-6 | Not started | No modification or cancellation testing has been completed end-to-end against a real created booking | Blocked on TD-4 producing a clean, reliable booking to modify/cancel. |
+| TD-7 | Not started | No cancellation-specific regression spec exists in `tests/e2e/regression/` | `assistant-booking.spec.ts` and `assistant-addons.spec.ts` exist; nothing analogous covers `cancel_booking` via the assistant. Coverage gap, not a product bug. |
+| TD-8 | Deferred | "Proper" final-booking-details display polish requested by the user, twice deferred pending the correctness bugs above being fully verified fixed | Not yet scoped. |
 
 ## Phase Details
 
@@ -200,17 +215,17 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 
 **Scope:**
 - Separate deployable service (own process/port, own image entrypoint — reuse-one-image-different-target pattern from commerce's `agent-service`/`store-ops-agent`)
-- Static Agent Card + JSON-RPC `/a2a` endpoint exposing skills: `check_availability` (date-range-aware — the explicit gap vs. commerce's binary in-stock model, needs new design, not a straight port), `apply_modification`, `apply_cancellation`, `get_vendor_policy`
-- **Decision required before planning:** A2A conformance depth — commerce deliberately skipped streaming/polling/push/auth and used only `submitted|completed|failed`. This phase should explicitly decide whether to adopt the fuller lifecycle (`input-required`/`auth-required`, SSE streaming) for real vendor-policy interactions (e.g. cutoff-window rejections needing a follow-up field, multi-step cancellation approval) or stay at commerce's minimal level.
-- **Decision required before planning:** per-vendor deployment topology — one Vendor Agent process per real/simulated vendor (true multi-tenant A2A) vs. one platform-hosted Vendor Agent process parameterized per vendor config (simulated). Directly affects Phase 11's docker-compose service list.
+- Static Agent Card + JSON-RPC `/a2a` endpoint exposing skills: `check_availability` (date-range-aware — the explicit gap vs. commerce's binary in-stock model; substantially closed by 04-13's existing `checkAvailability()` in `lib/vendor-integration/policy.ts`, which already takes real `from`/`to` `Date` params and does a genuine Mongo-backed Booking-overlap check — 08-01 wires to this directly rather than designing new availability logic), `apply_modification`, `apply_cancellation`, `get_vendor_policy`
+- **Decision (2026-09-07):** A2A conformance depth — **minimal now** (`submitted|completed|failed` only, matching commerce), but the task-state model must be built extensibly (state type/union already includes `input-required`/`auth-required` as unimplemented forward-compat members, skill dispatch structured so a follow-up-field flow can be added later) so **Phase 9 can add the fuller lifecycle without a Phase 8 rewrite**. Phase 9's scope note should reference this when its Vendor Agent integration is planned.
+- **Decision (2026-09-07):** per-vendor deployment topology — **one platform-hosted Vendor Agent process, parameterized per vendor** (not one process per vendor). Simplest to deploy (one more service in Phase 11's docker-compose), matches the current fully-simulated-vendor reality (no real vendor endpoints exist to federate against).
 - Vendor operational facts (availability, in-flight modification/cancellation state) live in the platform's own Mongo/vendor-side store, never in the shared Postgres+AGE graph — same boundary discipline as commerce's `inventory_facts`/`local_offers` tables
 
 **Not in scope:** replacing `lib/vendor-integration/policy.ts`'s existing callers in `app/api/bookings/[id]/modify/route.ts`/`cancel/route.ts` — that route-level integration is Phase 9's concern (or a later phase), this phase only stands up the Vendor Agent service and its A2A surface
 
 **Plans:**
-- [ ] 08-01: TBD
+- [x] 08-01: Vendor Agent server scaffold (Agent Card + JSON-RPC /a2a) + skill wiring to `lib/vendor-integration/policy.ts`/`lib/graph/queries.ts` — applied+unified 2026-09-08, all 4 skills live-verified against real Mongo/graph data (success + failure paths). Phase 8 fully complete, 1/1 plans.
 
-### Phase 9: Customer/Driver Assistant Agent
+### Phase 9: Customer/Driver Assistant Agent ✅ Complete
 
 **Goal:** A conversational agent that helps members (and, per the original request, drivers) book, modify, and cancel reservations through natural language — discovery through checkout, calling the Phase 8 Vendor Agent (via A2A) and the Phase 7 grounding tools rather than reimplementing vendor logic or graph queries itself.
 **Depends on:** Phase 7 (grounding tools), Phase 8 (Vendor Agent A2A surface for availability/modification/cancellation checks), Phase 4 (existing booking/modify/cancel/addon routes remain the system of record — this agent orchestrates calls to them, doesn't bypass them)
@@ -218,6 +233,7 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 
 **Scope:**
 - Tool chain: `search_inventory`, `get_quote`, `create_booking`, `get_booking_status`, `modify_booking`, `cancel_booking`, `get_cancellation_policy` — wrapping this project's existing API routes, not reimplementing their logic
+- Where this agent calls the Phase 8 Vendor Agent over A2A, extend that call site to the fuller task lifecycle (`input-required`/`auth-required`) if a real multi-step vendor interaction needs it — Phase 8 deliberately built its task-state model extensibly for this, per its A2A-conformance-depth decision (2026-09-07)
 - Session/state management held outside the LLM context (structured session doc keyed by conversation_id — Mongo, matching this project's existing operational-data store), booking flow modeled as an explicit state machine (`searching→quoted→confirming→booked→modifying/cancelling`)
 - **Proposal→confirm pattern enforced at the orchestration layer, not the prompt** — every mutating tool call (`create_booking`/`modify_booking`/`cancel_booking`) requires a prior `propose_*` call showing a diff/summary and an explicit user confirmation turn before the real tool fires; this is a deliberate strengthening over commerce's detect-after-stream-only guardrail, justified by PROJECT.md's Core Value (negotiated-rate/perk integrity is the platform's whole reason to exist)
 - Idempotency keys on every mutating tool call, reusing this project's existing optimistic-lock/CAS write patterns underneath
@@ -225,8 +241,12 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 
 **Not in scope:** replacing the existing UI-driven booking/modify/cancel flows — this agent is an additional conversational entry point, not a replacement
 
+**Decision (2026-09-08):** Complex scope, split into 2 vertical-slice plans (backend agent-service, then chat UI depending on it) — mirrors the 04-13/04-14 API+UI precedent. Auth boundary — the customer-assistant agent forwards the caller's real Clerk session token to this app's existing `/api/bookings*` routes rather than importing `policy.ts`/models directly, reusing every existing server-side integrity check with zero duplicated logic. LLM client — `openai` npm package against Azure's v1 GA `baseURL`, matching commerce's `chat.py` pattern and this repo's existing `AZURE_OPENAI_*` env vars. Per explicit user request, the customer-assistant agent is its own independently-deployable service (own process/port, no Next.js coupling), same convention as Phase 8's `agent-service/vendor-agent/`; Phase 10 (Agent Lab) is confirmed as a separate deployable service too, out of scope here.
+
 **Plans:**
-- [ ] 09-01: TBD
+- [x] 09-01: Customer Assistant backend — `agent-service/customer-assistant/` scaffold, 10-tool chain wrapping existing routes/A2A/retrievers, propose→confirm gate enforced server-side, Azure OpenAI streaming tool-calling loop over SSE — applied+unified 2026-09-08, all 6 ACs live-verified
+- [x] 09-02 (depends on 09-01): Conversational chat UI — launcher + panel consuming 09-01's `/chat` SSE contract, mirroring commerce's `SearchModal.tsx` pattern with this app's existing Dialog primitives — applied+unified 2026-09-08, all 4 ACs live-verified.
+- [x] 09-03 (depends on 09-01, 09-02): Conversational UX upgrade — hybrid (structured + Phase 7 `resolveSynonym` thesaurus) `search_inventory` filtering, tightened conversational one-sentence system prompt, `search_inventory` results rendered as a horizontal strip of the existing `VehicleCard` component (tool-name-keyed rendering, no new SSE event types), chat panel auto-scroll — applied+unified 2026-09-08, all 4 ACs live-verified via real Playwright browser runs including direct screenshot review. AG-UI protocol evaluated and rejected (no functional gain over the existing SSE pipe for this single-backend/single-frontend setup); vector-embedding-based discovery evaluated and deferred as a future candidate. Reopened Phase 9 for this plan (per the Phase 6 `06-06` precedent) then reclosed. **Phase 9 fully complete, 3/3 plans.**
 
 ### Phase 10: Agent Lab & Observability/Evals (Phoenix)
 
@@ -238,6 +258,7 @@ UC4/UC5/UC7/UC8 mock coverage was also discussed this session but **explicitly d
 - Phoenix instrumentation on both Phase 8 (Vendor Agent) and Phase 9 (Customer Assistant) services — `phoenix.otel.register()` equivalent, per-tool-call custom spans
 - **Decision required before planning:** Agent Lab scope — a thin web UI reading off the same Phoenix trace store (conversation/thread list, per-turn tool-call diff view, state-snapshot inspector, fork-and-rerun-with-modified-prompt) is new build work, distinct from commerce's Jupyter-notebook KG-exploration tool. If graph-exploration-only tooling is sufficient for this project's needs, a lighter Jupyter-based Agent Lab (closer to commerce's actual scope) is also an option — this decision should be made explicitly, not defaulted
 - Eval dataset(s) + Experiment harness for the Customer Assistant's tool-selection correctness and booking-flow task success (mirrors commerce's `search_relevance_eval.py` pattern — hand-labeled example set, custom evaluator functions, before/after regression comparisons)
+- **Once tracing is live, use it to instrument and root-cause the open items in [Technical Debt](#technical-debt) tagged "needs Phoenix tracing" below** — specifically the double `propose_booking` call per booking flow (TD-6) — before writing any more prompt-only fixes blind
 
 **Not in scope:** replacing Phase 6's Playwright regression suite — Phoenix evals target agent/LLM behavior specifically, Playwright continues to cover UI/API regression
 

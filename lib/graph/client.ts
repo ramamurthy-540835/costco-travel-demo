@@ -35,6 +35,18 @@ export function parseAgtype<T = Record<string, unknown>>(raw: string): T {
   return JSON.parse(stripped) as T;
 }
 
+// Plain SQL against the same Postgres database/pool (public schema, not
+// Cypher) — used by the pgvector embedding tables, which are relational, not
+// graph vertices/edges.
+export async function runSql<T = Record<string, unknown>>(
+  sql: string,
+  params?: unknown[],
+): Promise<T[]> {
+  const p = getPool();
+  const result = await p.query(sql, params);
+  return result.rows as T[];
+}
+
 export async function runCypher<T = Record<string, unknown>>(
   query: string,
   params?: Record<string, unknown>,

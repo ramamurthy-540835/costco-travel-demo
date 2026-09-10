@@ -94,6 +94,15 @@ New relations added to the Relations block:
 ### Retriever tool surface (Phase 7-03)
 `lib/graph/retrievers.ts`'s `lookupNode(label, matchProperty, matchValue)`, `traverse(fromLabel, fromProperty, fromValue, edgeType, toLabel, direction)`, and `resolveSynonym(term)` are the sanctioned generic query path for any future agent/tool-calling code — the Phase 8 Vendor Agent and Phase 9 Customer/Driver Assistant should call these (or wrap them in LLM tool schemas) rather than growing new bespoke `queries.ts` functions per prompt. `resolveSynonym` searches every node label carrying a `synonyms` array property: `VehicleClass`, `Perk`, `AddOn`, `MembershipTier`, `Location`, `Intent`. The existing bespoke functions in `lib/graph/queries.ts` (`getVehicleClasses`, `getNegotiatedTermsForVendor`, `getEquivalenceCandidates`, etc.) remain unchanged for their current Phase 4-6 route call-sites — this is a parallel surface, not a replacement. Demonstrated with real live output in `agent-lab/docs/knowledge_graph_demo.html`'s "Retriever Tools" section.
 
+### Vendor Agent A2A skill surface (Phase 8-01)
+`agent-service/vendor-agent/` exposes 4 A2A skills over JSON-RPC (`POST /a2a`, `message/send`), each a thin wrapper over existing graph/Mongo reads rather than new query logic:
+- `check_availability` — reads Mongo `Booking` overlap state via `checkAvailability()` (`lib/vendor-integration/policy.ts`), not the graph.
+- `apply_modification` — reads `Vendor`/`NegotiatedTerm`/`Perk` via `searchInventory()` (through `quoteModification()`) and `VendorPolicy.modification_cutoff_hours` via `getVendorPolicy()`.
+- `apply_cancellation` — reads `VendorPolicy.standard_cancellation_window_hours`/`no_show_fee_percent` via `getVendorPolicy()`.
+- `get_vendor_policy` — reads the full `VendorPolicy` node via `getVendorPolicy()` directly.
+
+No new node/edge types or `queries.ts` functions were added — this is a dispatch/transport layer in front of Phase 4/6's existing boundary (`lib/vendor-integration/policy.ts`), per PROJECT.md's "vendor integration is a separate service/RPC boundary" requirement. See `agent-service/vendor-agent/README.md` for live-verified request/response examples.
+
 ## Next
 - Implement as Postgres + Apache AGE schema — see `graph_schema.sql` in this directory.
 - Plan 01-01: Vocabulary/Taxonomy/Thesaurus layers (docs + `graph_schema.sql` additions), extending this ontology.

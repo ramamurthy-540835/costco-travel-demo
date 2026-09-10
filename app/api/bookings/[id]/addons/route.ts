@@ -56,6 +56,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   ]);
 
   const catalogIds = new Set(addOnsCatalog.map((a) => a.addon_id));
+  const unknownAddonIds = requestedAddonIds.filter((addonId) => !catalogIds.has(addonId));
+  if (unknownAddonIds.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Unknown addonIds: ${unknownAddonIds.join(', ')}`,
+        knownAddonIds: Array.from(catalogIds),
+      },
+      { status: 400 },
+    );
+  }
+
   const chargedAddonIds = requestedAddonIds.filter(
     (addonId) => catalogIds.has(addonId) && !waivedAddOnIds.has(addonId),
   );

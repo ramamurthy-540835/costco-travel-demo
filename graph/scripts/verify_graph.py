@@ -163,6 +163,19 @@ def main():
     else:
         print(f"FAIL Location.synonyms non-empty ({len(location_rows) - len(failing_cities)}/{len(location_rows)}) — missing: {failing_cities}")
 
+    print("\n== VehicleClass embeddings (09-04, pgvector fallback) ==")
+    cur.execute("SELECT count(*) FROM public.vehicle_class_embeddings WHERE embedding IS NOT NULL")
+    (embedded_count,) = cur.fetchone()
+    ok = embedded_count == len(distinct_classes)
+    # Non-fatal: the embeddings table only populates once an Azure embeddings
+    # deployment is provisioned (external, human-action step) and
+    # backfill_embeddings.py has been run — absence must not fail this script.
+    print(
+        f"{'PASS' if ok else 'SKIP'} vehicle_class_embeddings populated "
+        f"({embedded_count}/{len(distinct_classes)}) — SKIP is expected until "
+        f"AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME is provisioned and backfill_embeddings.py has run"
+    )
+
     cur.close()
     conn.close()
 
