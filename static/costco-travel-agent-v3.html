@@ -65,8 +65,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @media(max-width:560px){.loading-cards{grid-template-columns:1fr}.comparison-summary{grid-template-columns:1fr}.comparison-summary>b{transform:rotate(90deg);text-align:center}}
 #memberDashboard{animation:flow-in .3s ease both}
 @media(max-width:900px){#memberDashboard>div>div:nth-child(3),#memberDashboard>div>div:nth-child(4),#memberDashboard>div>div:nth-child(5){display:none}}
-#loginModal .modal-brand{margin-bottom:20px}
-.member-card:focus-visible{outline:3px solid rgba(29,101,166,.3);outline-offset:2px}
+#loginForm input:focus{outline:2px solid rgba(29,101,166,.28);outline-offset:2px}
+@media(max-width:900px){#loginForm input{display:none}}
 
 </style>
 </head>
@@ -75,7 +75,21 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   <header class="topbar">
     <a class="brand" href="#" aria-label="Costco Travel home"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
     <nav aria-label="Primary"><button class="nav-link active" data-view="concierge">AI Concierge</button><button class="nav-link" data-view="manage">Manage booking</button><button class="nav-link" data-view="lifecycle">Rental lifecycle</button><button class="nav-link" data-view="insights">Demo insights</button></nav>
-    <button class="account-button" id="accountBtn" type="button" onclick="document.getElementById('loginModal').showModal()"><span class="account-icon">◎</span><span id="accountLabel">Sign in</span></button>
+    <!-- Topbar login form (shown when signed out) -->
+    <form id="loginForm" autocomplete="off" style="display:flex;align-items:center;gap:6px;margin-left:auto" onsubmit="handleLoginSubmit(event)">
+      <input id="loginUser" type="text"     value="member@costco.com" placeholder="Username" autocomplete="username" style="border:1px solid #ccd6df;border-radius:3px;padding:7px 10px;font:12px inherit;color:var(--navy);width:148px;height:36px">
+      <input id="loginPass" type="password" value="Costco123"         placeholder="Password" autocomplete="current-password" style="border:1px solid #ccd6df;border-radius:3px;padding:7px 10px;font:12px inherit;color:var(--navy);width:110px;height:36px">
+      <button type="submit" style="border:0;border-radius:3px;background:var(--navy);color:#fff;font:700 11px inherit;padding:0 14px;height:36px;cursor:pointer;white-space:nowrap">Sign in →</button>
+      <div id="loginErr" style="display:none;font-size:10px;color:var(--red);white-space:nowrap"></div>
+    </form>
+    <!-- Account pill (shown when signed in) -->
+    <div id="accountPill" style="display:none;margin-left:auto;display:none;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;border:1px solid #ccd6df;border-radius:99px;background:#fff;padding:6px 14px">
+        <span id="accountIcon" style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-family:Fraunces,serif;font-size:11px;font-weight:700;flex-shrink:0"></span>
+        <span id="accountLabel" style="color:var(--navy);font-weight:600;font-size:12px"></span>
+      </div>
+      <button onclick="signOut()" style="border:0;background:transparent;color:var(--muted);font:600 11px inherit;cursor:pointer;padding:4px 6px">Sign out</button>
+    </div>
   </header>
 
   <main>
@@ -230,25 +244,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     </section>
   </main>
 
-  <dialog id="loginModal" class="modal wide">
-    <button class="modal-close" aria-label="Close" onclick="document.getElementById('loginModal').close()">×</button>
-    <div class="modal-brand"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></div>
-    <h2 id="loginTitle">Sign in to Costco Travel</h2>
-    <p id="loginSubtitle">Select a demo member to simulate Costco SSO authentication. No real credentials are collected.</p>
-    <div id="loginContent" style="margin-top:20px">
-      <div style="display:grid;gap:10px" id="memberCards"></div>
-      <div style="margin-top:16px;padding:12px;background:var(--sand);border-left:3px solid var(--gold);font-size:11px;color:#526477">
-        <strong style="color:var(--navy)">Demo environment</strong> — Each member has a unique profile, booking history, and activity timeline backed by Firestore.
-      </div>
-    </div>
-    <div id="loginSuccess" style="display:none;margin-top:16px">
-      <div style="background:#edf8f3;border:1px solid #a7d7bf;border-radius:4px;padding:16px;text-align:center">
-        <div style="font-size:28px;margin-bottom:4px" id="loginSuccessIcon">✓</div>
-        <div style="font-weight:700;color:#176a4e;font-size:15px" id="loginSuccessName">Signed in</div>
-        <div style="font-size:11px;color:#4d8a72;margin-top:4px" id="loginSuccessMeta">—</div>
-      </div>
-    </div>
-  </dialog>
   <dialog id="bookingModal" class="modal wide"><button class="modal-close" aria-label="Close">×</button><div class="step-label">SECURE YOUR MEMBER RATE</div><h2 id="dateModalTitle">Confirm rental dates and times</h2><p id="selectedRental"></p><form id="bookingForm" class="form-grid"><label>Pickup date<input name="pickup_date" type="date" required></label><label>Pickup time<select name="pickup_time" required></select></label><label>Return date<input name="return_date" type="date" required></label><label>Return time<select name="drop_time" required></select></label><button id="dateSubmit" class="primary full" type="submit">Continue</button></form><div id="bookingResult"></div></dialog>
   <div id="toast" role="status"></div>
   <script>
@@ -655,29 +650,37 @@ hydrateReservations();
 // ── Member login + dashboard ──────────────────────────────────────────────────
 const TIER_COLORS = { Executive:'#0c2948', 'Gold Star':'#c59a45', Business:'#1d65a6' };
 const TIER_ICONS  = { Executive:'★', 'Gold Star':'◆', Business:'▲' };
-let appMember = null;  // the currently signed-in member
+let appMember = null;
 
-async function loadMemberCards() {
-  const container = $('#memberCards');
-  container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">Loading members…</div>';
-  try {
-    const members = await api('/api/members?status=active');
-    container.innerHTML = members.map(m => `
-      <button onclick="signIn('${m.id}')" style="display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;text-align:left;border:1px solid var(--line);border-radius:5px;padding:13px 15px;background:#fff;cursor:pointer;transition:.18s" class="member-card" id="mcard-${m.id}">
-        <div style="width:44px;height:44px;border-radius:50%;background:${TIER_COLORS[m.membership_tier]||'var(--navy)'};color:#fff;display:grid;place-items:center;font-family:Fraunces,serif;font-size:18px;font-weight:700;flex-shrink:0">
-          ${(m.first_name||'?')[0]}
-        </div>
-        <div>
-          <div style="font-weight:700;color:var(--navy);font-size:13px">${m.first_name} ${m.last_name}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">${TIER_ICONS[m.membership_tier]||''} ${m.membership_tier} · #${m.membership_number||m.id} · Savings: $${(m.lifetime_savings_usd||0).toLocaleString()}</div>
-          <div style="font-size:10px;color:#7d8b98;margin-top:1px">Prefers: ${m.preferences?.preferred_car_class||'Any'} · ${(m.preferences?.preferred_locations||[]).join(', ')||'Any location'}</div>
-        </div>
-        <div style="font-size:18px;color:#b8c9d5">›</div>
-      </button>`).join('');
-    $$('.member-card').forEach(b => { b.onmouseenter=()=>{ b.style.borderColor='var(--blue)'; b.style.boxShadow='0 6px 18px rgba(29,101,166,.12)'; }; b.onmouseleave=()=>{ b.style.borderColor='var(--line)'; b.style.boxShadow=''; }; });
-  } catch(e) {
-    container.innerHTML = `<div style="color:var(--red);font-size:12px">Could not load members: ${e.message}</div>`;
+// Credential table — username (or email) → Firestore member ID
+const CREDENTIALS = {
+  // email shortcut
+  'member@costco.com': { memberId:'MBR-00001', password:'Costco123' },
+  // per-member usernames (all share admin1234)
+  sarah:  { memberId:'MBR-00001', password:'admin1234' },
+  david:  { memberId:'MBR-00002', password:'admin1234' },
+  emily:  { memberId:'MBR-00003', password:'admin1234' },
+  robert: { memberId:'MBR-00004', password:'admin1234' },
+  lisa:   { memberId:'MBR-00005', password:'admin1234' },
+  james:  { memberId:'MBR-00006', password:'admin1234' },
+  maria:  { memberId:'MBR-00007', password:'admin1234' },
+  kevin:  { memberId:'MBR-00008', password:'admin1234' },
+};
+
+function handleLoginSubmit(event) {
+  event.preventDefault();
+  const username = $('#loginUser').value.trim().toLowerCase();
+  const password = $('#loginPass').value;
+  const cred = CREDENTIALS[username];
+  const errEl = $('#loginErr');
+  if (!cred || cred.password !== password) {
+    errEl.textContent = 'Invalid username or password.';
+    errEl.style.display = 'block';
+    $('#loginUser').style.borderColor = 'var(--red)';
+    setTimeout(() => { errEl.style.display='none'; $('#loginUser').style.borderColor=''; }, 3000);
+    return;
   }
+  signIn(cred.memberId);
 }
 
 async function signIn(memberId) {
@@ -687,69 +690,66 @@ async function signIn(memberId) {
       api(`/api/members/${memberId}/activity/summary`).catch(() => ({})),
     ]);
     appMember = { ...member, activitySummary: actSummary.summary || {} };
-
-    // Update account button
     const tier = member.membership_tier || 'Member';
-    $('#accountLabel').textContent = `${member.first_name} · ${tier}`;
-    $('#accountBtn').title = `Signed in as ${member.first_name} ${member.last_name}`;
 
-    // Show success in modal, then close after 1.2s
-    $('#loginContent').style.display = 'none';
-    $('#loginSuccess').style.display = 'block';
-    $('#loginSuccessIcon').textContent = (member.first_name||'?')[0];
-    $('#loginSuccessIcon').style.cssText = `font-size:32px;width:56px;height:56px;border-radius:50%;background:${TIER_COLORS[tier]||'var(--navy)'};color:#fff;display:grid;place-items:center;margin:0 auto 8px;font-family:Fraunces,serif;font-weight:700`;
-    $('#loginSuccessName').textContent = `Welcome back, ${member.first_name}!`;
-    $('#loginSuccessMeta').textContent = `${tier} Member · #${member.membership_number||memberId}`;
-    setTimeout(() => { document.getElementById('loginModal').close(); renderDashboard(); resetLoginModal(); }, 1400);
+    // Swap form → account pill
+    $('#loginForm').style.display = 'none';
+    const pill = $('#accountPill');
+    pill.style.display = 'flex';
+    $('#accountIcon').textContent = (member.first_name||'?')[0];
+    $('#accountIcon').style.background = TIER_COLORS[tier] || 'var(--navy)';
+    $('#accountLabel').textContent = `${member.first_name} ${member.last_name} · ${tier}`;
 
-    // Reload reservations filtered to this member
     await hydrateReservations();
+    renderDashboard();
 
-    // Personalize the chat greeting
+    // Personalised concierge greeting
     const prefs = member.preferences || {};
     const summary = actSummary.summary || {};
-    const locations = (prefs.preferred_locations||[]).join(' or ') || 'your favourite destinations';
-    const disputes = summary.active_disputes > 0 ? ` I also see you have ${summary.active_disputes} open dispute — would you like help with that?` : '';
+    const locs = (prefs.preferred_locations||[]).join(' or ') || 'your favourite destinations';
+    const disputeNote = summary.active_disputes > 0 ? ` I also see you have <strong>${summary.active_disputes} open dispute</strong> — would you like help resolving it?` : '';
     $('#messages').innerHTML = `
       <div class="message agent"><div class="bubble">
         <strong>Welcome back, ${member.first_name}!</strong>
-        <p>You're signed in as a <strong>${tier}</strong> member with <strong>$${(member.lifetime_savings_usd||0).toLocaleString()} lifetime savings</strong>. I can search ${prefs.preferred_car_class||'any car'} in ${locations}, manage your bookings, or answer any questions.${disputes} Where are you headed?</p>
+        <p>You're signed in as a <strong>${tier}</strong> member with <strong>$${(member.lifetime_savings_usd||0).toLocaleString()} lifetime savings</strong>. I can search ${prefs.preferred_car_class||'any car'} in ${locs}, manage your bookings, or answer any questions.${disputeNote} Where are you headed?</p>
       </div></div>
       <div class="quick-replies">
         ${(prefs.preferred_locations||['MCO','LAS']).slice(0,2).map(loc=>`<button>Find a car in ${loc}</button>`).join('')}
         <button>Show my reservations</button>
         ${summary.active_disputes>0?'<button>My open dispute</button>':''}
       </div>`;
-
+    toast(`Signed in as ${member.first_name} ${member.last_name}`);
   } catch(e) { toast(`Sign-in failed: ${e.message}`); }
 }
 
-function resetLoginModal() {
-  $('#loginContent').style.display = 'block';
-  $('#loginSuccess').style.display = 'none';
+function signOut() {
+  appMember = null;
+  $('#accountPill').style.display = 'none';
+  $('#loginForm').style.display = 'flex';
+  $('#loginUser').value = 'member@costco.com';
+  $('#loginPass').value = 'Costco123';
+  $('#memberDashboard').style.display = 'none';
+  $('#messages').innerHTML = '<div class="message agent"><div class="bubble"><strong>Hi, I\'m your Costco Travel AI concierge.</strong><p>I can compare member-priced rental cars, recommend the right vehicle, or help manage an existing reservation. Where would you like to go?</p></div></div><div class="quick-replies"><button>Find an SUV in Orlando</button><button>Best savings in Las Vegas</button><button>Manage reservation</button></div>';
+  hydrateReservations();
 }
 
 function renderDashboard() {
   if (!appMember) return;
-  const m = appMember;
-  const s = m.activitySummary || {};
-  const tier = m.membership_tier || '';
+  const m = appMember, s = m.activitySummary || {}, tier = m.membership_tier || '';
   $('#memberDashboard').style.display = 'block';
   $('#dashAvatar').textContent = (m.first_name||'?')[0];
   $('#dashAvatar').style.background = `linear-gradient(145deg,${TIER_COLORS[tier]||'var(--blue)'},var(--navy))`;
   $('#dashName').textContent = `${m.first_name} ${m.last_name}`;
-  $('#dashMeta').textContent = `${TIER_ICONS[tier]||''} ${tier} Member · #${m.membership_number||m.id} · Since ${m.member_since||'—'}`;
+  $('#dashMeta').textContent = `${TIER_ICONS[tier]||''} ${tier} · #${m.membership_number||m.id} · Since ${m.member_since||'—'}`;
   $('#dashSavings').textContent = `$${(m.lifetime_savings_usd||0).toLocaleString()}`;
   $('#dashBookings').textContent = s.event_counts?.booking_confirmed || '0';
   const locs = (m.preferences?.preferred_locations||[]);
   $('#dashLocations').innerHTML = locs.map(loc=>`<button data-prompt="Find a ${m.preferences?.preferred_car_class||'car'} in ${loc}" style="border:1px solid var(--line);background:#f4f7f9;border-radius:3px;padding:5px 10px;font:600 10px inherit;color:var(--navy);cursor:pointer;letter-spacing:.04em">${loc}</button>`).join('');
   $$('#dashLocations button').forEach(b=>b.onclick=()=>{ switchView('concierge'); handleSend(b.dataset.prompt); });
-  const hasDispute = (s.active_disputes||0) > 0;
-  $('#dashDispute').style.display = hasDispute ? 'block' : 'none';
+  $('#dashDispute').style.display = (s.active_disputes||0)>0 ? 'block':'none';
 }
 
-// Override api calls to include member_id header
-const _origCallAgent = callAgent;
+// Override callAgent to inject member_id into every chat request
 async function callAgent(message) {
   conversationHistory.push({role:'user',content:message});
   const raw = await api('/api/agent/chat',{method:'POST',body:JSON.stringify({message,session_id:sessionId,client_context:buildSystemPrompt(),flow:appState.flow,messages:conversationHistory.slice(-10),member_id:appMember?.id||null})});
@@ -758,11 +758,6 @@ async function callAgent(message) {
   addMessage(response.message); renderReplies(response.chips); handleAgentAction(response);
   return response;
 }
-
-// Auto-open login on first load
-document.getElementById('loginModal').addEventListener('close', resetLoginModal);
-loadMemberCards();
-setTimeout(() => { if (!appMember) document.getElementById('loginModal').showModal(); }, 600);
 
 // ── Lifecycle view (UC4-UC8) ──────────────────────────────────────────────
 let lcReservations = [];
