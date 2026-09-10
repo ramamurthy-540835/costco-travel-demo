@@ -144,18 +144,26 @@ def get_member_activity_summary(member_id:str):
 def cars(days:Annotated[int,Query(ge=1,le=60)]=1,party_size:Annotated[int,Query(ge=1,le=12)]=1,location:str="",budget_per_day:Annotated[float|None,Query(gt=0)]=None,pickup:str|None=None,return_at:Annotated[str|None,Query(alias="return")]=None):
     started=time.monotonic(); pickup_location=location.upper() or None
     def latency(): return int((time.monotonic()-started)*1000)
+    def _norm(item:dict)->dict:
+        """Ensure every car item has camelCase fields the frontend expects, regardless of source."""
+        item["ratePerDay"]   = item.get("ratePerDay")   or item.get("rate_per_day",   0)
+        item["retailPerDay"] = item.get("retailPerDay") or item.get("retail_per_day", 0)
+        item["savings"]      = item.get("savings") or f"Save ${round(item['retailPerDay']-item['ratePerDay'],2):.2f}/day vs retail"
+        item["image_url"]    = item.get("image_url") or image_url(item.get("class",""))
+        return item
     try:
         if pickup or return_at:
             if not pickup or not return_at: raise ReservationError(422,"pickup and return are both required.")
             try: live=search_cars(location=location,pickup=pickup,drop=return_at,party_size=party_size,budget_per_day=budget_per_day)
             except ValueError as exc: raise ReservationError(422,str(exc)) from exc
-            for item in live["cars"]: item["image_url"]=image_url(item["class"])
-            emit("rental_search",pickup_location=pickup_location,latency_ms=latency(),metadata={"source":live["source"],"cached":live["cached"]})
+            live.pop("vendor_responses",None)  # strip large GDS payload before sending to browser
+            live["cars"]=[_norm(c) for c in live.get("cars",[])]
+            emit("rental_search",pickup_location=pickup_location,latency_ms=latency(),metadata={"source":live["source"],"cached":live.get("cached",False)})
             return live
+        # No dates: wrap rank_cars in {source,cars} and normalise field names
         result=rank_cars(days=days,party_size=party_size,location=location,budget_per_day=budget_per_day)
-        for item in result: item["image_url"]=image_url(item["class"])
         emit("rental_search",pickup_location=pickup_location,latency_ms=latency(),metadata={"source":"sample"})
-        return result
+        return {"source":"sample","cached":False,"cars":[_norm(c) for c in result]}
     except ReservationError:
         emit("rental_search",pickup_location=pickup_location,latency_ms=latency(),success=False,metadata={"error":"validation"})
         raise

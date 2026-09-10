@@ -566,12 +566,19 @@ async function renderNewOptions() {
     const card=document.createElement('article'); card.className=`rental-card ${index===0?'recommended':''}`;
     const visual=car.image_url?`<img class="car-image" src="${car.image_url}" loading="lazy" alt="${car.car}">`:`<div class="car-emoji">${car.emoji || '🚙'}</div>`;
     const features=(car.features || []).map((feature)=>`✓ ${feature}`).join('<br>');
-    card.innerHTML=`${index===0?'<div class="recommend-tag">★ BEST VALUE</div>':''}${visual}<h4>${car.car}</h4><div class="provider">${car.class} · ${car.vendor || 'Rental partner'}</div><div class="rental-price">${money(car.ratePerDay)} <small>/ day member rate</small></div><div class="retail-rate">Retail ${money(car.retailPerDay)}/day</div><div class="saving">${car.savings || `Save ${money(car.retailPerDay-car.ratePerDay)}/day vs retail`}</div><div class="rental-meta">${features}</div><button>Select this car</button>`;
+    // Normalise field names — backend always sends camelCase but guard against snake_case
+    car.ratePerDay   = car.ratePerDay   ?? car.rate_per_day   ?? 0;
+    car.retailPerDay = car.retailPerDay ?? car.retail_per_day ?? 0;
+    car.savings      = car.savings || `Save ${money(car.retailPerDay - car.ratePerDay)}/day vs retail`;
+    card.innerHTML=`${index===0?'<div class="recommend-tag">★ BEST VALUE</div>':''}${visual}<h4>${car.car||car.example_model||'Vehicle'}</h4><div class="provider">${car.class} · ${car.vendor || 'Rental partner'}</div><div class="rental-price">${money(car.ratePerDay)} <small>/ day member rate</small></div><div class="retail-rate">Retail ${money(car.retailPerDay)}/day</div><div class="saving">${car.savings}</div><div class="rental-meta">${features}</div><button>Select this car</button>`;
     const image=$("img",card); if (image) image.onerror=()=>image.replaceWith(Object.assign(document.createElement("div"),{className:"car-emoji",textContent:car.emoji || "🚙"}));
     $("button",card).onclick=()=>selectCar(car); row.append(card);
   });
 }
 async function selectCar(car) {
+  car.ratePerDay   = car.ratePerDay   ?? car.rate_per_day   ?? 0;
+  car.retailPerDay = car.retailPerDay ?? car.retail_per_day ?? 0;
+  car.class        = car.class || car.vehicle_class_id || 'Intermediate';
   appState.flow=FlowMachine.advance(appState.flow,'awaiting_confirm',{newCar:car});
   if (appState.flow.type==='change') {
     const updated=await api(`/api/reservations/${appState.flow.resId}/change/update`,{method:'POST',body:JSON.stringify({car_class:car.class})});
