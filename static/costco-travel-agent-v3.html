@@ -501,7 +501,9 @@ async function startChange(resId,mode="vehicle",prefill=null) {
     if (mode==="vehicle") {
       appState.flow=FlowMachine.advance(appState.flow,"awaiting_car",{newDates:reservationDates(reservation)}); await renderNewOptions();
     } else {
-      if (prefill) appState.flow={...appState.flow,newDates:prefill}; renderDatePicker();
+      // Always pre-fill from the reservation's current dates; chat prefill overrides individual fields
+      appState.flow={...appState.flow, newDates:{...reservationDates(reservation), ...(prefill||{})}};
+      renderDatePicker();
     }
   } catch (error) { addWarning(error.message); }
 }
@@ -531,7 +533,15 @@ function configureDateInputs() {
 
 function renderDatePicker() {
   if (!FlowMachine.canRenderPicker(appState.flow)) return;
-  configureDateInputs(); $('#dateModalTitle').textContent=appState.flow.type==='change'?'Select replacement dates and times':'Select rental dates and times'; $('#dateSubmit').textContent='Use these dates and times';
+  configureDateInputs();
+  const isChange=appState.flow.type==='change';
+  const mode=appState.flow.changeMode||'dates';
+  $('#dateModalTitle').textContent=isChange
+    ? (mode==='vehicle'?'Confirm dates for replacement vehicle'
+      :mode==='both'?'Select new dates and vehicle'
+      :'Select new pickup and return dates')
+    : 'Select rental dates and times';
+  $('#dateSubmit').textContent='Use these dates and times';
   appState.flow=FlowMachine.markPickerRendered(appState.flow); appState.pickerCount+=1; $('#bookingResult').innerHTML=''; $('#bookingModal').showModal();
 }
 async function acceptDates(event) {
