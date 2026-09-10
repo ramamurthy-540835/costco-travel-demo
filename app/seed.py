@@ -57,8 +57,9 @@ def freshen_stale(repository=None) -> list[str]:
         if item.get("status") != "CONFIRMED":
             continue
         pickup_str = item.get("pickup_at", "")
-        if not pickup_str or pickup_str > now.isoformat():
-            continue  # future or unknown — skip
+        # Treat today's date as stale too — same-day pickups trigger human-review on change/cancel
+        if not pickup_str or pickup_str[:10] > now.date().isoformat():
+            continue  # genuinely future — skip
         # Push pickup forward so it lands 3–14 days from now, preserving duration
         days = max(1, min(item.get("days", 1), 7))  # cap at 7 for demo clarity
         # Deterministic offset based on reservation ID to spread them out
