@@ -70,7 +70,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   );
 
   if (body.dryRun === true) {
-    return NextResponse.json({ refundPercent: quote.refundPercent, refundAmountCents }, { status: 200 });
+    return NextResponse.json(
+      { bookingId: String(booking._id), refundPercent: quote.refundPercent, refundAmountCents },
+      { status: 200 },
+    );
   }
 
   // Atomic claim: only the request that flips `reserved` -> `cancelled` here

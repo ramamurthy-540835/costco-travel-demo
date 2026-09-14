@@ -71,30 +71,112 @@ interface ConfirmedModification {
   totalPrice?: number;
 }
 
+interface ConfirmedCancellation {
+  bookingId: string;
+  refundAmountCents?: number;
+  refundPercent?: number;
+}
+
+interface ConfirmedAddons {
+  bookingId: string;
+  deltaCents: number;
+  refundAmountCents?: number;
+  totalPrice?: number;
+  selectedAddOns: SelectedAddOnEntry[];
+}
+
+// A single derived field describing "what should this message render right
+// now" — replaces the old scattered booleans (proposal/searchResults/bookings/
+// addOnCatalog/confirmedBooking/confirmedModification), each of which needed
+// its own suppression guard against every other one. Every tool_result event
+// computes a candidate outcome and overwrites this field (rank-gated, see
+// OUTCOME_RANK) instead of being tracked as an independent flag — so a turn
+// that ends in plain prose with no tool calls simply never sets this past
+// 'none', and any future tool automatically gets "superseded by whatever the
+// turn produces later" behavior for free instead of needing a new guard added
+// to every other card.
+type TurnOutcome =
+  | { kind: 'none' }
+  | { kind: 'search'; results: InventorySearchResult[]; pickupDate?: string; returnDate?: string; dropoffCity?: string }
+  | { kind: 'addon_catalog'; addOns: AddOnCatalogEntry[] }
+  | { kind: 'booking_list'; bookings: BookingRecord[] }
+  | {
+      kind: 'proposal';
+      toolName: string;
+      result: Record<string, unknown>;
+      pickupDate?: string;
+      returnDate?: string;
+      dropoffCity?: string;
+    }
+  | { kind: 'confirmed_booking'; booking: ConfirmedBooking }
+  | { kind: 'confirmed_modification'; modification: ConfirmedModification }
+  | { kind: 'confirmed_cancellation'; cancellation: ConfirmedCancellation }
+  | { kind: 'confirmed_addons'; addons: ConfirmedAddons };
+
+const OUTCOME_RANK: Record<TurnOutcome['kind'], number> = {
+  none: 0,
+  search: 1,
+  booking_list: 1,
+  addon_catalog: 1,
+  proposal: 2,
+  confirmed_booking: 3,
+  confirmed_modification: 3,
+  confirmed_cancellation: 3,
+  confirmed_addons: 3,
+};
+
 interface ChatMessage {
   id: string;
   role: ChatRole;
   text: string;
   toolEvents: ToolEvent[];
-  proposal?: ProposalCard;
-  searchResults?: InventorySearchResult[];
-  bookings?: BookingRecord[];
-  addOnCatalog?: AddOnCatalogEntry[];
-  pickupDate?: string;
-  returnDate?: string;
-  dropoffCity?: string;
+  outcome: TurnOutcome;
   bookingDone?: boolean;
   vendorStep?: VendorStep;
-  addonCatalogShown?: boolean;
-  confirmedBooking?: ConfirmedBooking;
-  confirmedModification?: ConfirmedModification;
   modificationConfirming?: boolean;
   modificationConfirmError?: string | null;
+  cancellationConfirming?: boolean;
+  cancellationConfirmError?: string | null;
+  addonsConfirming?: boolean;
+  addonsConfirmError?: string | null;
   // The synthetic "Payment completed, booking X confirmed" round-trip exists
   // only to tell the model (and session history) the booking is done — the
   // BookingConfirmationCard already shows the member everything it would
   // say, so that exchange is kept out of the rendered transcript.
   hidden?: boolean;
+}
+
+// Maps a resolved tool_result to the outcome it should produce, or undefined
+// if this tool has no visible card (get_quote, get_cancellation_policy, or
+// any errored result) — an undefined candidate leaves the current outcome
+// untouched rather than clearing it.
+function mapToOutcome(name: string, result: Record<string, unknown>): TurnOutcome | undefined {
+  const proposal = asProposal(name, result);
+  if (proposal) {
+    return {
+      kind: 'proposal',
+      toolName: proposal.toolName,
+      result: proposal.result,
+      pickupDate: result.pickupDate as string | undefined,
+      returnDate: result.returnDate as string | undefined,
+      dropoffCity: result.dropoffCity as string | undefined,
+    };
+  }
+  const searchResults = asSearchResults(name, result);
+  if (searchResults) {
+    return {
+      kind: 'search',
+      results: searchResults,
+      pickupDate: result.pickupDate as string | undefined,
+      returnDate: result.returnDate as string | undefined,
+      dropoffCity: result.dropoffCity as string | undefined,
+    };
+  }
+  const addOns = asAddonCatalog(name, result);
+  if (addOns) return { kind: 'addon_catalog', addOns };
+  const bookings = asBookingList(name, result);
+  if (bookings) return { kind: 'booking_list', bookings };
+  return undefined;
 }
 
 interface AssistantChatProps {
@@ -148,13 +230,22 @@ function asBookingList(name: string, result: Record<string, unknown>): BookingRe
 // Restricted to a plain-text-ish element set (no headings/images/tables) so
 // a reply still reads as one short chat message, not a formatted document.
 function AssistantText({ text }: { text: string }) {
+  // Standard markdown joins single newlines into the same paragraph/line —
+  // fine for prose the model wrote as one flowing sentence, but replies
+  // that enumerate several short points on their own lines (without a
+  // model-emitted "- " list or a blank line between them) render as one
+  // dense, unbroken block instead. Promoting single newlines to blank-line
+  // paragraph breaks gives every line its own breathing room regardless of
+  // whether the model bothered with list syntax, without needing an extra
+  // remark plugin.
+  const spaced = text.replace(/\n(?!\n)/g, '\n\n');
   return (
-    <div className="space-y-1 [&_p]:m-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_strong]:font-semibold">
+    <div className="space-y-2 leading-relaxed [&_p]:m-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-4 [&_strong]:font-semibold">
       <ReactMarkdown
         allowedElements={['p', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'br', 'code']}
         unwrapDisallowed
       >
-        {text}
+        {spaced}
       </ReactMarkdown>
     </div>
   );
@@ -164,7 +255,20 @@ function InFlightStatusLine({ isError }: { isError?: boolean }) {
   if (isError) {
     return <p className="mt-1 text-xs text-muted-foreground italic">Couldn&apos;t complete that — retrying…</p>;
   }
-  return <p className="mt-1 text-xs text-muted-foreground italic">Thinking…</p>;
+  return <ThinkingIndicator />;
+}
+
+// Animated three-dot "thinking" indicator, replacing the old static "…"
+// placeholder — same bouncing-dots pattern used by ChatGPT/Claude's own web
+// UIs to signal an in-progress reply without implying any real text yet.
+function ThinkingIndicator() {
+  return (
+    <div className="mt-1 inline-flex items-center gap-1 rounded-lg bg-muted px-3 py-2">
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
+    </div>
+  );
 }
 
 // Cross-agent reasoning boundary — the customer assistant asking the Vendor
@@ -236,27 +340,6 @@ function AddonCatalogStrip({ addOns }: { addOns: AddOnCatalogEntry[] }) {
             {typeof a.feePerDay === 'number' && a.feePerDay > 0 ? `$${a.feePerDay.toFixed(2)}/day` : 'Included'}
           </div>
         </div>
-      ))}
-    </div>
-  );
-}
-
-// Shows which extras a propose_addons preview actually selected/charged —
-// the model's text must not recite this (per SYSTEM_PROMPT), so it needs to
-// live somewhere; a compact chip row here instead of a text sentence.
-function SelectedAddonsStrip({ addOns }: { addOns: SelectedAddOnEntry[] }) {
-  if (addOns.length === 0) return null;
-  return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      {addOns.map((a) => (
-        <span
-          key={a.addonId}
-          className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground"
-        >
-          {a.name}
-          {a.charged && typeof a.feePerDay === 'number' && a.feePerDay > 0 ? ` · $${a.feePerDay.toFixed(2)}/day` : ''}
-          {!a.charged ? ' · included' : ''}
-        </span>
       ))}
     </div>
   );
@@ -551,17 +634,155 @@ function ModificationConfirmedCard({ modification }: { modification: ConfirmedMo
   );
 }
 
+// Cancellation never needs a payment form (it only ever refunds or is a
+// no-op), so it mirrors ModificationSummaryCard's no-charge confirm-button
+// path exactly rather than needing its own Stripe branch.
+function CancellationSummaryCard({
+  result,
+  onConfirm,
+  confirming,
+  confirmError,
+}: {
+  result: Record<string, unknown>;
+  onConfirm: () => void;
+  confirming: boolean;
+  confirmError: string | null;
+}) {
+  const refundAmountCents = result.refundAmountCents as number | undefined;
+  const refundPercent = result.refundPercent as number | undefined;
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm">
+      <div className="font-medium">Cancel booking</div>
+      <div className="mt-2 flex justify-between border-t border-border pt-2">
+        <span className="text-muted-foreground">Refund</span>
+        <span className="font-medium">
+          {typeof refundAmountCents === 'number'
+            ? `$${(refundAmountCents / 100).toFixed(2)}`
+            : typeof refundPercent === 'number'
+              ? `${refundPercent}%`
+              : 'None'}
+        </span>
+      </div>
+      <div className="mt-2 border-t border-border pt-2">
+        <Button size="sm" variant="destructive" onClick={onConfirm} disabled={confirming}>
+          {confirming ? 'Confirming…' : 'Confirm cancellation'}
+        </Button>
+        {confirmError && <p className="mt-1 text-xs text-destructive">{confirmError}</p>}
+      </div>
+    </div>
+  );
+}
+
+function CancellationConfirmedCard({ cancellation }: { cancellation: ConfirmedCancellation }) {
+  const { refundAmountCents, refundPercent } = cancellation;
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-green-300 bg-card p-3 text-sm">
+      <div className="flex items-center gap-2 text-green-700">
+        <span aria-hidden>✓</span>
+        <span className="font-medium">Booking cancelled</span>
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {typeof refundAmountCents === 'number' && refundAmountCents > 0
+          ? `Refunded $${(refundAmountCents / 100).toFixed(2)}.`
+          : typeof refundPercent === 'number' && refundPercent > 0
+            ? `Refunded ${refundPercent}%.`
+            : 'No refund due.'}
+      </div>
+    </div>
+  );
+}
+
+// Extras have the same three outcomes as a modification (charge/refund/
+// no-op) plus an itemized line-item list — mirrors ModificationSummaryCard's
+// layout/confirm-button pattern instead of the old plain-text-plus-pills
+// combo, so extras get the same "card you can act on" treatment as booking
+// and modification instead of a "reply yes" text exchange.
+function AddonsSummaryCard({
+  result,
+  onConfirmNoCharge,
+  confirming,
+  confirmError,
+}: {
+  result: Record<string, unknown>;
+  onConfirmNoCharge: () => void;
+  confirming: boolean;
+  confirmError: string | null;
+}) {
+  const selected = (result.selectedAddOns as SelectedAddOnEntry[] | undefined) ?? [];
+  const deltaCents = (result.deltaCents as number | undefined) ?? 0;
+  const newTotalPrice = result.newTotalPrice as number | undefined;
+  const hasCharge = deltaCents > 0;
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm">
+      <div className="font-medium">Extras</div>
+      {selected.length > 0 && (
+        <div className="mt-2 space-y-1 border-t border-border pt-2">
+          {selected.map((a) => (
+            <div key={a.addonId} className="flex justify-between text-muted-foreground">
+              <span>{a.name}</span>
+              <span>
+                {a.charged && typeof a.feePerDay === 'number' && a.feePerDay > 0
+                  ? `$${a.feePerDay.toFixed(2)}/day`
+                  : 'Included'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-2 flex justify-between border-t border-border pt-2">
+        <span className="text-muted-foreground">
+          {hasCharge ? 'Additional charge' : deltaCents < 0 ? 'Refund' : 'Price change'}
+        </span>
+        <span className="font-medium">
+          {hasCharge
+            ? `$${(deltaCents / 100).toFixed(2)}`
+            : deltaCents < 0
+              ? `$${(-deltaCents / 100).toFixed(2)}`
+              : 'None'}
+        </span>
+      </div>
+      {typeof newTotalPrice === 'number' && (
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>New total</span>
+          <span>${newTotalPrice.toFixed(2)}</span>
+        </div>
+      )}
+      {!hasCharge && (
+        <div className="mt-2 border-t border-border pt-2">
+          <Button size="sm" onClick={onConfirmNoCharge} disabled={confirming}>
+            {confirming ? 'Confirming…' : deltaCents < 0 ? 'Confirm and refund' : 'Confirm extras'}
+          </Button>
+          {confirmError && <p className="mt-1 text-xs text-destructive">{confirmError}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddonsConfirmedCard({ addons }: { addons: ConfirmedAddons }) {
+  const { deltaCents, refundAmountCents, totalPrice } = addons;
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-green-300 bg-card p-3 text-sm">
+      <div className="flex items-center gap-2 text-green-700">
+        <span aria-hidden>✓</span>
+        <span className="font-medium">Extras updated</span>
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {typeof refundAmountCents === 'number' && refundAmountCents > 0
+          ? `Refunded $${(refundAmountCents / 100).toFixed(2)}.`
+          : deltaCents > 0
+            ? 'Additional charge collected.'
+            : 'No additional charge.'}
+        {typeof totalPrice === 'number' ? ` New total: $${totalPrice.toFixed(2)}.` : ''}
+      </div>
+    </div>
+  );
+}
+
 function ProposalSummary({ toolName, result }: { toolName: string; result: Record<string, unknown> }) {
   if (toolName === 'propose_booking') return <BookingSummaryCard result={result} />;
-  if (toolName === 'propose_addons') {
-    const selected = (result.selectedAddOns as SelectedAddOnEntry[] | undefined) ?? [];
-    return (
-      <>
-        <ProposalOneLiner result={result} />
-        <SelectedAddonsStrip addOns={selected} />
-      </>
-    );
-  }
   return <ProposalOneLiner result={result} />;
 }
 
@@ -603,10 +824,32 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
   const [sending, setSending] = useState(false);
   const conversationIdRef = useRef<string>(crypto.randomUUID());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Once the member has seen a booking list/context card at all this
+  // conversation, a LATER get_booking_status call that resolves to a single
+  // booking is almost always the model re-resolving context it already has
+  // (e.g. "manage extras" on "the latest booking" just shown) — surfacing
+  // that as its own card again just to have it overwritten moments later by
+  // the addon catalog/proposal is the "flash and disappear" bug. A genuine
+  // disambiguation list (more than one booking) is always shown.
+  const bookingListShownRef = useRef(false);
+  // Same reasoning, for the addon catalog: once it's been shown once this
+  // conversation, a later get_addon_catalog re-fetch (e.g. right before
+  // propose_addons on a follow-up "add X" message) is redundant — it would
+  // otherwise flash the catalog strip on screen only to have propose_addons
+  // overwrite it moments later with the proposal card.
+  const addonCatalogShownRef = useRef(false);
 
   // Streamed tokens/tool events grow the newest message's height in place,
   // so a plain "scroll on new message" effect would miss most of the growth —
   // scroll on every render instead, which is cheap (a no-op once already at bottom).
+  // The Input disables itself while a turn is in flight, which drops focus —
+  // re-focus it the moment it re-enables so the member can start typing the
+  // next message immediately instead of having to click back into it.
+  useEffect(() => {
+    if (!sending && open) inputRef.current?.focus();
+  }, [sending, open]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
@@ -620,13 +863,13 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
     setSending(true);
     setMessages((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: 'user', text, toolEvents: [], hidden },
+      { id: crypto.randomUUID(), role: 'user', text, toolEvents: [], outcome: { kind: 'none' }, hidden },
     ]);
 
     const assistantId = crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
-      { id: assistantId, role: 'assistant', text: '', toolEvents: [], hidden },
+      { id: assistantId, role: 'assistant', text: '', toolEvents: [], outcome: { kind: 'none' }, hidden },
     ]);
 
     try {
@@ -647,6 +890,27 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
       const decoder = new TextDecoder();
       let buffer = '';
 
+      // Informational outcomes (search/booking_list/addon_catalog, rank 1) are
+      // debounced before they touch state: a tool result mid-turn that's about
+      // to be superseded by a later same-or-higher-rank result in this SAME
+      // turn (e.g. get_booking_status resolving a booking right before
+      // get_addon_catalog/propose_addons runs) would otherwise render its card
+      // for a moment and then vanish once overwritten — a visible "flash".
+      // Proposal/confirmed outcomes (rank >= 2) are always applied instantly.
+      let displayedOutcome: TurnOutcome = { kind: 'none' };
+      let pendingOutcome: TurnOutcome | null = null;
+      let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+      const flushPendingOutcome = () => {
+        if (!pendingTimer) return;
+        clearTimeout(pendingTimer);
+        pendingTimer = null;
+        if (pendingOutcome) {
+          displayedOutcome = pendingOutcome;
+          pendingOutcome = null;
+          setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, outcome: displayedOutcome } : m)));
+        }
+      };
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -660,6 +924,17 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
           const event = JSON.parse(line.slice('data: '.length));
 
           if (event.type === 'token') {
+            // The backend's tool-call loop always finishes every tool_call/
+            // tool_result for a turn before it starts streaming real reply
+            // text (chat-loop.ts's `for turn` loop only emits tokens once
+            // pendingCalls is empty) — so the first token is a reliable
+            // signal that no further tool_result can arrive this turn.
+            // Flushing here (instead of relying solely on the fixed-delay
+            // fallback below) shows the truly-final card the instant text
+            // starts, and catches same-turn overwrites the fixed delay is
+            // too short to cover (e.g. a slow tool call before a later one
+            // supersedes it).
+            flushPendingOutcome();
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantId ? { ...m, text: m.text + event.content } : m,
@@ -682,58 +957,71 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
               ),
             );
           } else if (event.type === 'tool_result') {
-            const newProposal = asProposal(event.name, event.result);
-            const isAddonCatalog = event.name === 'get_addon_catalog';
-            // A finished booking/addons flow (create_booking or update_addons
-            // succeeding) closes out that flow's extras question — a later,
-            // unrelated get_addon_catalog call (e.g. for a brand-new booking
-            // started afterward) must show the strip again rather than
-            // staying suppressed for the rest of the conversation.
-            const flowJustCompleted =
-              event.name === 'search_inventory' ||
-              ((event.name === 'create_booking' || event.name === 'update_addons') &&
-                !(event.result as { error?: string })?.error);
-            setMessages((prev) => {
-              // Within the SAME flow, once the addon catalog has been shown,
-              // a later re-call (the model re-invoking get_addon_catalog
-              // after extras were already chosen for this same booking) must
-              // not re-surface the "Checking available extras…" indicator —
-              // the member already saw and answered that question.
-              const catalogAlreadyShown = isAddonCatalog && !flowJustCompleted && prev.some((m) => m.addonCatalogShown);
-              return prev.map((m) => {
-                if (m.id !== assistantId) {
-                  // A fresh propose_* result supersedes any earlier proposal card
-                  // still attached to a previous message — without this, an
-                  // assistant that calls propose_booking/propose_addons more than
-                  // once across turns (self-correcting retry, or "add GPS please"
-                  // after an initial no-extras proposal) leaves the old
-                  // BookingSummaryCard + Stripe payment form mounted alongside the
-                  // new one, so the member sees two live payment forms at once.
-                  return {
-                    ...(newProposal && m.proposal ? { ...m, proposal: undefined } : m),
-                    ...(flowJustCompleted ? { addonCatalogShown: false } : {}),
-                  };
-                }
-                return {
-                  ...m,
-                  toolEvents: [
-                    ...m.toolEvents,
-                    { name: event.name, kind: 'result', isError: Boolean(event.result?.error) },
-                  ],
-                  proposal: newProposal ?? m.proposal,
-                  searchResults: asSearchResults(event.name, event.result) ?? m.searchResults,
-                  bookings: asBookingList(event.name, event.result) ?? m.bookings,
-                  addOnCatalog: catalogAlreadyShown ? m.addOnCatalog : asAddonCatalog(event.name, event.result) ?? m.addOnCatalog,
-                  addonCatalogShown: flowJustCompleted ? false : m.addonCatalogShown || (isAddonCatalog && !catalogAlreadyShown),
-                  pickupDate:
-                    event.name === 'search_inventory' ? event.result.pickupDate : m.pickupDate,
-                  returnDate:
-                    event.name === 'search_inventory' ? event.result.returnDate : m.returnDate,
-                  dropoffCity:
-                    event.name === 'search_inventory' ? event.result.dropoffCity : m.dropoffCity,
-                };
-              });
-            });
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      toolEvents: [
+                        ...m.toolEvents,
+                        { name: event.name, kind: 'result', isError: Boolean(event.result?.error) },
+                      ],
+                    }
+                  : m,
+              ),
+            );
+
+            const rawCandidate = mapToOutcome(event.name, event.result);
+            const isRedundantBookingList =
+              rawCandidate?.kind === 'booking_list' && rawCandidate.bookings.length === 1 && bookingListShownRef.current;
+            const isRedundantAddonCatalog = rawCandidate?.kind === 'addon_catalog' && addonCatalogShownRef.current;
+            const candidate = isRedundantBookingList || isRedundantAddonCatalog ? undefined : rawCandidate;
+            if (candidate?.kind === 'booking_list') bookingListShownRef.current = true;
+            if (candidate?.kind === 'addon_catalog') addonCatalogShownRef.current = true;
+            // Rank-gated overwrite: a candidate this message's current (or
+            // pending, not-yet-displayed) outcome already outranks — e.g. a
+            // repeat get_addon_catalog call after propose_booking already
+            // resolved — is ignored instead of needing its own dedup flag.
+            const effectiveCurrent = pendingOutcome ?? displayedOutcome;
+            if (!candidate || OUTCOME_RANK[candidate.kind] < OUTCOME_RANK[effectiveCurrent.kind]) {
+              // no-op: doesn't outrank what's already shown/queued
+            } else if (OUTCOME_RANK[candidate.kind] >= 2) {
+              // proposal / confirmed_* — always applied instantly, no debounce
+              if (pendingTimer) {
+                clearTimeout(pendingTimer);
+                pendingTimer = null;
+                pendingOutcome = null;
+              }
+              displayedOutcome = candidate;
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== assistantId) {
+                    // A fresh propose_* result supersedes any earlier
+                    // proposal card still attached to a previous message —
+                    // without this, an assistant that calls propose_booking/
+                    // propose_addons/propose_modification/
+                    // propose_cancellation more than once across turns
+                    // leaves the old card + Stripe payment form (or confirm
+                    // button) mounted alongside the new one. Only ever
+                    // clears another message's outcome when it's still an
+                    // unresolved 'proposal' — informational and terminal
+                    // outcomes on older messages are never touched.
+                    if (m.outcome.kind === 'proposal') {
+                      return { ...m, outcome: { kind: 'none' } };
+                    }
+                    return m;
+                  }
+                  return { ...m, outcome: candidate };
+                }),
+              );
+            } else {
+              // rank 1 (search/booking_list/addon_catalog) — debounce so an
+              // intermediate result that's about to be superseded within
+              // this same turn never touches the DOM at all.
+              pendingOutcome = candidate;
+              if (pendingTimer) clearTimeout(pendingTimer);
+              pendingTimer = setTimeout(flushPendingOutcome, 300);
+            }
           } else if (event.type === 'error') {
             setMessages((prev) =>
               prev.map((m) =>
@@ -743,6 +1031,7 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
           }
         }
       }
+      flushPendingOutcome();
     } finally {
       setSending(false);
     }
@@ -757,39 +1046,50 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
   }
 
   function handlePaymentDone(message: ChatMessage, bookingId: string, mode: 'create_booking' | 'update_addons') {
+    const proposalResult = message.outcome.kind === 'proposal' ? message.outcome.result : undefined;
     setMessages((prev) =>
       prev.map((m) =>
         m.id === message.id
           ? {
               ...m,
-              proposal: undefined,
               bookingDone: true,
-              // Only propose_booking gets the full confirmation card (it's the
-              // one with a pickup to check in for) — propose_addons keeps its
-              // existing one-line text confirmation.
-              confirmedBooking:
-                mode === 'create_booking' && message.proposal
-                  ? { bookingId, proposal: message.proposal.result }
-                  : m.confirmedBooking,
+              // Both paths now get a real terminal card (confirmed_booking /
+              // confirmed_addons) — mirrors confirmModificationNoCharge's
+              // "card covers it, no follow-up text" pattern instead of
+              // leaving update_addons with no card and a visible follow-up
+              // reply.
+              outcome:
+                mode === 'create_booking' && proposalResult
+                  ? { kind: 'confirmed_booking', booking: { bookingId, proposal: proposalResult } }
+                  : proposalResult
+                    ? {
+                        kind: 'confirmed_addons',
+                        addons: {
+                          bookingId,
+                          deltaCents: (proposalResult.deltaCents as number | undefined) ?? 0,
+                          totalPrice: proposalResult.newTotalPrice as number | undefined,
+                          selectedAddOns: (proposalResult.selectedAddOns as SelectedAddOnEntry[] | undefined) ?? [],
+                        },
+                      }
+                    : { kind: 'none' },
             }
           : m,
       ),
     );
+    // Both cards fully cover what the member needs to see — keep this
+    // bookkeeping round-trip (it tells the model/session history the change
+    // is done) out of the visible transcript, same as create_booking always did.
     void sendTurn(
       mode === 'update_addons'
         ? `Payment completed, extras updated on booking ${bookingId}.`
         : `Payment completed, booking ${bookingId} confirmed.`,
-      // create_booking's confirmation is fully covered by the
-      // BookingConfirmationCard just rendered — keep that round-trip out of
-      // the visible transcript. update_addons has no equivalent card, so its
-      // text reply stays visible.
-      { silent: mode === 'create_booking' },
+      { silent: true },
     );
   }
 
   async function confirmModificationNoCharge(message: ChatMessage) {
-    if (!message.proposal) return;
-    const result = message.proposal.result;
+    if (message.outcome.kind !== 'proposal') return;
+    const result = message.outcome.result;
     const bookingId = result.bookingId as string;
     setMessages((prev) =>
       prev.map((m) => (m.id === message.id ? { ...m, modificationConfirming: true, modificationConfirmError: null } : m)),
@@ -822,13 +1122,15 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
           m.id === message.id
             ? {
                 ...m,
-                proposal: undefined,
                 modificationConfirming: false,
-                confirmedModification: {
-                  bookingId,
-                  deltaCents: body.deltaCents ?? 0,
-                  refundAmountCents: body.refundAmountCents,
-                  totalPrice: body.totalPrice,
+                outcome: {
+                  kind: 'confirmed_modification',
+                  modification: {
+                    bookingId,
+                    deltaCents: body.deltaCents ?? 0,
+                    refundAmountCents: body.refundAmountCents,
+                    totalPrice: body.totalPrice,
+                  },
                 },
               }
             : m,
@@ -840,6 +1142,123 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
         prev.map((m) =>
           m.id === message.id
             ? { ...m, modificationConfirming: false, modificationConfirmError: 'Modification could not be applied.' }
+            : m,
+        ),
+      );
+    }
+  }
+
+  async function confirmCancellationDirect(message: ChatMessage) {
+    if (message.outcome.kind !== 'proposal') return;
+    const result = message.outcome.result;
+    const bookingId = result.bookingId as string;
+    setMessages((prev) =>
+      prev.map((m) => (m.id === message.id ? { ...m, cancellationConfirming: true, cancellationConfirmError: null } : m)),
+    );
+
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: false }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === message.id
+              ? { ...m, cancellationConfirming: false, cancellationConfirmError: body.error ?? 'Cancellation could not be applied.' }
+              : m,
+          ),
+        );
+        return;
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message.id
+            ? {
+                ...m,
+                cancellationConfirming: false,
+                outcome: {
+                  kind: 'confirmed_cancellation',
+                  cancellation: {
+                    bookingId,
+                    refundAmountCents: body.refundAmountCents,
+                    refundPercent: body.refundPercent,
+                  },
+                },
+              }
+            : m,
+        ),
+      );
+      void sendTurn(`Cancellation confirmed on booking ${bookingId}.`, { silent: true });
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message.id
+            ? { ...m, cancellationConfirming: false, cancellationConfirmError: 'Cancellation could not be applied.' }
+            : m,
+        ),
+      );
+    }
+  }
+
+  // No-charge/refund extras confirm, mirroring confirmModificationNoCharge
+  // exactly: a direct REST call from the UI's own button instead of the
+  // member typing "yes" and the model calling update_addons — no visible
+  // follow-up text needed either way.
+  async function confirmAddonsNoCharge(message: ChatMessage) {
+    if (message.outcome.kind !== 'proposal') return;
+    const result = message.outcome.result;
+    const bookingId = result.bookingId as string;
+    const selectedAddOns = (result.selectedAddOns as SelectedAddOnEntry[] | undefined) ?? [];
+    setMessages((prev) =>
+      prev.map((m) => (m.id === message.id ? { ...m, addonsConfirming: true, addonsConfirmError: null } : m)),
+    );
+
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/addons`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addonIds: selectedAddOns.map((a) => a.addonId), dryRun: false }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === message.id
+              ? { ...m, addonsConfirming: false, addonsConfirmError: body.error ?? 'Extras could not be updated.' }
+              : m,
+          ),
+        );
+        return;
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message.id
+            ? {
+                ...m,
+                addonsConfirming: false,
+                outcome: {
+                  kind: 'confirmed_addons',
+                  addons: {
+                    bookingId,
+                    deltaCents: body.deltaCents ?? 0,
+                    refundAmountCents: body.refundAmountCents,
+                    totalPrice: body.totalPrice,
+                    selectedAddOns,
+                  },
+                },
+              }
+            : m,
+        ),
+      );
+      void sendTurn(`Extras updated on booking ${bookingId}.`, { silent: true });
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message.id
+            ? { ...m, addonsConfirming: false, addonsConfirmError: 'Extras could not be updated.' }
             : m,
         ),
       );
@@ -859,142 +1278,179 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
               Ask me to search rentals, get a quote, or manage a booking.
             </p>
           )}
-          {messages.filter((m) => !m.hidden).map((m) => (
-            <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
-              <div
-                className={
-                  m.role === 'user'
-                    ? 'inline-block rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground'
-                    : 'inline-block rounded-lg bg-muted px-3 py-2 text-sm'
-                }
-              >
-                {m.role === 'assistant' && m.text ? (
-                  <AssistantText text={m.text} />
-                ) : (
-                  m.text || (m.role === 'assistant' && sending ? '…' : '')
-                )}
-              </div>
-              {sending &&
-                m.role === 'assistant' &&
-                m.toolEvents.length > 0 &&
-                m.toolEvents[m.toolEvents.length - 1].kind === 'call' && (
-                  <InFlightStatusLine isError={m.toolEvents[m.toolEvents.length - 1].isError} />
-                )}
-              {m.vendorStep && <VendorCheckCard step={m.vendorStep} />}
-              {/* Once this turn has resolved to an actual booking proposal or a
-                  confirmed booking, the vehicle chosen and extras selected are
-                  already reflected in that card's line items — re-showing the
-                  full search-results strip and the entire addon catalog
-                  (options the member did NOT pick) is redundant clutter, not
-                  a real choice left to make. */}
-              {!m.proposal && !m.confirmedBooking && m.searchResults && m.searchResults.length > 0 && (
+          {(() => {
+            const visible = messages.filter((m) => !m.hidden);
+            return visible.map((m) => {
+              const isLastVisible = m.id === visible[visible.length - 1]?.id;
+              return (
+                <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
+                  {m.role === 'user' && (
+                    <div className="inline-block max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
+                      {m.text}
+                    </div>
+                  )}
+                  {m.role === 'assistant' && (
+                    <>
+                      {m.text ? (
+                        <div className="inline-block max-w-[90%] rounded-lg bg-muted px-3 py-2 text-sm">
+                          <AssistantText text={m.text} />
+                        </div>
+                      ) : (
+                        sending &&
+                        isLastVisible && (
+                          <InFlightStatusLine
+                            isError={m.toolEvents[m.toolEvents.length - 1]?.isError}
+                          />
+                        )
+                      )}
+                      {m.vendorStep && <VendorCheckCard step={m.vendorStep} />}
+
+              {m.outcome.kind === 'search' && m.outcome.results.length > 0 && (
                 <VehicleResultStrip
-                  results={m.searchResults}
-                  pickupDate={m.pickupDate}
-                  returnDate={m.returnDate}
+                  results={m.outcome.results}
+                  pickupDate={m.outcome.pickupDate}
+                  returnDate={m.outcome.returnDate}
                 />
               )}
-              {/* get_booking_status's full list is only useful while the member
-                  still needs to pick/disambiguate a booking — once a
-                  modification proposal or confirmation has resolved, the
-                  matched booking is already reflected there, and re-showing
-                  every booking (including unrelated ones) is just clutter. */}
-              {!m.proposal && !m.confirmedBooking && !m.confirmedModification && m.bookings && (
-                <BookingListCard bookings={m.bookings} />
+              {m.outcome.kind === 'booking_list' && <BookingListCard bookings={m.outcome.bookings} />}
+              {m.outcome.kind === 'addon_catalog' && <AddonCatalogStrip addOns={m.outcome.addOns} />}
+              {m.outcome.kind === 'confirmed_booking' && <BookingConfirmationCard booking={m.outcome.booking} />}
+              {m.outcome.kind === 'confirmed_modification' && (
+                <ModificationConfirmedCard modification={m.outcome.modification} />
               )}
-              {!m.proposal && !m.confirmedBooking && m.addOnCatalog && (
-                <AddonCatalogStrip addOns={m.addOnCatalog} />
+              {m.outcome.kind === 'confirmed_cancellation' && (
+                <CancellationConfirmedCard cancellation={m.outcome.cancellation} />
               )}
-              {m.confirmedBooking && <BookingConfirmationCard booking={m.confirmedBooking} />}
-              {m.confirmedModification && <ModificationConfirmedCard modification={m.confirmedModification} />}
-              {m.proposal && m.proposal.toolName === 'propose_modification' && (
-                <ModificationSummaryCard
-                  result={m.proposal.result}
-                  onConfirmNoCharge={() => confirmModificationNoCharge(m)}
-                  confirming={Boolean(m.modificationConfirming)}
-                  confirmError={m.modificationConfirmError ?? null}
+              {m.outcome.kind === 'confirmed_addons' && <AddonsConfirmedCard addons={m.outcome.addons} />}
+
+              {m.outcome.kind === 'proposal' && m.outcome.toolName === 'propose_modification' && (
+                <>
+                  <ModificationSummaryCard
+                    result={m.outcome.result}
+                    onConfirmNoCharge={() => confirmModificationNoCharge(m)}
+                    confirming={Boolean(m.modificationConfirming)}
+                    confirmError={m.modificationConfirmError ?? null}
+                  />
+                  {(m.outcome.result.deltaCents as number | undefined ?? 0) > 0 &&
+                    typeof m.outcome.result.clientSecret === 'string' &&
+                    typeof m.outcome.result.paymentIntentId === 'string' && (
+                      <div className="mt-2 text-left">
+                        <AssistantPayment
+                          clientSecret={m.outcome.result.clientSecret as string}
+                          paymentIntentId={m.outcome.result.paymentIntentId as string}
+                          mode="modify_booking"
+                          modifyPayload={{
+                            bookingId: m.outcome.result.bookingId as string,
+                            inventoryId: m.outcome.result.inventoryId as string,
+                            vendorId: m.outcome.result.vendorId as string,
+                            from: m.outcome.result.from as string,
+                            to: m.outcome.result.to as string,
+                          }}
+                          onDone={(bookingId) => {
+                            const deltaCents = (m.outcome as { result: Record<string, unknown> }).result.deltaCents as number;
+                            const newTotalPrice = (m.outcome as { result: Record<string, unknown> }).result
+                              .newTotalPrice as number | undefined;
+                            setMessages((prev) =>
+                              prev.map((mm) =>
+                                mm.id === m.id
+                                  ? {
+                                      ...mm,
+                                      outcome: {
+                                        kind: 'confirmed_modification',
+                                        modification: { bookingId, deltaCents, totalPrice: newTotalPrice },
+                                      },
+                                    }
+                                  : mm,
+                              ),
+                            );
+                            void sendTurn(`Modification confirmed on booking ${bookingId}.`, { silent: true });
+                          }}
+                        />
+                      </div>
+                    )}
+                </>
+              )}
+
+              {m.outcome.kind === 'proposal' && m.outcome.toolName === 'propose_cancellation' && (
+                <CancellationSummaryCard
+                  result={m.outcome.result}
+                  onConfirm={() => confirmCancellationDirect(m)}
+                  confirming={Boolean(m.cancellationConfirming)}
+                  confirmError={m.cancellationConfirmError ?? null}
                 />
               )}
-              {m.proposal && m.proposal.toolName === 'propose_modification' &&
-                (m.proposal.result.deltaCents as number | undefined ?? 0) > 0 &&
-                typeof m.proposal.result.clientSecret === 'string' &&
-                typeof m.proposal.result.paymentIntentId === 'string' && (
+
+              {m.outcome.kind === 'proposal' && m.outcome.toolName === 'propose_addons' && (
+                <>
+                  <AddonsSummaryCard
+                    result={m.outcome.result}
+                    onConfirmNoCharge={() => confirmAddonsNoCharge(m)}
+                    confirming={Boolean(m.addonsConfirming)}
+                    confirmError={m.addonsConfirmError ?? null}
+                  />
+                  {(m.outcome.result.deltaCents as number | undefined ?? 0) > 0 &&
+                    typeof m.outcome.result.clientSecret === 'string' &&
+                    typeof m.outcome.result.paymentIntentId === 'string' && (
+                      <div className="mt-2 text-left">
+                        <AssistantPayment
+                          clientSecret={m.outcome.result.clientSecret as string}
+                          paymentIntentId={m.outcome.result.paymentIntentId as string}
+                          mode="update_addons"
+                          addonsPayload={{
+                            bookingId: m.outcome.result.bookingId as string,
+                            // Full requested set, not just the charged
+                            // subset — the addons route replaces the whole
+                            // list, so a waived/included extra must still be
+                            // sent or it silently drops off the booking.
+                            addonIds: ((m.outcome.result.selectedAddOns as SelectedAddOnEntry[] | undefined) ?? []).map(
+                              (a) => a.addonId,
+                            ),
+                          }}
+                          onDone={(bookingId) => handlePaymentDone(m, bookingId, 'update_addons')}
+                        />
+                      </div>
+                    )}
+                </>
+              )}
+
+              {m.outcome.kind === 'proposal' &&
+                m.outcome.toolName !== 'propose_modification' &&
+                m.outcome.toolName !== 'propose_cancellation' &&
+                m.outcome.toolName !== 'propose_addons' && (
                   <div className="mt-2 text-left">
-                    <AssistantPayment
-                      clientSecret={m.proposal.result.clientSecret as string}
-                      paymentIntentId={m.proposal.result.paymentIntentId as string}
-                      mode="modify_booking"
-                      modifyPayload={{
-                        bookingId: m.proposal.result.bookingId as string,
-                        inventoryId: m.proposal.result.inventoryId as string,
-                        vendorId: m.proposal.result.vendorId as string,
-                        from: m.proposal.result.from as string,
-                        to: m.proposal.result.to as string,
-                      }}
-                      onDone={(bookingId) => {
-                        setMessages((prev) =>
-                          prev.map((mm) =>
-                            mm.id === m.id
-                              ? {
-                                  ...mm,
-                                  proposal: undefined,
-                                  confirmedModification: {
-                                    bookingId,
-                                    deltaCents: m.proposal!.result.deltaCents as number,
-                                    totalPrice: m.proposal!.result.newTotalPrice as number | undefined,
-                                  },
-                                }
-                              : mm,
-                          ),
-                        );
-                        void sendTurn(`Modification confirmed on booking ${bookingId}.`, { silent: true });
-                      }}
-                    />
+                    <ProposalSummary toolName={m.outcome.toolName} result={m.outcome.result} />
+                    {m.outcome.toolName === 'propose_booking' &&
+                      typeof m.outcome.result.clientSecret === 'string' &&
+                      typeof m.outcome.result.paymentIntentId === 'string' && (
+                        <AssistantPayment
+                          clientSecret={m.outcome.result.clientSecret as string}
+                          paymentIntentId={m.outcome.result.paymentIntentId as string}
+                          inventoryId={m.outcome.result.inventoryId as string}
+                          vendorId={m.outcome.result.vendorId as string}
+                          from={m.outcome.result.from as string}
+                          to={m.outcome.result.to as string}
+                          addonIds={(m.outcome.result.chargedAddonIds as string[]) ?? []}
+                          onDone={(bookingId) => handlePaymentDone(m, bookingId, 'create_booking')}
+                        />
+                      )}
                   </div>
                 )}
-              {m.proposal && m.proposal.toolName !== 'propose_modification' && (
-                <div className="mt-2 text-left">
-                  <ProposalSummary toolName={m.proposal.toolName} result={m.proposal.result} />
-                  {m.proposal.toolName === 'propose_booking' &&
-                    typeof m.proposal.result.clientSecret === 'string' &&
-                    typeof m.proposal.result.paymentIntentId === 'string' && (
-                      <AssistantPayment
-                        clientSecret={m.proposal.result.clientSecret as string}
-                        paymentIntentId={m.proposal.result.paymentIntentId as string}
-                        inventoryId={m.proposal.result.inventoryId as string}
-                        vendorId={m.proposal.result.vendorId as string}
-                        from={m.proposal.result.from as string}
-                        to={m.proposal.result.to as string}
-                        addonIds={(m.proposal.result.chargedAddonIds as string[]) ?? []}
-                        onDone={(bookingId) => handlePaymentDone(m, bookingId, 'create_booking')}
-                      />
-                    )}
-                  {m.proposal.toolName === 'propose_addons' &&
-                    typeof m.proposal.result.clientSecret === 'string' &&
-                    typeof m.proposal.result.paymentIntentId === 'string' && (
-                      <AssistantPayment
-                        clientSecret={m.proposal.result.clientSecret as string}
-                        paymentIntentId={m.proposal.result.paymentIntentId as string}
-                        mode="update_addons"
-                        addonsPayload={{
-                          bookingId: m.proposal.result.bookingId as string,
-                          addonIds: (m.proposal.result.chargedAddonIds as string[]) ?? [],
-                        }}
-                        onDone={(bookingId) => handlePaymentDone(m, bookingId, 'update_addons')}
-                      />
-                    )}
+                    </>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            });
+          })()}
         </div>
 
         <form onSubmit={handleSubmit} className="flex gap-2 border-t border-border pt-3">
           <Input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type a message…"
             disabled={sending}
+            autoFocus
           />
           <Button type="submit" size="icon" disabled={sending || !input.trim()}>
             {sending ? <Loader2 className="animate-spin" /> : <Send />}

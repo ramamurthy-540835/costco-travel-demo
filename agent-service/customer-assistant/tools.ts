@@ -279,8 +279,16 @@ export const TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          inventoryId: { type: 'string' },
-          vendorId: { type: 'string' },
+          resultRef: {
+            type: 'string',
+            description:
+              'The resultRef field of the ONE search_inventory result row for the vehicle+vendor the member picked — copy it verbatim as a single string, never reconstruct it from separate inventoryId/vendorId fields you recall independently.',
+          },
+          vehicleModel: {
+            type: 'string',
+            description:
+              'The exact make/model (e.g. "Mercedes-Benz C-Class") of the vehicle in that same row, copied from the search_inventory result. Checked server-side against what resultRef actually resolves to — if it does not match, the call fails with an error instead of silently quoting the wrong vehicle, so never guess this from memory.',
+          },
           from: { type: 'string' },
           to: { type: 'string' },
           addonIds: {
@@ -289,7 +297,7 @@ export const TOOLS = [
             description: 'Add-on ids the member chose at booking time, from get_addon_catalog. Omit or pass [] if none.',
           },
         },
-        required: ['inventoryId', 'vendorId', 'from', 'to'],
+        required: ['resultRef', 'vehicleModel', 'from', 'to'],
       },
     },
   },
@@ -395,6 +403,12 @@ export const TOOLS = [
         properties: {
           status: { type: 'string' },
           vendorId: { type: 'string', description: "Vendor/rental partner name, e.g. 'Alamo'." },
+          limit: {
+            type: 'number',
+            description:
+              "Max number of bookings to return, most recent first — pass this whenever the member " +
+              "asks for a specific count (e.g. 'latest 3 bookings', 'my last booking' -> limit: 1).",
+          },
         },
       },
     },
@@ -460,9 +474,19 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
     // than a handful of options at once). Cap what's relayed back to the
     // model; totalMatches tells it there's more to narrow down.
     const MAX_RESULTS = 10;
+    // resultRef is a single opaque token identifying exactly one row (its
+    // inventoryId + vendorId glued together) — propose_booking takes this
+    // instead of two separate fields specifically so the model has nothing
+    // to mix up: it copies ONE string from ONE row, verbatim, rather than
+    // independently recalling an inventoryId and a vendorId that could each
+    // be typed correctly on their own yet belong to two different rows.
+    const withRefs = results.slice(0, MAX_RESULTS).map((r) => ({
+      ...r,
+      resultRef: `${r.inventory.rental_id}::${r.vendor.provider}`,
+    }));
     return {
       totalMatches: results.length,
-      results: results.slice(0, MAX_RESULTS),
+      results: withRefs,
       pickupDate: args.pickupDate,
       returnDate: args.returnDate,
       dropoffCity: args.dropoffCity,
@@ -496,7 +520,7 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
     if (status !== 200) return { error: body.error ?? `Modify preview failed (${status})` };
 
     await savePendingProposal(ctx.conversationId, 'modify_booking', args);
-    return { proposal: body };
+    return body;
   },
 
   async propose_cancellation(args, ctx) {
@@ -507,17 +531,29 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
     if (status !== 200) return { error: body.error ?? `Cancellation preview failed (${status})` };
 
     await savePendingProposal(ctx.conversationId, 'cancel_booking', args);
-    return { proposal: body };
+    return body;
   },
 
   async propose_booking(args, ctx) {
-    const totals = await computeBookingTotal(args.inventoryId, args.vendorId, args.from, args.to, args.addonIds ?? []);
+    const resultRef = String(args.resultRef ?? '');
+    const sepIndex = resultRef.indexOf('::');
+    if (sepIndex === -1) {
+      return {
+        error:
+          `resultRef "${args.resultRef}" is not a valid search_inventory resultRef (expected "inventoryId::vendorId"). ` +
+          'Copy the resultRef field verbatim from a search_inventory result row — do not construct it yourself.',
+      };
+    }
+    const inventoryId = resultRef.slice(0, sepIndex);
+    const vendorId = resultRef.slice(sepIndex + 2);
+
+    const totals = await computeBookingTotal(inventoryId, vendorId, args.from, args.to, args.addonIds ?? []);
     if (!totals) {
       return {
         error:
-          `No inventory row matches inventoryId "${args.inventoryId}" with vendorId "${args.vendorId}" together. ` +
+          `No inventory row matches resultRef "${args.resultRef}". ` +
           'Call search_inventory again with vehicleModel and vendorId set to get that vendor\'s exact current row, ' +
-          'then retry propose_booking using that row\'s inventoryId — do not mix an inventoryId from one row with a vendorId from another.',
+          'then retry propose_booking using that row\'s resultRef.',
       };
     }
     if ('unknownAddonIds' in totals) {
@@ -527,6 +563,24 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
           'abbreviated or guessed an id instead of copying it verbatim. The real ids are: ' +
           `${JSON.stringify(totals.knownAddonIds)}. Retry propose_booking with the correct id(s) copied ` +
           'character-for-character from the get_addon_catalog result.',
+      };
+    }
+
+    // resultRef makes cross-row mixing structurally impossible, but the
+    // model could still copy a STALE resultRef (from an earlier search,
+    // before the vendor was resolved, or from the wrong card entirely) or
+    // hallucinate one — vehicleModel is a second, independent statement of
+    // intent checked against what that resultRef actually resolves to now,
+    // catching that remaining case instead of silently quoting the wrong car.
+    const resolvedVehicle = [totals.vehicleMake, totals.vehicleModel].filter(Boolean).join(' ').toLowerCase();
+    const claimedVehicle = (args.vehicleModel as string).toLowerCase();
+    if (resolvedVehicle && !resolvedVehicle.includes(claimedVehicle) && !claimedVehicle.includes(resolvedVehicle)) {
+      return {
+        error:
+          `Mismatch: resultRef "${args.resultRef}" resolves to ` +
+          `"${[totals.vehicleMake, totals.vehicleModel].filter(Boolean).join(' ')}", not "${args.vehicleModel}". ` +
+          'Call search_inventory again with vehicleModel set to the vehicle the member actually asked for, ' +
+          'then retry propose_booking using that result\'s exact resultRef.',
       };
     }
 
@@ -678,7 +732,11 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
     if (vendorId && bookings.length === 0) {
       return { bookings: all, note: `No bookings matched vendorId "${args.vendorId}" — returning full list instead.` };
     }
-    return { bookings };
+
+    // /api/bookings already sorts most-recent-first (by `from` desc), so
+    // slicing here after the vendorId filter gives "latest N" semantics.
+    const limit = typeof args.limit === 'number' && args.limit > 0 ? Math.floor(args.limit) : undefined;
+    return { bookings: limit ? bookings.slice(0, limit) : bookings };
   },
 
   async get_cancellation_policy(args) {
