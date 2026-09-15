@@ -7,6 +7,7 @@ import {
   getWaivedAddOnIds,
 } from '../../lib/graph/queries';
 import { resolveSynonym } from '../../lib/graph/retrievers';
+import { BASE_PATH } from '../../lib/basePath';
 import { callVendorSkill, isVendorTaskError } from './vendor-agent-client';
 import { savePendingProposal, consumePendingProposal } from './session-store';
 
@@ -78,7 +79,7 @@ async function fetchJson(
   ctx: ToolContext,
   init: { method: string; body?: unknown },
 ): Promise<{ status: number; body: any }> {
-  const res = await fetch(`${ENV.NEXTJS_APP_URL}${path}`, {
+  const res = await fetch(`${ENV.NEXTJS_APP_URL}${BASE_PATH}${path}`, {
     method: init.method,
     headers: {
       'Content-Type': 'application/json',

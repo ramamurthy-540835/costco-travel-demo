@@ -3,6 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { BASE_PATH } from "@/lib/basePath";
 import { Header } from "@/components/header";
 import { AssistantLauncher } from "@/components/assistant-launcher";
 
@@ -19,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider afterSignOutUrl={BASE_PATH}>
       <html lang="en" className={cn("font-sans", geist.variable)}>
         <body>
           <Header />

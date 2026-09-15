@@ -18,8 +18,8 @@ All diagnostic scripts/specs (`zzz-*`) and the temporary `auth.setup.ts` `networ
 ## Current Position
 
 Milestone: v0.1 Ontology & Discovery/Checkout Core
-Phase: 10 of 12 (Agent Lab & Observability/Evals) — not started. Phase 9 (Customer/Driver Assistant Agent) fully complete (4/4 plans, reopened for 09-03 then 09-06, reclosed each time) — transitioned 2026-09-10.
-Plan: 09-01-PLAN.md complete (SUMMARY: `.coder/phases/09-customer-driver-assistant-agent/09-01-SUMMARY.md`). 09-02-PLAN.md complete (SUMMARY: `.coder/phases/09-customer-driver-assistant-agent/09-02-SUMMARY.md`). 09-03-PLAN.md complete (SUMMARY: `.coder/phases/09-customer-driver-assistant-agent/09-03-SUMMARY.md`) — conversational UX upgrade (hybrid search, card-view rendering, auto-scroll). 09-06-PLAN.md complete (SUMMARY: `.coder/phases/09-customer-driver-assistant-agent/09-06-SUMMARY.md`) — real A2A vendor-availability gate wired into the conversational `propose_booking` flow, traditional checkout left untouched. Loop position (09-06): PLAN ✓ → APPLY ✓ → UNIFY ✓ — loop closed, phase re-transitioned to Phase 10. No plan yet for Phase 10.
+Phase: 9 of 12 (Customer/Driver Assistant Agent) — reopened 2026-09-15 for 09-07 (base-path routing). Otherwise fully complete (4/4 plans prior, reopened for 09-03 then 09-06, reclosed each time) — last transitioned to Phase 10 2026-09-10.
+Plan: 09-07-PLAN.md created, awaiting approval — adds `/agentic-travels` `basePath` + root redirect (`next.config.js`), `lib/basePath.ts`, prefixes literal client `/api/...` fetch/EventSource call sites, and `NEXT_PUBLIC_CLERK_SIGN_IN_URL`/`_UP_URL` + `ClerkProvider afterSignOutUrl`, mirroring `mastech-agentic-commerce`'s pattern. Prior: 09-01 through 09-06 all complete (see phase directory SUMMARYs). Loop position (09-07): PLAN ✓ → APPLY ○ → UNIFY ○.
 
 ### 09-06 applied+unified (2026-09-10): A2A vendor-availability gate in the conversational booking flow
 
@@ -359,12 +359,25 @@ Per explicit user request ("modifications and cancellations can only be done on 
 - 04-08 gained Task 6: a per-row "Cancel" entry point on the same `app/(account)/bookings/page.tsx`, reusing `BookingCancelDialog`, symmetric with 04-07's Task 4 on file-existence (whichever plan applies first creates the page/helper; the other appends its entry point). New AC-7.
 - Adversarial review (1 agent, 1 round, scoped to just this addition — separate budget from the round-2 review above) found and fixed 2 real issues: (1) 04-07's Task 4 originally lacked the symmetric "page already exists → append, don't recreate" clause that 04-08's Task 6 already had — fixed by adding it explicitly. (2) The `from`/`to` query-param filter semantics were prose-only with no concrete Mongoose query shape, risking the two plans' independently-written filter logic diverging — fixed by pinning the exact filter object and factoring it into a shared, named `buildOwnBookingsFilter()` helper both plans import rather than each re-deriving. Also clarified (non-blocking) that the mock `app/prototype/bookings/page.tsx` status-badge maps are a structural pattern only — the real `BOOKING_STATUS` enum doesn't match its keys. No ownership/security leak or factual API mismatch was found (the GET route correctly scopes to `Booking.find({ member: member._id })`).
 
+## Loop Position
+
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✓        ✓        ✓     [09-07 loop closed]
+```
+
+### 09-07 closure (2026-09-15)
+- `/agentic-travels` basePath convention applied, unified. SUMMARY: `.coder/phases/09-customer-driver-assistant-agent/09-07-SUMMARY.md`
+- 2 deviations found via live manual QA and fixed in the same pass: agent-service `tools.ts`/`env.ts` (cross-process fetch calls into this app's own routes), `components/assistant-payment.tsx` (booking-creation POST after chat payment — root cause of a live "Booking could not be created" failure). Both outside the plan's original `files_modified` scope.
+- New tech debt logged: TD-11 in `.coder/ROADMAP.md` (intermittent "no available rental cars" — investigated, no code defect found, deferred to Phase 10 Phoenix tracing).
+- **Note:** `09-04-PLAN.md` and `09-05-PLAN.md` in this phase directory have no matching SUMMARY.md — pre-existing gap from before this session, not addressed here; phase-completion transition is NOT triggered by this closure (PLAN count > SUMMARY count in the phase dir either way, since 09-08 is about to be created below).
+
 ## Session Continuity
 
-Last session: 2026-09-08
-Stopped at: Phase 9 planned — `09-01-PLAN.md` (backend agent-service) and `09-02-PLAN.md` (chat UI, depends_on 09-01) created and awaiting adversarial plan-review + user approval before APPLY.
-Next action: run the standing capped adversarial plan review on `09-01-PLAN.md`, then `/coder:apply 09-01` once approved; `09-02` follows after 09-01 is applied+unified.
-Resume file: .coder/phases/09-customer-driver-assistant-agent/09-01-PLAN.md
+Last session: 2026-09-15
+Stopped at: 09-07 loop closed (basePath convention + 2 live-discovered fixes). New plan being created: `09-08` (bookings sort/filter conversational tooling).
+Next action: `/coder:plan` for 09-08, then adversarial review + `/coder:apply`.
+Resume file: .coder/phases/09-customer-driver-assistant-agent/09-08-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*

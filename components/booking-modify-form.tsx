@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
+import { BASE_PATH } from '@/lib/basePath';
 import {
   Elements,
   PaymentElement,
@@ -87,7 +88,7 @@ export function BookingModifyForm({
     setClientSecret(null);
     setPaymentIntentId(null);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/modify`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/modify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ from: fromValue, to: toValue, dryRun: true, ...vehicleChangeBody() }),
@@ -139,7 +140,7 @@ export function BookingModifyForm({
     setApplying(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments/intent', {
+      const res = await fetch(`${BASE_PATH}/api/payments/intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -168,7 +169,7 @@ export function BookingModifyForm({
     setNote(null);
     setSuccessMessage(null);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/modify`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/modify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ from: newFrom, to: newTo, ...vehicleChangeBody() }),
@@ -368,7 +369,7 @@ function ModifyPaymentStep({
       return;
     }
 
-    const res = await fetch(`/api/bookings/${bookingId}/modify`, {
+    const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/modify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

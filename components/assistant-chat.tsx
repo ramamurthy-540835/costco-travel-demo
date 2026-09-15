@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { BASE_PATH } from '@/lib/basePath';
 import ReactMarkdown from 'react-markdown';
 import { Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -1096,7 +1097,7 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
     );
 
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/modify`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/modify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1157,7 +1158,7 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
     );
 
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dryRun: false }),
@@ -1217,7 +1218,7 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
     );
 
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/addons`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/addons`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ addonIds: selectedAddOns.map((a) => a.addonId), dryRun: false }),

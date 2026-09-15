@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BASE_PATH } from '@/lib/basePath';
 import { Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +33,7 @@ export function BookingCancelDialog({ bookingId }: BookingCancelDialogProps) {
     setRefundPercent(null);
     setRefundAmountCents(null);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dryRun: true }),
@@ -55,7 +56,7 @@ export function BookingCancelDialog({ bookingId }: BookingCancelDialogProps) {
     setConfirming(true);
     setError(null);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
