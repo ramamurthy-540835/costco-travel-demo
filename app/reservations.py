@@ -129,6 +129,10 @@ class ReservationService:
             from .firestore_db import write_audit_event
             write_audit_event("CREATED",value["id"],member_id=member_id,payload={"car_class":data["car_class"],"location":location_code,"vendor":vendor,"vendor_id":vendor_id})
         except Exception: pass
+        try:
+            from .vendor_portal import sync_booking_to_vendor
+            sync_booking_to_vendor(value)
+        except Exception: pass
         return value
     def start_change(self,original_id,now:datetime|None=None):
         original=self.get(original_id)
@@ -173,6 +177,10 @@ class ReservationService:
         preview=self.cancel_preview(value,now)
         if preview["requires_human_review"]: raise ReservationError(409,preview["reason"] or "Human review is required.")
         stamp=(now or utc_now()).isoformat(); self.repository.update(value,{"status":"CANCELLED","cancelled_at":stamp,"updated_at":stamp,"cancellation":preview}); result=self.get(value); emit("reservation_cancelled",pickup_location=result["location_code"],vehicle_class=result["car_class"],reservation_id=result["id"],amount=preview["fee"],metadata={"tier":preview["tier"],"refund":preview["refund"]})
+        try:
+            from .vendor_portal import sync_booking_to_vendor
+            sync_booking_to_vendor(result)
+        except Exception: pass
         return {"reservation":result,"tier":preview["tier"],"fee":preview["fee"],"refund":preview["refund"]}
 
     # UC4 — Vehicle Pickup / Check-In
@@ -184,6 +192,10 @@ class ReservationService:
         try:
             from .firestore_db import write_audit_event
             write_audit_event("CHECKED_IN",value,member_id=item.get("member_id"),payload={"vendor":item.get("vendor"),"vendor_id":item.get("vendor_id"),"vendor_confirmation_id":item.get("vendor_confirmation_id")})
+        except Exception: pass
+        try:
+            from .vendor_portal import sync_booking_to_vendor
+            sync_booking_to_vendor(result)
         except Exception: pass
         return result
 
@@ -229,6 +241,10 @@ class ReservationService:
             from .firestore_db import write_audit_event
             write_audit_event("RETURNED",value,member_id=item.get("member_id"),payload={"final_invoice":final_invoice,"vendor_id":item.get("vendor_id")})
         except Exception: pass
+        try:
+            from .vendor_portal import sync_booking_to_vendor
+            sync_booking_to_vendor(result)
+        except Exception: pass
         return {"reservation":result,"final_invoice":final_invoice}
 
     # UC8 — Billing Dispute / Post-Rental Support
@@ -242,6 +258,11 @@ class ReservationService:
         try:
             from .firestore_db import write_audit_event
             write_audit_event("DISPUTE_OPENED",value,member_id=item.get("member_id"),payload={"dispute_id":dispute_id,"type":dispute_type,"vendor_id":item.get("vendor_id")})
+        except Exception: pass
+        try:
+            from .vendor_portal import sync_booking_to_vendor
+            updated_res = self.get(value)
+            sync_booking_to_vendor(updated_res)
         except Exception: pass
         return {"dispute":dispute,"reservation":self.get(value)}
 

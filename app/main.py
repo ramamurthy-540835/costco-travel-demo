@@ -180,6 +180,32 @@ def sabre_docs_search(q:Annotated[str,Query(min_length=2,max_length=500)]):
     except SabreMcpError as exc: raise HTTPException(status_code=502,detail=str(exc)) from exc
     return {"source":"sabre-developer-hub-mcp","query":q,"result":result}
 
+@app.get("/api/vendor-portal/bookings")
+def all_vendor_bookings():
+    from .vendor_portal import get_all_vendor_bookings
+    return {"bookings":get_all_vendor_bookings()}
+@app.get("/api/vendor-portal/{vendor_id}/bookings")
+def vendor_bookings(vendor_id:str,status:str|None=None):
+    from .vendor_portal import get_vendor_bookings
+    return {"vendor_id":vendor_id,"bookings":get_vendor_bookings(vendor_id,status=status)}
+@app.get("/api/vendor-portal/{vendor_id}/dashboard")
+def vendor_dashboard(vendor_id:str):
+    from .vendor_portal import get_vendor_dashboard
+    return get_vendor_dashboard(vendor_id)
+@app.get("/api/vendor-portal/{vendor_id}/bookings/{booking_id}")
+def vendor_booking_detail(vendor_id:str,booking_id:str):
+    from .vendor_portal import get_vendor_booking
+    b=get_vendor_booking(booking_id)
+    if not b or b.get("vendor_id")!=vendor_id: raise HTTPException(status_code=404,detail="Vendor booking not found.")
+    return b
+@app.post("/api/vendor-portal/sync/{reservation_id}")
+def vendor_sync(reservation_id:str,reservations:Annotated[ReservationService,Depends(reservation_service)]):
+    item=reservations.get(reservation_id)
+    from .vendor_portal import sync_booking_to_vendor
+    result=sync_booking_to_vendor(item)
+    if not result: raise HTTPException(status_code=400,detail="Vendor sync failed.")
+    return result
+
 @app.get("/api/analytics")
 def analytics(): return insights()
 

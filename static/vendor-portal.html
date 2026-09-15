@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vendor Portal Hub · Costco Travel Rental Car Partner Systems</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0c2948;--blue:#1d65a6;--sand:#f4f0e8;--cream:#fbfaf7;--ink:#172333;--muted:#607184;--line:#dbe2e8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.ribbon{height:28px;background:var(--navy);color:#dce9f5;text-align:center;font-size:11px;
+  letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:8px}
+.ribbon span{width:6px;height:6px;border-radius:50%;background:#6cdfaf;box-shadow:0 0 8px #6cdfaf}
+.header{background:#1e293b;padding:16px 32px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #2d3e50}
+.header h1{color:#e2e8f0;font-family:Fraunces,serif;font-size:20px;font-weight:600}
+.header .badge{margin-left:auto;background:#1e3a5f;border:1px solid #2d5a8e;padding:6px 14px;
+  border-radius:4px;color:#7bb8e8;font-size:10px;font-weight:700;letter-spacing:.1em}
+.back-link{color:#93c5fd;text-decoration:none;font-size:13px;font-weight:600}
+.back-link:hover{text-decoration:underline}
+
+.hero{text-align:center;padding:48px 24px 32px}
+.hero h2{font-family:Fraunces,serif;font-size:28px;color:#f1f5f9;margin-bottom:8px}
+.hero p{color:#94a3b8;font-size:14px;max-width:600px;margin:0 auto}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;
+  max-width:1400px;margin:0 auto;padding:0 32px 48px}
+
+.vendor-card{background:#1e293b;border:1px solid #334155;border-radius:12px;overflow:hidden;
+  transition:transform .2s,box-shadow .2s;cursor:pointer;text-decoration:none;color:inherit}
+.vendor-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.3)}
+.vendor-card .brand-bar{height:6px}
+.vendor-card .body{padding:24px}
+.vendor-card .logo-row{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.vendor-card .logo{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:20px;font-weight:800;color:#fff}
+.vendor-card .vendor-name{font-family:Fraunces,serif;font-size:20px;color:#f1f5f9}
+.vendor-card .vendor-code{font-size:10px;color:#64748b;letter-spacing:.1em;font-weight:700}
+.vendor-card .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px}
+.vendor-card .stat{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:12px;text-align:center}
+.vendor-card .stat .val{font-size:22px;font-weight:700;font-family:Fraunces,serif}
+.vendor-card .stat .lbl{font-size:9px;color:#64748b;letter-spacing:.08em;font-weight:700;margin-top:2px}
+.vendor-card .status-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.vendor-card .status-pill{font-size:10px;font-weight:700;letter-spacing:.06em;padding:4px 10px;
+  border-radius:99px;display:inline-flex;align-items:center;gap:4px}
+.vendor-card .open-btn{display:block;text-align:center;padding:12px;font-size:12px;font-weight:700;
+  letter-spacing:.08em;color:#fff;border-top:1px solid #334155;margin-top:20px;border-radius:0 0 12px 12px}
+
+.loading{text-align:center;padding:80px;color:#64748b;font-size:14px}
+
+.summary-bar{max-width:1400px;margin:0 auto 32px;padding:0 32px;display:grid;
+  grid-template-columns:repeat(4,1fr);gap:16px}
+.summary-tile{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:20px;text-align:center}
+.summary-tile .val{font-size:28px;font-weight:700;font-family:Fraunces,serif;color:#f1f5f9}
+.summary-tile .lbl{font-size:10px;color:#64748b;letter-spacing:.1em;font-weight:700;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="ribbon"><span></span> VENDOR PARTNER PORTAL — COSTCO TRAVEL RENTAL CAR INTEGRATION HUB</div>
+<div class="header">
+  <a class="back-link" href="/">&#8592; Back to Costco Travel</a>
+  <h1>Vendor Partner Systems</h1>
+  <div class="badge">REAL-TIME SYNC</div>
+</div>
+
+<div class="hero">
+  <h2>Rental Car Vendor Dashboards</h2>
+  <p>Each vendor system receives and displays bookings from the Costco Travel platform in real-time. Select a vendor to view their operations dashboard.</p>
+</div>
+
+<div class="summary-bar" id="summaryBar">
+  <div class="summary-tile"><div class="val" id="totalBookings">—</div><div class="lbl">TOTAL BOOKINGS</div></div>
+  <div class="summary-tile"><div class="val" id="activeRentals">—</div><div class="lbl">ACTIVE RENTALS</div></div>
+  <div class="summary-tile"><div class="val" id="totalRevenue">—</div><div class="lbl">TOTAL REVENUE</div></div>
+  <div class="summary-tile"><div class="val" id="openDisputes">—</div><div class="lbl">OPEN DISPUTES</div></div>
+</div>
+
+<div class="grid" id="vendorGrid"><div class="loading">Loading vendor systems...</div></div>
+
+<script type="module">
+const VENDORS = [
+  {id:'VND-ALM',name:'Alamo',code:'AL',color:'#6F9E37',page:'vendor-alamo.html'},
+  {id:'VND-AVS',name:'Avis',code:'ZI',color:'#D71920',page:'vendor-avis.html'},
+  {id:'VND-BDG',name:'Budget',code:'ZD',color:'#F36E21',page:'vendor-budget.html'},
+  {id:'VND-ENT',name:'Enterprise',code:'ET',color:'#007D4A',page:'vendor-enterprise.html'},
+];
+
+async function loadDashboards(){
+  let totalBookings=0, activeRentals=0, totalRevenue=0, openDisputes=0;
+  const cards=[];
+  for(const v of VENDORS){
+    try{
+      const r=await fetch(`/api/vendor-portal/${v.id}/dashboard`);
+      const d=await r.json();
+      totalBookings+=d.total_bookings||0;
+      activeRentals+=d.active_reservations||0;
+      totalRevenue+=d.total_revenue||0;
+      openDisputes+=d.open_disputes||0;
+      cards.push(renderCard(v,d));
+    }catch{
+      cards.push(renderCard(v,{total_bookings:0,active_reservations:0,total_revenue:0,status_breakdown:{},open_disputes:0}));
+    }
+  }
+  document.getElementById('totalBookings').textContent=totalBookings;
+  document.getElementById('activeRentals').textContent=activeRentals;
+  document.getElementById('totalRevenue').textContent='$'+totalRevenue.toLocaleString('en-US',{minimumFractionDigits:2});
+  document.getElementById('openDisputes').textContent=openDisputes;
+  document.getElementById('vendorGrid').innerHTML=cards.join('');
+}
+
+function renderCard(v,d){
+  const sb=d.status_breakdown||{};
+  const statuses=Object.entries(sb).map(([k,c])=>{
+    const colors={CONFIRMED:'#3b82f6',ACTIVE:'#22c55e',RETURNED:'#64748b',CANCELLED:'#ef4444',HOLD:'#f59e0b'};
+    return `<span class="status-pill" style="background:${colors[k]||'#475569'}22;color:${colors[k]||'#94a3b8'}">${k} ${c}</span>`;
+  }).join('');
+  return `<a class="vendor-card" href="/${v.page}">
+    <div class="brand-bar" style="background:${v.color}"></div>
+    <div class="body">
+      <div class="logo-row">
+        <div class="logo" style="background:${v.color}">${v.name.charAt(0)}</div>
+        <div><div class="vendor-name">${v.name}</div><div class="vendor-code">GDS: ${v.code} · ${v.id}</div></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="val" style="color:${v.color}">${d.total_bookings}</div><div class="lbl">BOOKINGS</div></div>
+        <div class="stat"><div class="val" style="color:${v.color}">${d.active_reservations}</div><div class="lbl">ACTIVE</div></div>
+        <div class="stat"><div class="val" style="color:${v.color}">$${(d.total_revenue||0).toLocaleString('en-US',{minimumFractionDigits:0})}</div><div class="lbl">REVENUE</div></div>
+      </div>
+      <div class="status-row">${statuses||'<span class="status-pill" style="background:#33415522;color:#94a3b8">No bookings yet</span>'}</div>
+      <div class="open-btn" style="background:${v.color}">OPEN ${v.name.toUpperCase()} DASHBOARD &#8594;</div>
+    </div>
+  </a>`;
+}
+
+loadDashboards();
+</script>
+</body>
+</html>

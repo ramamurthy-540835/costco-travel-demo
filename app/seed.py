@@ -137,6 +137,17 @@ def seed(repository=None):
             repo.create(base)
         created.append(DEMO_ACTIVE_ID)
 
+    # Sync all demo reservations to vendor_bookings for vendor portal dashboards
+    try:
+        from .vendor_portal import sync_booking_to_vendor
+        for res_id in [DEMO_FAR_ID, DEMO_NEAR_ID, DEMO_ACTIVE_ID]:
+            res = repo.get(res_id)
+            if res:
+                sync_booking_to_vendor(res)
+    except Exception as exc:
+        import logging
+        logging.getLogger("costco-travel-demo.seed").warning("Vendor portal sync skipped: %s", exc)
+
     return created
 
 

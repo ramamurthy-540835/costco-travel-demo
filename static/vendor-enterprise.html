@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Enterprise Rent-A-Car · Partner Operations Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#007D4A;--brand-dark:#005a34;--brand-light:#e3f5ec;--navy:#0c2948;--ink:#172333;--muted:#607184;--line:#dbe2e8;--cream:#fbfaf7}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#f8fafc;color:var(--ink);min-height:100vh}
+.topbar{background:var(--brand);padding:0 24px;height:48px;display:flex;align-items:center;gap:16px}
+.topbar .logo{font-size:22px;font-weight:800;color:#fff;letter-spacing:-1px}
+.topbar .tag{font-size:9px;color:#b8e5ce;letter-spacing:.12em;font-weight:700}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.topbar .right a{color:#b8e5ce;text-decoration:none;font-size:12px;font-weight:600}
+.topbar .right a:hover{color:#fff}
+.topbar .sync-badge{background:#005a3488;padding:4px 10px;border-radius:99px;font-size:9px;
+  color:#b8e5ce;font-weight:700;display:flex;align-items:center;gap:5px}
+.topbar .sync-badge span{width:6px;height:6px;border-radius:50%;background:#6cdfaf;
+  box-shadow:0 0 6px #6cdfaf;display:inline-block}
+.subbar{background:#fff;border-bottom:1px solid var(--line);padding:10px 24px;
+  display:flex;align-items:center;gap:20px;font-size:12px;color:var(--muted)}
+.subbar strong{color:var(--ink)}
+.content{max-width:1400px;margin:0 auto;padding:24px}
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:18px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--brand)}
+.stat-card .val{font-size:26px;font-weight:700;font-family:Fraunces,serif;color:var(--brand)}
+.stat-card .lbl{font-size:9px;color:var(--muted);letter-spacing:.1em;font-weight:700;margin-top:2px}
+.section-header{font-family:Fraunces,serif;font-size:18px;color:var(--ink);margin:24px 0 12px;display:flex;align-items:center;gap:10px}
+.section-header .count{background:var(--brand-light);color:var(--brand-dark);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;font-family:"DM Sans",sans-serif}
+.table-wrap{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:24px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{background:#f1f5f9}
+th{text-align:left;padding:10px 14px;font-size:9px;color:var(--muted);letter-spacing:.1em;font-weight:700;border-bottom:1px solid var(--line)}
+td{padding:10px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover{background:#f5fbf8}
+.status{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.04em}
+.status-CONFIRMED{background:#dbeafe;color:#1d4ed8}
+.status-ACTIVE{background:#dcfce7;color:#15803d}
+.status-RETURNED{background:#f1f5f9;color:#475569}
+.status-CANCELLED{background:#fef2f2;color:#dc2626}
+.status-HOLD{background:#fef9c3;color:#a16207}
+.event-timeline{background:#fff;border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:24px}
+.event{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+.event:last-child{border-bottom:none}
+.event .dot{width:8px;height:8px;border-radius:50%;background:var(--brand);margin-top:5px;flex-shrink:0}
+.event .time{color:var(--muted);font-size:10px;white-space:nowrap}
+.event .action{font-weight:600;color:var(--ink)}
+.event .channel{font-size:10px;color:var(--brand);font-weight:700;margin-left:auto;flex-shrink:0}
+.empty{text-align:center;padding:60px;color:var(--muted);font-size:14px}
+.empty .hint{font-size:12px;margin-top:8px;color:#94a3b8}
+.detail-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.detail-modal.open{display:flex}
+.detail-content{background:#fff;border-radius:12px;max-width:700px;width:90%;max-height:85vh;overflow-y:auto;padding:28px;box-shadow:0 25px 60px rgba(0,0,0,.2);position:relative}
+.detail-content h3{font-family:Fraunces,serif;color:var(--brand-dark);font-size:20px;margin-bottom:16px}
+.detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.detail-row .label{color:var(--muted);font-size:10px;letter-spacing:.06em;font-weight:700}
+.detail-close{position:absolute;top:16px;right:20px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted)}
+.filter-bar{display:flex;gap:8px;margin-bottom:16px}
+.filter-btn{background:#f1f5f9;border:1px solid var(--line);padding:6px 14px;border-radius:99px;font:600 11px inherit;color:var(--muted);cursor:pointer;letter-spacing:.04em}
+.filter-btn.active{background:var(--brand-light);color:var(--brand-dark);border-color:var(--brand)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">Enterprise</div>
+  <div class="tag">RENT-A-CAR · PARTNER OPS</div>
+  <div class="right">
+    <div class="sync-badge"><span></span> COSTCO TRAVEL SYNC ACTIVE</div>
+    <a href="/vendor-portal.html">&#8592; All Vendors</a>
+    <a href="/">Costco Travel</a>
+  </div>
+</div>
+<div class="subbar">
+  <span>GDS Code: <strong>ET</strong></span>
+  <span>Vendor ID: <strong>VND-ENT</strong></span>
+  <span>API: <strong>EZ-API v4</strong></span>
+  <span>Contract: <strong>COSTCO-CMR-2024</strong></span>
+  <span>Channel: <strong>Costco Travel</strong></span>
+</div>
+<div class="content">
+  <div class="stat-row" id="stats"></div>
+  <div class="filter-bar" id="filters"></div>
+  <div class="section-header">Costco Travel Bookings <span class="count" id="bookingCount">0</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>CONF #</th><th>COSTCO REF</th><th>MEMBER</th><th>VEHICLE</th><th>SIPP</th>
+        <th>LOCATION</th><th>PICKUP</th><th>RETURN</th><th>RATE/DAY</th><th>TOTAL</th><th>STATUS</th>
+      </tr></thead>
+      <tbody id="bookingTable"><tr><td colspan="11" class="empty">Loading bookings...</td></tr></tbody>
+    </table>
+  </div>
+  <div class="section-header">Recent Sync Events</div>
+  <div class="event-timeline" id="eventTimeline"><div class="empty">Loading events...</div></div>
+</div>
+<div class="detail-modal" id="detailModal">
+  <div class="detail-content" id="detailContent"></div>
+</div>
+<script type="module">
+const VID='VND-ENT';
+let allBookings=[];
+async function load(){
+  try{
+    const [dashRes,bookRes]=await Promise.all([
+      fetch(`/api/vendor-portal/${VID}/dashboard`),
+      fetch(`/api/vendor-portal/${VID}/bookings`)
+    ]);
+    const dash=await dashRes.json();
+    const bookData=await bookRes.json();
+    allBookings=bookData.bookings||[];
+    renderStats(dash);renderFilters(dash.status_breakdown||{});renderBookings(allBookings);renderEvents(allBookings);
+  }catch{
+    document.getElementById('bookingTable').innerHTML='<tr><td colspan="11" class="empty">Unable to connect. <br><span class="hint">Book on Costco Travel to sync here.</span></td></tr>';
+  }
+}
+function renderStats(d){
+  const stats=[
+    {val:d.total_bookings||0,lbl:'TOTAL BOOKINGS'},
+    {val:d.active_reservations||0,lbl:'ACTIVE / CONFIRMED'},
+    {val:'$'+(d.total_revenue||0).toLocaleString('en-US',{minimumFractionDigits:2}),lbl:'COSTCO CHANNEL REVENUE'},
+    {val:Object.keys(d.top_locations||{}).length,lbl:'LOCATIONS SERVED'},
+    {val:d.open_disputes||0,lbl:'OPEN DISPUTES'},
+  ];
+  document.getElementById('stats').innerHTML=stats.map(s=>`<div class="stat-card"><div class="val">${s.val}</div><div class="lbl">${s.lbl}</div></div>`).join('');
+}
+function renderFilters(sb){
+  const statuses=['ALL',...Object.keys(sb)];
+  document.getElementById('filters').innerHTML=statuses.map(s=>
+    `<button class="filter-btn${s==='ALL'?' active':''}" data-status="${s}">${s} ${s!=='ALL'?(sb[s]||''):'('+allBookings.length+')'}</button>`
+  ).join('');
+  document.querySelectorAll('.filter-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const st=btn.dataset.status;
+      renderBookings(st==='ALL'?allBookings:allBookings.filter(b=>b.status===st));
+    });
+  });
+}
+function fmtDate(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+function renderBookings(bookings){
+  document.getElementById('bookingCount').textContent=bookings.length;
+  if(!bookings.length){document.getElementById('bookingTable').innerHTML='<tr><td colspan="11" class="empty">No bookings yet.<br><span class="hint">Book on Costco Travel to sync here.</span></td></tr>';return;}
+  document.getElementById('bookingTable').innerHTML=bookings.map(b=>`
+    <tr style="cursor:pointer" data-id="${b.id}">
+      <td><strong>${b.vendor_confirmation_id||b.id}</strong></td>
+      <td style="font-size:10px;color:var(--muted)">${b.costco_reservation_id||'—'}</td>
+      <td>${b.member_name||'—'}</td>
+      <td>${b.vehicle_class||'—'}<br><span style="font-size:10px;color:var(--muted)">${b.vehicle_model||''}</span></td>
+      <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:3px;font-size:10px">${b.sipp_code||'—'}</code></td>
+      <td>${b.location_code||'—'}</td>
+      <td>${fmtDate(b.pickup_at)}</td>
+      <td>${fmtDate(b.drop_at)}</td>
+      <td>$${(b.vendor_rate||0).toFixed(2)}</td>
+      <td><strong>$${(b.vendor_total||0).toFixed(2)}</strong></td>
+      <td><span class="status status-${b.status}">${b.status}</span></td>
+    </tr>`).join('');
+  document.querySelectorAll('#bookingTable tr[data-id]').forEach(row=>{
+    row.addEventListener('click',()=>showDetail(row.dataset.id));
+  });
+}
+function renderEvents(bookings){
+  const events=[];
+  bookings.forEach(b=>{(b.events||[]).forEach(e=>{events.push({...e,conf:b.vendor_confirmation_id||b.id});});});
+  events.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+  const recent=events.slice(0,20);
+  if(!recent.length){document.getElementById('eventTimeline').innerHTML='<div class="empty">No sync events yet.</div>';return;}
+  document.getElementById('eventTimeline').innerHTML=recent.map(e=>`
+    <div class="event"><div class="dot"></div><div><div class="action">${e.action}</div><div class="time">${fmtDate(e.timestamp)} · ${e.conf}</div></div><div class="channel">${(e.channel||'').toUpperCase()}</div></div>
+  `).join('');
+}
+function showDetail(id){
+  const b=allBookings.find(x=>x.id===id);if(!b)return;
+  const rows=[['Vendor Confirmation',b.vendor_confirmation_id],['Costco Reservation',b.costco_reservation_id],['Status',b.status],['Member',`${b.member_name} (${b.member_id})`],['Vehicle',`${b.vehicle_class} — ${b.vehicle_model}`],['SIPP Code',b.sipp_code],['Location',b.location_code],['Pickup',fmtDate(b.pickup_at)],['Return',fmtDate(b.drop_at)],['Days',b.days],['Rate/Day','$'+(b.vendor_rate||0).toFixed(2)],['Total','$'+(b.vendor_total||0).toFixed(2)],['Contract',b.contract_code],['Channel',b.channel],['GDS Code',b.gds_code],['API Version',b.api_version],['Created',fmtDate(b.created_at)],['Last Updated',fmtDate(b.updated_at)]];
+  if(b.fuel_level)rows.push(['Fuel Level',b.fuel_level]);
+  if(b.mileage)rows.push(['Mileage',b.mileage+' mi']);
+  const events=(b.events||[]).map(e=>`<div class="event"><div class="dot"></div><div><div class="action">${e.action}</div><div class="time">${fmtDate(e.timestamp)}</div></div><div class="channel">${(e.channel||'').toUpperCase()}</div></div>`).join('');
+  document.getElementById('detailContent').innerHTML=`
+    <button class="detail-close" id="closeDetail">&times;</button>
+    <h3>Booking ${b.vendor_confirmation_id||b.id}</h3>
+    ${rows.map(([l,v])=>`<div class="detail-row"><span class="label">${l}</span><strong>${v||'—'}</strong></div>`).join('')}
+    ${events?`<div style="margin-top:16px"><div style="font-size:10px;color:var(--muted);letter-spacing:.06em;font-weight:700;margin-bottom:6px">SYNC TIMELINE</div>${events}</div>`:''}
+  `;
+  document.getElementById('detailModal').classList.add('open');
+  document.getElementById('closeDetail').addEventListener('click',()=>document.getElementById('detailModal').classList.remove('open'));
+}
+document.getElementById('detailModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+load();setInterval(load,15000);
+</script>
+</body>
+</html>
