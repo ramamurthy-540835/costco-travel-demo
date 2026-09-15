@@ -1,0 +1,72 @@
+[
+  {
+    "intent_id": "book_reservation",
+    "canonical_phrase": "Book a reservation",
+    "synonyms": ["book a car", "rent a car", "make a reservation", "reserve a vehicle", "I need a rental"],
+    "related_uc": ["UC1"],
+    "target_entity": "Reservation"
+  },
+  {
+    "intent_id": "modify_reservation",
+    "canonical_phrase": "Modify a reservation",
+    "synonyms": ["change my booking", "update my reservation", "switch my pickup date", "edit my rental"],
+    "related_uc": ["UC2"],
+    "target_entity": "Reservation"
+  },
+  {
+    "intent_id": "cancel_reservation",
+    "canonical_phrase": "Cancel a reservation",
+    "synonyms": ["cancel my booking", "cancel my rental", "I don't need the car anymore", "call off my reservation"],
+    "related_uc": ["UC3"],
+    "target_entity": "Reservation"
+  },
+  {
+    "intent_id": "check_availability",
+    "canonical_phrase": "Check vehicle availability",
+    "synonyms": ["is there a car available", "what's in stock", "do you have any SUVs", "check what's available"],
+    "related_uc": ["UC1"],
+    "target_entity": "Inventory"
+  },
+  {
+    "intent_id": "compare_rates",
+    "canonical_phrase": "Compare negotiated rates",
+    "synonyms": ["cheapest car", "lowest price", "best deal", "what's the best rate", "compare prices"],
+    "related_uc": ["UC1"],
+    "target_entity": "NegotiatedTerm"
+  },
+  {
+    "intent_id": "request_addon",
+    "canonical_phrase": "Request an add-on",
+    "synonyms": ["add a child seat", "I need GPS", "add an extra driver", "add roadside assistance"],
+    "related_uc": ["UC6"],
+    "target_entity": "AddOn"
+  },
+  {
+    "intent_id": "check_in",
+    "canonical_phrase": "Check in / pick up vehicle",
+    "synonyms": ["I'm here to pick up my car", "check in for my rental", "confirm my pickup"],
+    "related_uc": ["UC4"],
+    "target_entity": "Reservation"
+  },
+  {
+    "intent_id": "return_vehicle",
+    "canonical_phrase": "Return / drop off vehicle",
+    "synonyms": ["drop off my car", "return the rental", "I'm done with the vehicle"],
+    "related_uc": ["UC7"],
+    "target_entity": "Reservation"
+  },
+  {
+    "intent_id": "dispute_charge",
+    "canonical_phrase": "Dispute a billing charge",
+    "synonyms": ["I was overcharged", "dispute this charge", "why was I charged for this", "billing complaint"],
+    "related_uc": ["UC8"],
+    "target_entity": "NegotiatedTerm"
+  },
+  {
+    "intent_id": "escalate_support",
+    "canonical_phrase": "Escalate to support",
+    "synonyms": ["talk to a human", "escalate my issue", "I need help now", "connect me to support"],
+    "related_uc": ["UC5"],
+    "target_entity": "Reservation"
+  }
+]

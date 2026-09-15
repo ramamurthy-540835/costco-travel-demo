@@ -1,0 +1,432 @@
+[
+  {
+    "term_id": "nt_001",
+    "provider": "Alamo",
+    "membership_tier": "gold_star",
+    "discount_pct": 8.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_002",
+    "provider": "Alamo",
+    "membership_tier": "executive",
+    "discount_pct": 10.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_003",
+    "provider": "Alamo",
+    "membership_tier": "business",
+    "discount_pct": 12.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_004",
+    "provider": "Avis",
+    "membership_tier": "gold_star",
+    "discount_pct": 10.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_005",
+    "provider": "Avis",
+    "membership_tier": "executive",
+    "discount_pct": 12.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_006",
+    "provider": "Avis",
+    "membership_tier": "business",
+    "discount_pct": 14.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_007",
+    "provider": "Budget",
+    "membership_tier": "gold_star",
+    "discount_pct": 12.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_008",
+    "provider": "Budget",
+    "membership_tier": "executive",
+    "discount_pct": 14.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_009",
+    "provider": "Budget",
+    "membership_tier": "business",
+    "discount_pct": 16.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_010",
+    "provider": "Enterprise",
+    "membership_tier": "gold_star",
+    "discount_pct": 9.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_011",
+    "provider": "Enterprise",
+    "membership_tier": "executive",
+    "discount_pct": 11.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_012",
+    "provider": "Enterprise",
+    "membership_tier": "business",
+    "discount_pct": 13.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_013",
+    "provider": "National",
+    "membership_tier": "gold_star",
+    "discount_pct": 7.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_014",
+    "provider": "National",
+    "membership_tier": "executive",
+    "discount_pct": 9.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_015",
+    "provider": "National",
+    "membership_tier": "business",
+    "discount_pct": 11.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_016",
+    "provider": "Hertz",
+    "membership_tier": "gold_star",
+    "discount_pct": 8.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_017",
+    "provider": "Hertz",
+    "membership_tier": "executive",
+    "discount_pct": 10.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_018",
+    "provider": "Hertz",
+    "membership_tier": "business",
+    "discount_pct": 12.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_019",
+    "provider": "Thrifty",
+    "membership_tier": "gold_star",
+    "discount_pct": 14.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_020",
+    "provider": "Thrifty",
+    "membership_tier": "executive",
+    "discount_pct": 16.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_021",
+    "provider": "Thrifty",
+    "membership_tier": "business",
+    "discount_pct": 18.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_022",
+    "provider": "Dollar",
+    "membership_tier": "gold_star",
+    "discount_pct": 15.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_023",
+    "provider": "Dollar",
+    "membership_tier": "executive",
+    "discount_pct": 17.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_024",
+    "provider": "Dollar",
+    "membership_tier": "business",
+    "discount_pct": 19.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_025",
+    "provider": "Sixt",
+    "membership_tier": "gold_star",
+    "discount_pct": 9.0,
+    "included_miles": "300 mi/day",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_026",
+    "provider": "Sixt",
+    "membership_tier": "executive",
+    "discount_pct": 11.0,
+    "included_miles": "300 mi/day",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_027",
+    "provider": "Sixt",
+    "membership_tier": "business",
+    "discount_pct": 13.0,
+    "included_miles": "300 mi/day",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_028",
+    "provider": "Payless",
+    "membership_tier": "gold_star",
+    "discount_pct": 16.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_029",
+    "provider": "Payless",
+    "membership_tier": "executive",
+    "discount_pct": 18.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee"
+    ],
+    "cancellation_window_hours": 24,
+    "refund_type": "full_refund_if_within_window"
+  },
+  {
+    "term_id": "nt_030",
+    "provider": "Payless",
+    "membership_tier": "business",
+    "discount_pct": 20.0,
+    "included_miles": "Unlimited",
+    "perks": [
+      "unlimited_mileage",
+      "free_additional_driver",
+      "no_young_driver_fee",
+      "waived_underage_fee",
+      "consolidated_billing",
+      "free_upgrade_priority"
+    ],
+    "cancellation_window_hours": 48,
+    "refund_type": "full_refund_if_within_window"
+  }
+]
