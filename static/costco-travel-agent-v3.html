@@ -237,9 +237,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     </section>
 
     <section id="insights" class="view content-view">
-      <div class="section-heading"><div><div class="eyebrow">EXECUTIVE DEMO</div><h2>Conversation intelligence</h2><p>Illustrative metrics from synthetic searches, accounts, and reservations.</p></div><button id="refreshInsights" class="secondary">Refresh data</button></div>
+      <div class="section-heading"><div><div class="eyebrow">GOOGLE CLOUD BIGQUERY</div><h2>Conversation intelligence</h2><p id="insightsSource">Loading analytics from BigQuery...</p></div><button id="refreshInsights" class="secondary">Refresh data</button></div>
       <div id="metricGrid" class="metric-grid"></div>
-      <div class="insight-grid"><article class="chart-card"><div class="card-head"><h3>Bookings by provider</h3><span>Mock dataset</span></div><div id="providerChart"></div></article><article class="chart-card"><div class="card-head"><h3>Top destinations</h3><span>Mock dataset</span></div><div id="locationChart"></div></article></div>
+      <div class="insight-grid">
+        <article class="chart-card"><div class="card-head"><h3>Bookings by provider</h3><span id="providerSource"></span></div><div id="providerChart"></div></article>
+        <article class="chart-card"><div class="card-head"><h3>Top destinations</h3><span id="locationSource"></span></div><div id="locationChart"></div></article>
+        <article class="chart-card"><div class="card-head"><h3>Daily search &amp; booking trend</h3><span id="trendSource"></span></div><canvas id="trendChart" height="220" style="width:100%"></canvas></article>
+        <article class="chart-card"><div class="card-head"><h3>Event type breakdown</h3><span id="eventSource"></span></div><canvas id="eventChart" height="220" style="width:100%"></canvas></article>
+      </div>
       <article class="architecture"><div><div class="panel-label">REFERENCE ARCHITECTURE</div><h3>Built for Google Cloud</h3><p>Gemini reasoning coordinates specialized APIs through Agent Builder, while Search grounds inventory and BigQuery powers decision intelligence.</p></div><div class="architecture-flow"><span>Customer</span><b>→</b><span>Agent Builder + Gemini</span><b>→</b><span>Apigee APIs</span><b>→</b><span>Firestore + BigQuery</span></div></article>
     </section>
   </main>
@@ -638,9 +643,85 @@ async function confirmCancel(reservation,preview) {
 }
 
 async function loadInsights() {
-  try { const data=await api('/api/analytics'); const metrics=[['Search completion',`${data.metrics.search_completion_rate}%`],['Booking conversion',`${data.metrics.booking_conversion_rate}%`],['Avg. conversation',`${data.metrics.average_conversation_minutes}m`],['Account creation',`${data.metrics.account_creation_rate}%`],['Modification success',`${data.metrics.modification_success_rate}%`],['Customer satisfaction',`${data.metrics.customer_satisfaction_score}/5`]]; $('#metricGrid').innerHTML=metrics.map(([label,value])=>`<article class="metric-card"><strong>${value}</strong><span>${label}</span><i> · illustrative</i></article>`).join(''); renderBars('#providerChart',data.bookings_by_provider,'provider'); renderBars('#locationChart',data.most_booked_locations,'location'); } catch (error) { toast(error.message); }
+  try {
+    const data=await api('/api/analytics');
+    const src=data.source==='bigquery'?'BigQuery':'static';
+    const srcLabel=data.source==='bigquery'?'Live from BigQuery dataset costco_travel_ai':'Static demo snapshot';
+    $('#insightsSource').textContent=srcLabel;
+    $('#providerSource').textContent=src;$('#locationSource').textContent=src;$('#trendSource').textContent=src;$('#eventSource').textContent=src;
+
+    const totals=data.totals||{};
+    const metrics=[
+      ['Completed searches',totals.completed_searches?totals.completed_searches.toLocaleString():data.metrics.search_completion_rate+'%','#1d65a6'],
+      ['Bookings',totals.bookings?totals.bookings.toLocaleString():(data.metrics.booking_conversion_rate+'%'),'#16805b'],
+      ['Conversion rate',data.metrics.booking_conversion_rate+'%','#c59a45'],
+      ['Accounts created',totals.accounts_created?totals.accounts_created.toLocaleString():(data.metrics.account_creation_rate+'%'),'#1d65a6'],
+      ['Modifications',totals.successful_modifications?totals.successful_modifications.toLocaleString():(data.metrics.modification_success_rate+'%'),'#16805b'],
+      ['Customer satisfaction',data.metrics.customer_satisfaction_score+'/5','#c59a45'],
+    ];
+    $('#metricGrid').innerHTML=metrics.map(([label,value,color])=>`<article class="metric-card" style="border-top:3px solid ${color}"><strong>${value}</strong><span>${label}</span>${data.source==='bigquery'?'<i style="color:#16805b"> · BigQuery</i>':'<i> · static</i>'}</article>`).join('');
+
+    renderBars('#providerChart',data.bookings_by_provider,'provider',true);
+    renderBars('#locationChart',data.most_booked_locations,'location',false);
+
+    if(data.daily_trend&&data.daily_trend.length) renderTrendChart(data.daily_trend);
+    else $('#trendChart').parentElement.querySelector('.card-head span').textContent='No trend data';
+    if(data.event_breakdown&&data.event_breakdown.length) renderEventChart(data.event_breakdown);
+    else $('#eventChart').parentElement.querySelector('.card-head span').textContent='No event data';
+  } catch (error) { toast(error.message); }
 }
-function renderBars(selector,rows,key) { const max=Math.max(...rows.map((row)=>row.bookings),1); $(selector).innerHTML=rows.map((row)=>`<div class="bar-row"><span>${row[key]}</span><div class="bar-track"><div class="bar" style="width:${row.bookings/max*100}%"></div></div><strong>${row.bookings}</strong></div>`).join(''); }
+function renderBars(selector,rows,key,showRevenue) {
+  const max=Math.max(...rows.map((row)=>row.bookings),1);
+  $(selector).innerHTML=rows.map((row)=>{
+    const pct=row.bookings/max*100;
+    const rev=row.revenue?`<span style="font-size:10px;color:#16805b;margin-left:6px">$${row.revenue.toLocaleString()}</span>`:'';
+    const active=row.active_rentals?`<span style="font-size:9px;color:#607184;margin-left:4px">(${row.active_rentals} active)</span>`:'';
+    return `<div class="bar-row"><span>${row[key]}</span><div class="bar-track"><div class="bar" style="width:${pct}%"></div></div><strong>${row.bookings}${showRevenue?rev:''}${showRevenue?active:''}</strong></div>`;
+  }).join('');
+}
+function renderTrendChart(trend) {
+  trend.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const canvas=$('#trendChart'); const ctx=canvas.getContext('2d');
+  const W=canvas.width=canvas.offsetWidth*2; const H=canvas.height=440;
+  const pad={t:30,r:20,b:50,l:50}; const cw=W-pad.l-pad.r; const ch=H-pad.t-pad.b;
+  ctx.clearRect(0,0,W,H);
+  const maxS=Math.max(...trend.map(d=>d.completed_searches||0),1);
+  const maxB=Math.max(...trend.map(d=>d.bookings||0),1);
+  const maxY=Math.max(maxS,maxB)*1.1;
+  ctx.strokeStyle='#dbe2e8';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad.t+ch-ch*(i/4);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();ctx.fillStyle='#607184';ctx.font='18px DM Sans';ctx.textAlign='right';ctx.fillText(Math.round(maxY*i/4),pad.l-8,y+6);}
+  ctx.fillStyle='#94a3b8';ctx.font='16px DM Sans';ctx.textAlign='center';
+  trend.forEach((d,i)=>{if(i%5===0||i===trend.length-1){const x=pad.l+cw*(i/(trend.length-1));const lbl=(d.date||'').slice(5);ctx.fillText(lbl,x,H-pad.b+24);}});
+  function drawLine(data,field,color,width){ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';
+    data.forEach((d,i)=>{const x=pad.l+cw*(i/(data.length-1));const y=pad.t+ch-ch*((d[field]||0)/maxY);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+    ctx.beginPath();ctx.strokeStyle='transparent';ctx.fillStyle=color+'22';
+    data.forEach((d,i)=>{const x=pad.l+cw*(i/(data.length-1));const y=pad.t+ch-ch*((d[field]||0)/maxY);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();ctx.fill();}
+  drawLine(trend,'completed_searches','#1d65a6',3);
+  drawLine(trend,'bookings','#16805b',3);
+  ctx.fillStyle='#1d65a6';ctx.font='bold 18px DM Sans';ctx.textAlign='left';ctx.fillText('— Searches',pad.l+10,pad.t+18);
+  ctx.fillStyle='#16805b';ctx.fillText('— Bookings',pad.l+140,pad.t+18);
+}
+function renderEventChart(events) {
+  const canvas=$('#eventChart'); const ctx=canvas.getContext('2d');
+  const W=canvas.width=canvas.offsetWidth*2; const H=canvas.height=440;
+  const pad={t:20,r:20,b:60,l:50}; const cw=W-pad.l-pad.r; const ch=H-pad.t-pad.b;
+  ctx.clearRect(0,0,W,H);
+  const max=Math.max(...events.map(e=>e.count||0),1);
+  const colors=['#1d65a6','#16805b','#c59a45','#d71920','#6F9E37','#F36E21','#007D4A','#8b5cf6'];
+  const barW=Math.min(60,cw/events.length-8);
+  ctx.strokeStyle='#dbe2e8';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad.t+ch-ch*(i/4);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();ctx.fillStyle='#607184';ctx.font='18px DM Sans';ctx.textAlign='right';ctx.fillText(Math.round(max*i/4),pad.l-8,y+6);}
+  events.forEach((e,i)=>{
+    const x=pad.l+(cw/(events.length))*(i+0.5)-barW/2;
+    const h=ch*((e.count||0)/max); const y=pad.t+ch-h;
+    ctx.fillStyle=colors[i%colors.length];
+    ctx.beginPath();ctx.roundRect(x,y,barW,h,4);ctx.fill();
+    ctx.fillStyle='#172333';ctx.font='bold 18px DM Sans';ctx.textAlign='center';ctx.fillText(e.count,x+barW/2,y-8);
+    ctx.save();ctx.translate(x+barW/2,H-pad.b+10);ctx.rotate(-0.5);ctx.font='14px DM Sans';ctx.fillStyle='#607184';ctx.textAlign='left';
+    const label=(e.event_type||'').replace(/_/g,' ');ctx.fillText(label,0,0);ctx.restore();
+  });
+}
 
 $$('[data-view]').forEach((button)=>button.addEventListener('click',()=>switchView(button.dataset.view)));
 $$('[data-prompt]').forEach((button)=>button.addEventListener('click',()=>{ switchView('concierge'); handleSend(button.dataset.prompt); }));
