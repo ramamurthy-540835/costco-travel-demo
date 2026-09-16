@@ -108,6 +108,15 @@ export async function getWaivedAddOnIds(perkIds: string[]): Promise<Set<string>>
   return new Set(rows.map((row) => row.addon_id));
 }
 
+export async function getInventoryIdsByCity(city: string): Promise<string[]> {
+  const rows = await runCypher<{ rental_id: string }>(
+    'MATCH (i:Inventory)-[:LOCATED_AT]->(l:Location {city: $city}) RETURN i.rental_id AS rental_id',
+    { city },
+    ['rental_id'],
+  );
+  return rows.map((row) => row.rental_id);
+}
+
 export interface Inventory {
   rental_id: string;
   city?: string;

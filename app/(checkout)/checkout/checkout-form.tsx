@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BASE_PATH } from '@/lib/basePath';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -150,7 +151,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments/intent', {
+      const res = await fetch(`${BASE_PATH}/api/payments/intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -269,7 +270,7 @@ function PaymentStep(
       return;
     }
 
-    const res = await fetch('/api/bookings', {
+    const res = await fetch(`${BASE_PATH}/api/bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

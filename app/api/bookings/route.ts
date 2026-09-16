@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { Types } from 'mongoose';
 import getStripe from '@/lib/payment/stripe';
 import connectToDatabase from '@/lib/mongodb';
 import Booking from '@/lib/models/Booking';
 import Member from '@/lib/models/Member';
 import { getOrCreateMember } from '@/lib/models/member-sync';
-import { searchInventory, getAddOnsCatalog, getWaivedAddOnIds } from '@/lib/graph/queries';
+import { searchInventory, getAddOnsCatalog, getWaivedAddOnIds, getInventoryIdsByCity } from '@/lib/graph/queries';
 import { recordReservation } from '@/lib/graph/mutations';
 
 interface CreateBookingPayload {
@@ -19,19 +20,58 @@ interface CreateBookingPayload {
 
 export function buildOwnBookingsFilter(
   memberId: unknown,
-  { status, from, to }: { status?: string; from?: string; to?: string },
+  {
+    status,
+    from,
+    to,
+    bookingId,
+    pickupDate,
+    vendorId,
+    inventoryIds,
+  }: {
+    status?: string;
+    from?: string;
+    to?: string;
+    bookingId?: string;
+    pickupDate?: string;
+    vendorId?: string;
+    inventoryIds?: string[];
+  },
 ) {
+  // pickupDate completely REPLACES the from/to range clause rather than
+  // merging with it — a naive merge would mix $gte/$lte (from/to) with the
+  // $gte/$lt day-bounds computed here into one nonsensical over-constrained
+  // range object.
+  const fromClause = pickupDate
+    ? (() => {
+        const startOfDay = new Date(pickupDate);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const startOfNextDay = new Date(startOfDay);
+        startOfNextDay.setUTCDate(startOfNextDay.getUTCDate() + 1);
+        return { $gte: startOfDay, $lt: startOfNextDay };
+      })()
+    : from || to
+      ? {
+          ...(from ? { $gte: new Date(from) } : {}),
+          ...(to ? { $lte: new Date(to) } : {}),
+        }
+      : undefined;
+
   return {
     member: memberId,
     ...(status ? { status } : {}),
-    ...(from || to
-      ? {
-          from: {
-            ...(from ? { $gte: new Date(from) } : {}),
-            ...(to ? { $lte: new Date(to) } : {}),
-          },
-        }
-      : {}),
+    ...(fromClause ? { from: fromClause } : {}),
+    // Case-insensitive: preserves the matching behavior the previous
+    // client-side filter had (the model's vendorId guess doesn't reliably
+    // match the stored provider casing exactly).
+    ...(vendorId ? { vendorId: new RegExp(`^${vendorId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } : {}),
+    ...(inventoryIds ? { inventoryId: { $in: inventoryIds } } : {}),
+    // bookingId is merged into this SAME filter object (never a separate
+    // findById/findOne({_id}) call) so the `member` clause above always
+    // still applies — a bookingId belonging to another member's booking
+    // must never bypass ownership scoping.
+    ...(bookingId && Types.ObjectId.isValid(bookingId) ? { _id: bookingId } : {}),
+    ...(bookingId && !Types.ObjectId.isValid(bookingId) ? { _id: null } : {}),
   };
 }
 
@@ -52,9 +92,32 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status') ?? undefined;
   const from = searchParams.get('from') ?? undefined;
   const to = searchParams.get('to') ?? undefined;
+  const bookingId = searchParams.get('bookingId') ?? undefined;
+  const pickupDate = searchParams.get('pickupDate') ?? undefined;
+  const vendorId = searchParams.get('vendorId') ?? undefined;
+  const city = searchParams.get('city') ?? undefined;
 
-  const filter = buildOwnBookingsFilter(member._id, { status, from, to });
-  const bookings = await Booking.find(filter).sort({ from: -1 }).lean();
+  let inventoryIds: string[] | undefined;
+  if (city) {
+    inventoryIds = await getInventoryIdsByCity(city);
+    if (inventoryIds.length === 0) {
+      // Nothing in that city — skip the Mongo query entirely rather than
+      // letting an empty $in (or, worse, an omitted inventoryIds key) fall
+      // through and accidentally match every booking.
+      return NextResponse.json([], { status: 200 });
+    }
+  }
+
+  const filter = buildOwnBookingsFilter(member._id, {
+    status,
+    from,
+    to,
+    bookingId,
+    pickupDate,
+    vendorId,
+    inventoryIds,
+  });
+  const bookings = await Booking.find(filter).sort({ createdAt: -1 }).lean();
 
   return NextResponse.json(bookings, { status: 200 });
 }

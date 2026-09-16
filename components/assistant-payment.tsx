@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
+import { BASE_PATH } from '@/lib/basePath';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string);
 
@@ -68,10 +69,10 @@ function AssistantPaymentForm(props: AssistantPaymentProps) {
     const isAddons = props.mode === 'update_addons';
     const isModification = props.mode === 'modify_booking';
     const url = isAddons
-      ? `/api/bookings/${props.addonsPayload?.bookingId}/addons`
+      ? `${BASE_PATH}/api/bookings/${props.addonsPayload?.bookingId}/addons`
       : isModification
-        ? `/api/bookings/${props.modifyPayload?.bookingId}/modify`
-        : '/api/bookings';
+        ? `${BASE_PATH}/api/bookings/${props.modifyPayload?.bookingId}/modify`
+        : `${BASE_PATH}/api/bookings`;
     const body = isAddons
       ? { addonIds: props.addonsPayload?.addonIds, paymentIntentId: props.paymentIntentId }
       : isModification

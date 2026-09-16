@@ -1,4 +1,5 @@
-import { test as base, expect, TestInfo } from '@playwright/test';
+import { TestInfo } from '@playwright/test';
+import { test as base, expect } from './base';
 import mongoose from 'mongoose';
 import Member from '@/lib/models/Member';
 import Booking from '@/lib/models/Booking';

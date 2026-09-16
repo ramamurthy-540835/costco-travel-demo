@@ -56,4 +56,45 @@ test.describe('my bookings (regression: listing + entry-point wiring)', () => {
       await Booking.deleteOne({ _id: booking.bookingId });
     }
   });
+
+  test('GET /api/bookings?bookingId scopes to exactly one booking and never leaks the full list on a miss', async ({
+    page,
+    mongoClient,
+  }) => {
+    void mongoClient;
+    const bookingA = await createTestBooking(page.request, {
+      from: addDays(new Date(), FROM_OFFSET_DAYS),
+      nights: NIGHTS,
+    });
+    const bookingB = await createTestBooking(page.request, {
+      from: addDays(new Date(), FROM_OFFSET_DAYS + 10),
+      nights: NIGHTS,
+    });
+
+    try {
+      const byId = await page.request.get(`/api/bookings?bookingId=${bookingA.bookingId}`);
+      expect(byId.status()).toBe(200);
+      const byIdBody = await byId.json();
+      expect(byIdBody).toHaveLength(1);
+      expect(byIdBody[0]._id).toBe(bookingA.bookingId);
+
+      // A well-formed but non-existent id must return an empty list, never
+      // the member's full history (AC-2's "no result" contract) — a bogus
+      // ObjectId that doesn't belong to any booking exercises the same
+      // ownership-scoped-miss path a cross-member id would.
+      const bogusId = bookingA.bookingId.replace(/.$/, bookingA.bookingId.endsWith('0') ? '1' : '0');
+      const byBogusId = await page.request.get(`/api/bookings?bookingId=${bogusId}`);
+      expect(byBogusId.status()).toBe(200);
+      expect(await byBogusId.json()).toEqual([]);
+
+      // Malformed id (not a valid ObjectId at all) — must not throw or 500,
+      // and must not fall back to the unfiltered list.
+      const byMalformedId = await page.request.get('/api/bookings?bookingId=not-a-real-id');
+      expect(byMalformedId.status()).toBe(200);
+      expect(await byMalformedId.json()).toEqual([]);
+    } finally {
+      await Booking.deleteOne({ _id: bookingA.bookingId });
+      await Booking.deleteOne({ _id: bookingB.bookingId });
+    }
+  });
 });

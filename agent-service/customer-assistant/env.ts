@@ -33,6 +33,10 @@ export const ENV = {
   MONGODB_URI: required('MONGODB_URI'),
   VENDOR_AGENT_URL:
     process.env.VENDOR_AGENT_URL ?? `http://localhost:${process.env.VENDOR_AGENT_PORT ?? 4100}`,
+  // Bare origin only — no basePath here. tools.ts's fetchJson appends
+  // BASE_PATH (from lib/basePath.ts, the same constant the Next app itself
+  // uses) so there's one source of truth for the prefix, not a copy that can
+  // drift if NEXTJS_APP_URL is ever overridden for a different host.
   NEXTJS_APP_URL: process.env.NEXTJS_APP_URL ?? 'http://localhost:3000',
   AZURE_OPENAI_ENDPOINT: required('AZURE_OPENAI_ENDPOINT'),
   AZURE_OPENAI_API_KEY: required('AZURE_OPENAI_API_KEY'),

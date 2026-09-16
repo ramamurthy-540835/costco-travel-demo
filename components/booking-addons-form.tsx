@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
+import { BASE_PATH } from '@/lib/basePath';
 import {
   Elements,
   PaymentElement,
@@ -57,7 +58,7 @@ export function BookingAddonsForm({
     setClientSecret(null);
     setPaymentIntentId(null);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/addons`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/addons`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ addonIds, dryRun: true }),
@@ -110,7 +111,7 @@ export function BookingAddonsForm({
     setApplying(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments/intent', {
+      const res = await fetch(`${BASE_PATH}/api/payments/intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -139,7 +140,7 @@ export function BookingAddonsForm({
     setNote(null);
     setSuccessMessage(null);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/addons`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/addons`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ addonIds: selectedAddonIds }),
@@ -297,7 +298,7 @@ function AddonsPaymentStep({
       return;
     }
 
-    const res = await fetch(`/api/bookings/${bookingId}/addons`, {
+    const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/addons`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ addonIds, paymentIntentId }),

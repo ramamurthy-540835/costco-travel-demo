@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { BASE_PATH } from '@/lib/basePath';
 import ReactMarkdown from 'react-markdown';
 import { Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -833,12 +834,12 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
   // the addon catalog/proposal is the "flash and disappear" bug. A genuine
   // disambiguation list (more than one booking) is always shown.
   const bookingListShownRef = useRef(false);
-  // Same reasoning, for the addon catalog: once it's been shown once this
-  // conversation, a later get_addon_catalog re-fetch (e.g. right before
-  // propose_addons on a follow-up "add X" message) is redundant — it would
-  // otherwise flash the catalog strip on screen only to have propose_addons
-  // overwrite it moments later with the proposal card.
-  const addonCatalogShownRef = useRef(false);
+  // NOTE: an equivalent "shown once, suppress forever" ref for the addon
+  // catalog was tried and removed — it suppressed a get_addon_catalog result
+  // even when THAT turn's final outcome (no later propose_* call to overwrite
+  // it) was genuinely the catalog again, leaving the model's "extras below"
+  // text with no card under it. The rank-based debounce below already covers
+  // the real case (a catalog about to be overwritten within the SAME turn).
 
   // Streamed tokens/tool events grow the newest message's height in place,
   // so a plain "scroll on new message" effect would miss most of the growth —
@@ -974,10 +975,8 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
             const rawCandidate = mapToOutcome(event.name, event.result);
             const isRedundantBookingList =
               rawCandidate?.kind === 'booking_list' && rawCandidate.bookings.length === 1 && bookingListShownRef.current;
-            const isRedundantAddonCatalog = rawCandidate?.kind === 'addon_catalog' && addonCatalogShownRef.current;
-            const candidate = isRedundantBookingList || isRedundantAddonCatalog ? undefined : rawCandidate;
+            const candidate = isRedundantBookingList ? undefined : rawCandidate;
             if (candidate?.kind === 'booking_list') bookingListShownRef.current = true;
-            if (candidate?.kind === 'addon_catalog') addonCatalogShownRef.current = true;
             // Rank-gated overwrite: a candidate this message's current (or
             // pending, not-yet-displayed) outcome already outranks — e.g. a
             // repeat get_addon_catalog call after propose_booking already
@@ -1096,7 +1095,7 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
     );
 
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/modify`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/modify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1157,7 +1156,7 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
     );
 
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dryRun: false }),
@@ -1217,7 +1216,7 @@ export function AssistantChat({ open, onOpenChange }: AssistantChatProps) {
     );
 
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/addons`, {
+      const res = await fetch(`${BASE_PATH}/api/bookings/${bookingId}/addons`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ addonIds: selectedAddOns.map((a) => a.addonId), dryRun: false }),

@@ -7,6 +7,7 @@ import {
   getWaivedAddOnIds,
 } from '../../lib/graph/queries';
 import { resolveSynonym } from '../../lib/graph/retrievers';
+import { BASE_PATH } from '../../lib/basePath';
 import { callVendorSkill, isVendorTaskError } from './vendor-agent-client';
 import { savePendingProposal, consumePendingProposal } from './session-store';
 
@@ -78,7 +79,7 @@ async function fetchJson(
   ctx: ToolContext,
   init: { method: string; body?: unknown },
 ): Promise<{ status: number; body: any }> {
-  const res = await fetch(`${ENV.NEXTJS_APP_URL}${path}`, {
+  const res = await fetch(`${ENV.NEXTJS_APP_URL}${BASE_PATH}${path}`, {
     method: init.method,
     headers: {
       'Content-Type': 'application/json',
@@ -395,13 +396,28 @@ export const TOOLS = [
     function: {
       name: 'get_booking_status',
       description:
-        "List the member's bookings, optionally filtered by status and/or vendor. Always pass " +
-        'vendorId when the member has named a vendor, so you get back only that vendor\'s ' +
-        'booking(s) instead of the member\'s full history.',
+        "List the member's bookings, optionally filtered. Pass bookingId when the member names a " +
+        "specific booking id. Pass pickupDate when they name a specific date they're picking up the " +
+        "car (NOT the date they made the booking). Pass city when they name a pickup location. Pass " +
+        'vendorId when they name a vendor, so you get back only that vendor\'s booking(s) instead of ' +
+        "the member's full history.",
       parameters: {
         type: 'object',
         properties: {
           status: { type: 'string' },
+          bookingId: { type: 'string', description: 'Exact booking id, when the member names one specific booking.' },
+          pickupDate: {
+            type: 'string',
+            description:
+              "The rental's pickup date (YYYY-MM-DD), when the member asks about a booking for a specific " +
+              'date — not the date they made the booking.',
+          },
+          // Pickup city only — the only location a Booking's inventory is
+          // ever tied to (Inventory -[:LOCATED_AT]-> Location). There is no
+          // persisted drop-off city on a booking to filter by; drop-off city
+          // is a one-way-rental quote detail (see get_quote), not a
+          // filterable booking attribute.
+          city: { type: 'string', description: "Pickup location/city, e.g. 'Las Vegas'." },
           vendorId: { type: 'string', description: "Vendor/rental partner name, e.g. 'Alamo'." },
           limit: {
             type: 'number',
@@ -712,29 +728,51 @@ export const TOOL_HANDLERS: Record<string, ToolHandler> = {
   },
 
   async get_booking_status(args, ctx) {
-    const query = args.status ? `?status=${encodeURIComponent(args.status)}` : '';
-    const { status, body } = await fetchJson(`/api/bookings${query}`, ctx, { method: 'GET' });
+    // All filters (status/bookingId/pickupDate/city/vendorId) are real
+    // query params on /api/bookings — resolved server-side against Mongo
+    // (and, for city, the graph) instead of fetching the member's entire
+    // booking history and filtering it here. bookingId/city/pickupDate
+    // matter most for this: a specific-id or specific-location lookup
+    // should never leak the rest of the member's bookings back to the model.
+    const params = new URLSearchParams();
+    if (typeof args.status === 'string') params.set('status', args.status);
+    if (typeof args.bookingId === 'string') params.set('bookingId', args.bookingId);
+    if (typeof args.pickupDate === 'string') params.set('pickupDate', args.pickupDate);
+    if (typeof args.city === 'string') params.set('city', args.city);
+    if (typeof args.vendorId === 'string') params.set('vendorId', args.vendorId);
+    const query = params.toString();
+
+    const { status, body } = await fetchJson(`/api/bookings${query ? `?${query}` : ''}`, ctx, {
+      method: 'GET',
+    });
     if (status !== 200) return { error: `Failed to fetch bookings (${status})` };
-    const all = Array.isArray(body) ? body : [];
+    const bookings = Array.isArray(body) ? body : [];
 
-    // vendorId has no backing query param on /api/bookings (unlike status),
-    // so it's applied client-side here — case-insensitively, mirroring the
-    // same vendor-matching pattern already used in search_inventory — so the
-    // model actually gets a narrowed result instead of always receiving the
-    // member's ENTIRE booking history and having to silently guess which row
-    // is the right one (the confirmed root cause of add-ons landing on the
-    // wrong booking during "add GPS to my existing booking" flows).
-    const vendorId = typeof args.vendorId === 'string' ? args.vendorId.trim().toLowerCase() : undefined;
-    const bookings = vendorId
-      ? all.filter((b: any) => typeof b.vendorId === 'string' && b.vendorId.toLowerCase() === vendorId)
-      : all;
-
-    if (vendorId && bookings.length === 0) {
-      return { bookings: all, note: `No bookings matched vendorId "${args.vendorId}" — returning full list instead.` };
+    if (bookings.length === 0) {
+      if (typeof args.vendorId === 'string') {
+        // Named vendor with no exact match is treated as a possible
+        // near-miss worth showing alternatives for — fall back to the
+        // full (unfiltered) history rather than a bare empty list.
+        const { status: allStatus, body: allBody } = await fetchJson('/api/bookings', ctx, { method: 'GET' });
+        const all = allStatus === 200 && Array.isArray(allBody) ? allBody : [];
+        return { bookings: all, note: `No bookings matched vendorId "${args.vendorId}" — returning full list instead.` };
+      }
+      // A named bookingId/city/pickupDate that matches nothing means "not
+      // found" — never dump the member's unrelated booking history back
+      // for a query that named one specific target.
+      if (typeof args.bookingId === 'string') {
+        return { bookings: [], note: `No booking found matching bookingId "${args.bookingId}".` };
+      }
+      if (typeof args.city === 'string') {
+        return { bookings: [], note: `No bookings found in "${args.city}".` };
+      }
+      if (typeof args.pickupDate === 'string') {
+        return { bookings: [], note: `No bookings found with a pickup date of "${args.pickupDate}".` };
+      }
     }
 
-    // /api/bookings already sorts most-recent-first (by `from` desc), so
-    // slicing here after the vendorId filter gives "latest N" semantics.
+    // /api/bookings now sorts by createdAt desc, so slicing here gives
+    // correct "latest N" semantics (most recently created, not soonest pickup).
     const limit = typeof args.limit === 'number' && args.limit > 0 ? Math.floor(args.limit) : undefined;
     return { bookings: limit ? bookings.slice(0, limit) : bookings };
   },
