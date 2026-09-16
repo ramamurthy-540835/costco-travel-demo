@@ -1,5 +1,5 @@
 import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
-import { test as setup } from '@playwright/test';
+import { test as setup } from './base';
 
 setup('authenticate', async ({ page }) => {
   await clerkSetup();
@@ -19,8 +19,10 @@ setup('authenticate', async ({ page }) => {
 
   // Give clerk-js a beat to persist the session cookie client-side before we
   // navigate away — attempt_first_factor resolving doesn't mean the SPA has
-  // finished writing __session yet.
-  await page.waitForLoadState('networkidle');
+  // finished writing __session yet. Not `waitForLoadState('networkidle')`:
+  // the chat assistant keeps a persistent connection open on every page, so
+  // networkidle never fires and the wait always times out.
+  await page.waitForTimeout(1000);
   await page.goto('/');
   // "My Bookings" only renders inside <Show when="signed-in"> (components/header.tsx),
   // so its visibility is a reliable real-session indicator without depending on Clerk's

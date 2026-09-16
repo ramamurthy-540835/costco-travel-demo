@@ -20,7 +20,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider afterSignOutUrl={BASE_PATH}>
+    <ClerkProvider
+      afterSignOutUrl={BASE_PATH}
+      signInUrl={`${BASE_PATH}/sign-in`}
+      signUpUrl={`${BASE_PATH}/sign-up`}
+    >
       <html lang="en" className={cn("font-sans", geist.variable)}>
         <body>
           <Header />

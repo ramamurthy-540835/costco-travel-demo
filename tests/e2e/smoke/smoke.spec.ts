@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/base';
 
 test.describe('landing page', () => {
   test('renders header, hero form, carousel, and vendor marquee', async ({ page }) => {
