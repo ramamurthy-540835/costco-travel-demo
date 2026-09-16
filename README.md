@@ -1,51 +1,66 @@
-# Costco Travel Agentic Car Reservation
+# Costco Travel Agentic Platform
 
-FastAPI and Cloud Run implementation with Application Default Credentials for Google Cloud access and `gemini-3-flash-preview` on Vertex AI.
+This repository combines two complementary Costco Travel rental-car implementations:
 
-## Local
+- **FastAPI + Vertex AI** (`app/*.py`, `static/`) provides the Cloud Run-ready reservation demo, Firestore and BigQuery integrations, and Gemini concierge.
+- **Agentic Travel** (`app/*.tsx`, `components/`, `agent-service/`, `graph/`) provides the member-facing Next.js experience, tool-based customer assistant, vendor A2A agent, and local knowledge graph.
+
+The projects retain their own runtimes and can be developed independently from this one repository. The FastAPI service remains the production-style Costco demo; the Next.js stack provides the richer agentic travel experience.
+
+## Repository layout
+
+```
+app/*.py                     FastAPI API and Vertex AI concierge
+static/                      FastAPI-served demo frontend
+app/*.tsx, components/       Next.js member application
+agent-service/               Customer assistant and vendor A2A agent
+graph/                       PostgreSQL + Apache AGE knowledge graph
+lib/                         Next.js data, payment, graph, and vendor helpers
+tests/                       FastAPI tests and Next.js Playwright tests
+```
+
+## FastAPI / Vertex AI demo
 
 ```bash
 gcloud auth application-default login
 export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID VERTEX_LOCATION=global AGENT_MODEL=gemini-3-flash-preview
 export ASSETS_BUCKET=$GOOGLE_CLOUD_PROJECT-costco-demo-assets
 uvicorn app.main:app --port 8080
+pytest -q
 ```
 
-Startup idempotently seeds `CTR-D21OUT1` about 50 hours ahead for autonomous change/cancel demos and `CTR-D30HRS1` about 30 hours ahead for HITL demos. New bookings may start at a future time today; past dates and elapsed same-day times are rejected. Run `pytest -q` for policy and transition checks.
+Startup idempotently seeds reservations for autonomous and human-in-the-loop demonstrations. Reservation changes use a protected hold/pending/confirm flow; cancellation always requires preview then confirmation.
 
-Only upload licensed/OEM-press/stock images beneath `gs://$PROJECT_ID-costco-demo-assets/cars/`. Missing objects return `image_url: null`.
+`GET /api/cars` uses secret-managed SerpAPI inventory when configured and normalized sample inventory otherwise. Images are signed private GCS assets. With `BQ_ENABLED=true`, PII-free activity events are sent to BigQuery.
 
-## Safety
-
-Original `CONFIRMED` becomes `HOLD` while a replacement is `PENDING`. Confirmation marks the replacement `CONFIRMED` before releasing the original to `CANCELLED`; abandonment deletes the replacement and restores the original. Cancellation always requires preview then confirm. HITL results never mutate state.
-
-## Live inventory
-
-`GET /api/cars` validates pickup/return dates before accessing Secret Manager version 2 and SerpAPI. Results are cached for 15 minutes. Any secret, timeout, quota, or upstream error returns normalized sample inventory with `source: fallback`; every card still includes retail price, member rate, and savings. Vehicle images remain private GCS assets signed through ADC and never come from vendor websites.
-
-## Analytics events
-
-With `BQ_ENABLED=true`, reservation and search activity streams to
-`$GOOGLE_CLOUD_PROJECT.$BQ_DATASET.conversation_events` (dataset defaults to
-`costco_travel_ai`, the table Terraform provisions) as typed, PII-free rows:
-`rental_search`, `reservation_created`, `reservation_modified`, `reservation_cancelled`,
-`change_started`, and `change_abandoned`, each with a `success` flag and `latency_ms`
-where applicable. Raw payloads, names, emails, and member numbers are never written.
-Insert failures are logged and counted, never raised. `GET /api/analytics` serves the
-`daily_funnel`, `bookings_by_provider`, and `most_booked_locations` views built by
-`analytics/bigquery.sql`, falling back to a static snapshot flagged `demo_data: true`
-when BigQuery is disabled, unreachable, or empty.
-
-## Frontend v3
-
-The service serves `static/costco-travel-agent-v3.html`, generated from the maintainable frontend sources by:
+## Next.js agentic travel stack
 
 ```bash
-python scripts/build_single_file.py
+npm ci
+cp .env.local.example .env.local
+cp .env.test.example .env.test
+docker compose -f docker-compose.mongo.yml up -d
+docker compose -f graph/docker-compose.yml up -d
+pip install -r graph/requirements.txt
+python graph/scripts/load_seed_data.py
+npm run dev
 ```
 
-## Customer documentation and mock data
+The Next.js application runs on port 3000 under `/agentic-travels`. Run the supporting services in separate terminals:
 
-The customer-ready Word guide is at `docs/Costco_Travel_Agentic_Demo_Technical_Guide.docx`. Rebuild its synthetic 500-rental, 100-member, and 1,000-booking fixtures with `python scripts/generate_mock_data.py`, then rebuild the document with `pip install -r requirements-docs.txt && python scripts/build_customer_document.py`.
+```bash
+npm run vendor-agent:dev
+npm run customer-assistant:dev
+```
 
-Sabre's public Developer Hub documentation MCP is integrated server-side through `app/sabre_mcp.py` and `GET /api/sabre/docs/search`. This endpoint searches Sabre documentation; it does not perform live GDS shopping or booking. Transactional Sabre APIs require separately provisioned customer access and must remain behind the existing confirmation and HITL policy layer.
+The customer assistant uses tool calls and explicit proposal/confirmation gates. The vendor agent exposes inventory and policy capabilities through A2A JSON-RPC; it is the boundary for vendor fulfillment operations.
+
+## Testing
+
+```bash
+pytest -q                    # FastAPI reservation and API flows
+npm run test:e2e:smoke       # Next.js smoke tests
+npm run test:e2e:regression  # Authenticated end-to-end tests
+```
+
+See `agent-service/customer-assistant/README.md`, `agent-service/vendor-agent/README.md`, and `graph/README.md` for service-specific configuration.

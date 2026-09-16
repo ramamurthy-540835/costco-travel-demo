@@ -1,0 +1,102 @@
+[
+  {
+    "provider": "Alamo",
+    "rating": 4.7,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 0,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Avis",
+    "rating": 4.6,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 40,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Budget",
+    "rating": 4.3,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 40,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Enterprise",
+    "rating": 4.8,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 25,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "National",
+    "rating": 4.9,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 25,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Hertz",
+    "rating": 4.5,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 0,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Thrifty",
+    "rating": 4.1,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 15,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Dollar",
+    "rating": 4.0,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 15,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Sixt",
+    "rating": 4.6,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 50,
+    "refund_processing_days": 5
+  },
+  {
+    "provider": "Payless",
+    "rating": 3.9,
+    "standard_cancellation_window_hours": 24,
+    "modification_allowed": true,
+    "modification_cutoff_hours": 24,
+    "no_show_fee_applies": true,
+    "no_show_fee_percent": 25,
+    "refund_processing_days": 5
+  }
+]

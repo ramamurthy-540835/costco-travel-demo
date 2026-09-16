@@ -1,0 +1,20 @@
+[
+  {
+    "tier_id": "gold_star",
+    "name": "Gold Star",
+    "rank": 1,
+    "description": "Base membership tier \u2014 standard negotiated discount and unlimited mileage."
+  },
+  {
+    "tier_id": "executive",
+    "name": "Executive",
+    "rank": 2,
+    "description": "Enhanced membership tier \u2014 deeper discount plus free additional driver and no young-driver fee."
+  },
+  {
+    "tier_id": "business",
+    "name": "Business",
+    "rank": 3,
+    "description": "Business membership tier \u2014 Executive perks plus consolidated billing and waived underage fee."
+  }
+]
