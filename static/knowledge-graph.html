@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Knowledge Graph · Costco Travel Rental Car Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+<style>
+:root{--navy:#0c2948;--blue:#1d65a6;--red:#d71920;--green:#16805b;--gold:#c59a45;--purple:#7c3aed;--orange:#ea580c;--ink:#172333;--muted:#607184;--line:#dbe2e8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;overflow:hidden}
+
+.topbar{background:#1e293b;height:52px;padding:0 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid #334155;z-index:10;position:relative}
+.topbar .brand{text-decoration:none;display:flex;flex-direction:column;transform:skew(-6deg);line-height:.8}
+.topbar .costco{color:#e31837;font:900 16px Arial,sans-serif;letter-spacing:-1px;border-bottom:2px solid #1676b9}
+.topbar .travel{font:bold 8px Arial,sans-serif;letter-spacing:5px;color:#1676b9;margin-top:3px}
+.topbar h1{font-family:Fraunces,serif;font-size:16px;color:#e2e8f0;font-weight:600}
+.topbar .badge{background:#7c3aed22;border:1px solid #7c3aed;padding:5px 12px;border-radius:4px;
+  color:#a78bfa;font-size:9px;font-weight:700;letter-spacing:.12em}
+.topbar .links{margin-left:auto;display:flex;gap:14px}
+.topbar .links a{color:#93c5fd;text-decoration:none;font-size:12px;font-weight:600}
+.topbar .links a:hover{color:#fff}
+
+.controls{position:absolute;top:64px;left:16px;z-index:5;display:flex;flex-direction:column;gap:10px;width:240px}
+.control-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px;backdrop-filter:blur(8px)}
+.control-card h3{font-size:11px;color:#94a3b8;letter-spacing:.1em;font-weight:700;margin-bottom:10px}
+.legend-item{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;cursor:pointer;transition:opacity .2s}
+.legend-item:hover{opacity:.8}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.2)}
+.legend-label{color:#cbd5e1}
+.legend-count{margin-left:auto;color:#64748b;font-size:10px;font-weight:700}
+
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-box{background:#0f172a;border:1px solid #334155;border-radius:4px;padding:8px;text-align:center}
+.stat-box .val{font-size:18px;font-weight:700;font-family:Fraunces,serif;color:#f1f5f9}
+.stat-box .lbl{font-size:8px;color:#64748b;letter-spacing:.08em;font-weight:700;margin-top:2px}
+
+.filter-btn{width:100%;background:#0f172a;border:1px solid #334155;border-radius:4px;padding:8px;
+  color:#94a3b8;font:600 11px inherit;cursor:pointer;margin-top:4px;transition:.2s}
+.filter-btn:hover{background:#334155;color:#e2e8f0}
+.filter-btn.active{background:#7c3aed22;border-color:#7c3aed;color:#a78bfa}
+
+.detail-panel{position:absolute;top:64px;right:16px;z-index:5;width:300px;
+  background:#1e293b;border:1px solid #334155;border-radius:8px;padding:18px;
+  display:none;backdrop-filter:blur(8px);max-height:calc(100vh - 80px);overflow-y:auto}
+.detail-panel.open{display:block}
+.detail-panel h3{font-family:Fraunces,serif;font-size:16px;color:#f1f5f9;margin-bottom:12px}
+.detail-panel .close{position:absolute;top:10px;right:14px;background:none;border:none;
+  color:#64748b;font-size:20px;cursor:pointer}
+.detail-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e293b;font-size:12px}
+.detail-row .lbl{color:#64748b;font-size:9px;letter-spacing:.06em;font-weight:700}
+.detail-row .val{color:#e2e8f0;font-weight:600}
+.detail-section{margin-top:12px;padding-top:8px;border-top:1px solid #334155}
+.detail-section h4{font-size:10px;color:#94a3b8;letter-spacing:.08em;font-weight:700;margin-bottom:6px}
+.edge-item{font-size:11px;color:#cbd5e1;padding:3px 0;display:flex;gap:6px;align-items:center}
+.edge-arrow{color:#7c3aed;font-weight:700;font-size:10px}
+.node-tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:700;letter-spacing:.04em}
+
+#graphCanvas{width:100%;height:calc(100vh - 52px);background:#0f172a}
+
+.loading-overlay{position:absolute;inset:0;top:52px;background:#0f172aee;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;z-index:20}
+.loading-overlay .spinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#7c3aed;
+  border-radius:50%;animation:spin .8s linear infinite}
+.loading-overlay p{color:#94a3b8;font-size:13px;margin-top:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.search-box{background:#0f172a;border:1px solid #334155;border-radius:4px;padding:8px 10px;
+  font:12px inherit;color:#e2e8f0;width:100%;margin-bottom:8px}
+.search-box:focus{outline:2px solid #7c3aed44;border-color:#7c3aed}
+.search-box::placeholder{color:#475569}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="/"><span class="costco">COSTCO</span><span class="travel">TRAVEL</span></a>
+  <h1>Knowledge Graph</h1>
+  <div class="badge">NEO4J-STYLE VISUALIZATION</div>
+  <div class="links">
+    <a href="/vendor-portal.html">Vendor Portal</a>
+    <a href="/">AI Concierge</a>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <p>Building knowledge graph from Firestore...</p>
+</div>
+
+<div class="controls" id="controls">
+  <div class="control-card">
+    <h3>SEARCH</h3>
+    <input class="search-box" id="searchBox" type="text" placeholder="Search nodes...">
+  </div>
+  <div class="control-card">
+    <h3>ENTITY TYPES</h3>
+    <div id="legend"></div>
+  </div>
+  <div class="control-card">
+    <h3>GRAPH STATS</h3>
+    <div class="stat-row" id="statRow"></div>
+  </div>
+  <div class="control-card">
+    <h3>LAYOUT</h3>
+    <button class="filter-btn" id="btnPhysics">Toggle Physics</button>
+    <button class="filter-btn" id="btnFit">Fit to Screen</button>
+    <button class="filter-btn" id="btnReset">Reset View</button>
+  </div>
+</div>
+
+<div class="detail-panel" id="detailPanel">
+  <button class="close" id="closeDetail">&times;</button>
+  <div id="detailContent"></div>
+</div>
+
+<div id="graphCanvas"></div>
+
+<script>
+const GROUPS = {
+  member:        {color:{background:'#3b82f6',border:'#2563eb',highlight:{background:'#60a5fa',border:'#3b82f6'}},shape:'dot',size:22,font:{color:'#e2e8f0',size:13,face:'DM Sans'}},
+  vendor:        {color:{background:'#16a34a',border:'#15803d',highlight:{background:'#4ade80',border:'#16a34a'}},shape:'diamond',size:28,font:{color:'#e2e8f0',size:14,face:'DM Sans',bold:true}},
+  location:      {color:{background:'#f59e0b',border:'#d97706',highlight:{background:'#fbbf24',border:'#f59e0b'}},shape:'triangle',size:20,font:{color:'#e2e8f0',size:12,face:'DM Sans'}},
+  vehicle_class: {color:{background:'#8b5cf6',border:'#7c3aed',highlight:{background:'#a78bfa',border:'#8b5cf6'}},shape:'square',size:16,font:{color:'#e2e8f0',size:11,face:'DM Sans'}},
+  reservation:   {color:{background:'#ef4444',border:'#dc2626',highlight:{background:'#f87171',border:'#ef4444'}},shape:'dot',size:12,font:{color:'#94a3b8',size:9,face:'DM Sans'}},
+};
+
+const GROUP_META = {
+  member:        {label:'Members',     color:'#3b82f6', tagBg:'#3b82f622'},
+  vendor:        {label:'Vendors',     color:'#16a34a', tagBg:'#16a34a22'},
+  location:      {label:'Locations',   color:'#f59e0b', tagBg:'#f59e0b22'},
+  vehicle_class: {label:'Vehicle Classes', color:'#8b5cf6', tagBg:'#8b5cf622'},
+  reservation:   {label:'Reservations',color:'#ef4444', tagBg:'#ef444422'},
+};
+
+let network, allNodes, allEdges, graphData;
+
+async function init() {
+  try {
+    const res = await fetch('/api/knowledge-graph');
+    graphData = await res.json();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<p style="color:#ef4444">Failed to load graph data. Is the API running?</p>';
+    return;
+  }
+
+  allNodes = new vis.DataSet(graphData.nodes);
+  allEdges = new vis.DataSet(graphData.edges);
+
+  const container = document.getElementById('graphCanvas');
+  network = new vis.Network(container, {nodes: allNodes, edges: allEdges}, {
+    groups: GROUPS,
+    physics: {
+      enabled: true,
+      solver: 'forceAtlas2Based',
+      forceAtlas2Based: {gravitationalConstant: -80, centralGravity: 0.008, springLength: 160, springConstant: 0.04, damping: 0.5},
+      stabilization: {iterations: 200, fit: true},
+    },
+    interaction: {hover: true, tooltipDelay: 150, zoomView: true, dragView: true, multiselect: true},
+    edges: {
+      color: {color:'#475569', highlight:'#7c3aed', hover:'#a78bfa', opacity:0.6},
+      font: {color:'#64748b', size:9, face:'DM Sans', strokeWidth:3, strokeColor:'#0f172a'},
+      smooth: {type:'continuous', roundness:0.3},
+      width: 1.5,
+      hoverWidth: 2.5,
+    },
+    nodes: {borderWidth: 2, borderWidthSelected: 3},
+  });
+
+  network.on('stabilizationIterationsDone', () => {
+    document.getElementById('loading').style.display = 'none';
+    network.setOptions({physics: {enabled: true, solver: 'forceAtlas2Based', forceAtlas2Based: {gravitationalConstant: -30, springConstant: 0.02, damping: 0.9}}});
+  });
+
+  network.on('click', (params) => {
+    if (params.nodes.length) showNodeDetail(params.nodes[0]);
+    else document.getElementById('detailPanel').classList.remove('open');
+  });
+
+  renderLegend();
+  renderStats(graphData.stats);
+  setupControls();
+}
+
+function renderLegend() {
+  const counts = {};
+  graphData.nodes.forEach(n => { counts[n.group] = (counts[n.group]||0) + 1; });
+  const html = Object.entries(GROUP_META).map(([key, meta]) => `
+    <div class="legend-item" data-group="${key}">
+      <div class="legend-dot" style="background:${meta.color}"></div>
+      <span class="legend-label">${meta.label}</span>
+      <span class="legend-count">${counts[key]||0}</span>
+    </div>
+  `).join('');
+  document.getElementById('legend').innerHTML = html;
+
+  document.querySelectorAll('.legend-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const group = el.dataset.group;
+      const ids = graphData.nodes.filter(n => n.group === group).map(n => n.id);
+      network.selectNodes(ids);
+      network.fit({nodes: ids, animation: {duration: 500}});
+    });
+  });
+}
+
+function renderStats(s) {
+  const stats = [
+    {val: s.members, lbl: 'MEMBERS'},
+    {val: s.vendors, lbl: 'VENDORS'},
+    {val: s.locations, lbl: 'LOCATIONS'},
+    {val: s.vehicle_classes, lbl: 'CLASSES'},
+    {val: s.reservations, lbl: 'BOOKINGS'},
+    {val: graphData.edges.length, lbl: 'EDGES'},
+  ];
+  document.getElementById('statRow').innerHTML = stats.map(s =>
+    `<div class="stat-box"><div class="val">${s.val}</div><div class="lbl">${s.lbl}</div></div>`
+  ).join('');
+}
+
+function showNodeDetail(nodeId) {
+  const node = allNodes.get(nodeId);
+  if (!node) return;
+  const meta = GROUP_META[node.group] || {};
+  const connEdges = allEdges.get({filter: e => e.from === nodeId || e.to === nodeId});
+
+  let html = `<h3><span class="node-tag" style="background:${meta.tagBg||'#33415522'};color:${meta.color||'#94a3b8'}">${(meta.label||node.group).toUpperCase()}</span></h3>`;
+  html += `<h3 style="margin-top:8px">${node.label}</h3>`;
+
+  if (node.title) {
+    const lines = node.title.split('\n');
+    lines.forEach(l => {
+      const [k,...v] = l.split(':');
+      if (v.length) html += `<div class="detail-row"><span class="lbl">${k.trim()}</span><span class="val">${v.join(':').trim()}</span></div>`;
+    });
+  }
+
+  if (connEdges.length) {
+    html += `<div class="detail-section"><h4>RELATIONSHIPS (${connEdges.length})</h4>`;
+    connEdges.forEach(e => {
+      const other = e.from === nodeId ? allNodes.get(e.to) : allNodes.get(e.from);
+      if (!other) return;
+      const otherMeta = GROUP_META[other.group] || {};
+      const dir = e.from === nodeId ? 'out' : 'in';
+      html += `<div class="edge-item">
+        <span class="edge-arrow">${dir==='out'?'&#8594;':'&#8592;'}</span>
+        <span style="color:${meta.color}">${e.label||'RELATED'}</span>
+        <span style="color:${otherMeta.color||'#94a3b8'};cursor:pointer" onclick="network.selectNodes([${other.id}]);network.focus(${other.id},{scale:1.2,animation:true})">${other.label}</span>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('detailPanel').classList.add('open');
+}
+
+function setupControls() {
+  let physicsOn = true;
+  document.getElementById('btnPhysics').addEventListener('click', () => {
+    physicsOn = !physicsOn;
+    network.setOptions({physics: {enabled: physicsOn}});
+    document.getElementById('btnPhysics').classList.toggle('active', physicsOn);
+    document.getElementById('btnPhysics').textContent = physicsOn ? 'Physics ON' : 'Physics OFF';
+  });
+  document.getElementById('btnPhysics').classList.add('active');
+  document.getElementById('btnPhysics').textContent = 'Physics ON';
+
+  document.getElementById('btnFit').addEventListener('click', () => {
+    network.fit({animation: {duration: 600}});
+  });
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    network.selectNodes([]);
+    allNodes.update(graphData.nodes);
+    allEdges.update(graphData.edges);
+    network.fit({animation: {duration: 600}});
+    document.getElementById('detailPanel').classList.remove('open');
+  });
+
+  document.getElementById('closeDetail').addEventListener('click', () => {
+    document.getElementById('detailPanel').classList.remove('open');
+    network.selectNodes([]);
+  });
+
+  document.getElementById('searchBox').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    if (!q) {
+      network.selectNodes([]);
+      return;
+    }
+    const matches = graphData.nodes.filter(n =>
+      n.label.toLowerCase().includes(q) || (n.title||'').toLowerCase().includes(q)
+    ).map(n => n.id);
+    if (matches.length) {
+      network.selectNodes(matches);
+      if (matches.length <= 5) network.fit({nodes: matches, animation: {duration: 400}});
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>

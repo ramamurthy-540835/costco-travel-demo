@@ -209,6 +209,53 @@ def vendor_sync(reservation_id:str,reservations:Annotated[ReservationService,Dep
 @app.get("/api/analytics")
 def analytics(): return insights()
 
+@app.get("/api/knowledge-graph")
+def knowledge_graph():
+    from .firestore_db import get_vendors, get_locations, get_vehicle_classes, _db
+    from .vendor_portal import get_all_vendor_bookings
+    nodes,edges=[],[]
+    nid=0
+    vendor_ids,loc_ids,class_ids,member_ids={},{},{},{}
+    vendors=get_vendors()
+    for vid,v in vendors.items():
+        if not v.get("costco_partner"):continue
+        nid+=1;vendor_ids[vid]=nid
+        nodes.append({"id":nid,"label":v.get("name",vid),"group":"vendor","title":f"GDS: {v.get('gds_code','')}\nID: {vid}"})
+    locations=get_locations()
+    for code,loc in locations.items():
+        if not loc.get("active",True):continue
+        nid+=1;loc_ids[code]=nid
+        nodes.append({"id":nid,"label":code,"group":"location","title":f"{loc.get('city','')}, {loc.get('state','')}\n{loc.get('airport_name','')}"})
+    vclasses=get_vehicle_classes()
+    for cid,vc in vclasses.items():
+        nid+=1;class_ids[cid]=nid
+        nodes.append({"id":nid,"label":vc.get("label",cid),"group":"vehicle_class","title":f"SIPP: {vc.get('sipp_code','')}\nSeats: {vc.get('seats','')}"})
+    bookings=get_all_vendor_bookings(limit=100)
+    for b in bookings:
+        mid=b.get("member_id","")
+        if mid and mid not in member_ids:
+            nid+=1;member_ids[mid]=nid
+            nodes.append({"id":nid,"label":b.get("member_name",mid),"group":"member","title":f"ID: {mid}"})
+        nid+=1;bid=nid
+        status=b.get("status","CONFIRMED")
+        nodes.append({"id":bid,"label":b.get("costco_reservation_id",b.get("id","")),"group":"reservation","title":f"Status: {status}\nVendor Conf: {b.get('vendor_confirmation_id','')}\nRate: ${b.get('vendor_rate',0)}/day\nTotal: ${b.get('vendor_total',0)}"})
+        if mid and mid in member_ids:
+            edges.append({"from":member_ids[mid],"to":bid,"label":"BOOKED","arrows":"to"})
+        vid=b.get("vendor_id","")
+        if vid in vendor_ids:
+            edges.append({"from":bid,"to":vendor_ids[vid],"label":"RENTED_FROM","arrows":"to"})
+        loc=b.get("location_code","")
+        if loc in loc_ids:
+            edges.append({"from":bid,"to":loc_ids[loc],"label":"AT_LOCATION","arrows":"to"})
+        cid=(b.get("vehicle_class","")).lower().replace(" ","-")
+        if cid in class_ids:
+            edges.append({"from":bid,"to":class_ids[cid],"label":"VEHICLE_TYPE","arrows":"to"})
+    for vid,v in vendors.items():
+        if vid not in vendor_ids:continue
+        for code in loc_ids:
+            edges.append({"from":vendor_ids[vid],"to":loc_ids[code],"label":"SERVES","arrows":"to","dashes":True,"color":{"color":"#94a3b8","opacity":0.3}})
+    return {"nodes":nodes,"edges":edges,"stats":{"members":len(member_ids),"vendors":len(vendor_ids),"locations":len(loc_ids),"vehicle_classes":len(class_ids),"reservations":len(bookings)}}
+
 app.mount("/static",StaticFiles(directory=STATIC_DIR),name="static")
 @app.get("/",include_in_schema=False)
 def index(): return FileResponse(STATIC_DIR/"costco-travel-agent-v3.html")
