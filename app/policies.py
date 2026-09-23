@@ -57,8 +57,8 @@ def change_review(pickup_at: str | datetime, *, cost_delta_percent: float | None
         return ReviewDecision(True, "Same-day changes require human review.")
     if hrs < 48:
         return ReviewDecision(True, "Changes within 48 hours of pickup require human review.")
-    if cost_delta_percent is not None and abs(cost_delta_percent) > 30:
-        return ReviewDecision(True, "Total cost changes greater than 30% require human review.")
+    if cost_delta_percent is not None and abs(cost_delta_percent) > 60:
+        return ReviewDecision(True, "Total cost changes greater than 60% require human review.")
     return ReviewDecision(False)
 
 def cancellation_review(pickup_at: str | datetime, *, penalty: float, now: datetime | None = None) -> ReviewDecision:

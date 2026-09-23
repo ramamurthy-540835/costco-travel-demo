@@ -46,6 +46,21 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @keyframes flow-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media(max-width:560px){.workflow-panel{grid-template-columns:1fr}.flow-summary{grid-template-columns:1fr}.workflow-actions button{width:100%}}
 .reservation-label{margin-top:26px}.reservation-sidebar{display:grid;gap:8px;margin-top:10px}
+.res-list{width:100%;border-collapse:separate;border-spacing:0;margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden;box-shadow:0 4px 16px rgba(18,44,70,.06)}
+.res-list th{background:#f5f7f9;color:var(--navy);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:12px 16px;text-align:left;border-bottom:2px solid var(--line)}
+.res-list td{padding:13px 16px;font-size:13px;border-bottom:1px solid #f0f3f5;color:var(--ink)}
+.res-list tr:last-child td{border-bottom:none}
+.res-list tr:hover td{background:#f7fafc;cursor:pointer}
+.res-list .res-id{font-weight:700;color:var(--blue)}
+.pagination{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:10px 4px}
+.pagination button{border:1px solid var(--line);background:#fff;border-radius:4px;padding:8px 16px;font:600 12px inherit;color:var(--navy);cursor:pointer}
+.pagination button:disabled{opacity:.4;cursor:default;transform:none}
+.pagination button:not(:disabled):hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pagination span{font-size:12px;color:var(--muted)}
+.res-filter-bar{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.res-filter{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 14px;font:600 11px inherit;color:var(--muted);cursor:pointer}
+.res-filter.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.res-filter:hover:not(.active){border-color:var(--blue);color:var(--blue)}
 .chat-workflow{margin-top:10px}.chat-workflow .workflow-panel{margin-top:0;padding:18px;grid-template-columns:34px 1fr}.chat-workflow .workflow-icon{width:32px;height:32px}.chat-workflow .rental-cards{padding-bottom:8px}
 .sidebar-reservation{width:100%;display:grid;grid-template-columns:1fr auto;gap:4px 10px;text-align:left;border:1px solid var(--line);background:#fff;padding:11px;border-radius:5px;cursor:pointer}
 .sidebar-reservation strong{font-size:11px;color:var(--navy)}.sidebar-reservation small{font-size:9px;color:var(--muted)}
@@ -159,6 +174,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       <div class="section-heading"><div><div class="eyebrow">RESERVATION CARE</div><h2>Manage your rental</h2><p>Retrieve, modify, upgrade, or cancel a synthetic demo booking.</p></div><span class="demo-pill">DEMO DATA</span></div>
       <form id="retrieveForm" class="form-card compact-form"><label>Reservation number<input name="reservation_id" value="CTR-D21OUT1" required></label><button class="primary" type="submit">Find reservation</button></form>
       <div id="reservationResult"></div><div id="workflowPanel"></div>
+      <div style="margin-top:36px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><div><div class="eyebrow">MY BOOKINGS</div><h3 style="font-family:Fraunces,serif;color:var(--navy);margin:6px 0 0;font-size:22px" id="resListTitle">All Reservations</h3></div><span id="resListCount" style="font-size:12px;color:var(--muted)"></span></div>
+        <div class="res-filter-bar" id="resFilterBar">
+          <button class="res-filter active" data-filter="all">All</button>
+          <button class="res-filter" data-filter="active">Active</button>
+          <button class="res-filter" data-filter="confirmed">Confirmed</button>
+          <button class="res-filter" data-filter="returned">Returned</button>
+          <button class="res-filter" data-filter="cancelled">Cancelled</button>
+        </div>
+        <div id="resListContainer"></div>
+        <div class="pagination" id="resPagination"></div>
+      </div>
     </section>
 
     <section id="lifecycle" class="view content-view">
@@ -470,16 +497,53 @@ async function handleSend(text) {
 
 function renderSidebar() {
   const active=RESERVATIONS.filter((item) => !item.originalReservationId || item.status!=='cancelled');
-  $('#reservationSidebar').innerHTML = active.map((item) => `<button class="sidebar-reservation" data-res-id="${item.id}"><span><strong>${item.id}</strong><small>${item.carClass} · ${item.location}</small></span><i class="status-badge ${item.status}">${titleStatus(item.status)}</i></button>`).join('') || '<p class="sidebar-empty">No demo reservations.</p>';
-  $$('.sidebar-reservation').forEach((button) => button.onclick=()=>openManage(button.dataset.resId));
+  const statusOrder={active:0,confirmed:1,pending:2,hold:3,returned:4,cancelled:5};
+  const sorted=[...active].sort((a,b)=>(statusOrder[a.status]??9)-(statusOrder[b.status]??9));
+  const limited=sorted.slice(0,10);
+  const remaining=sorted.length-limited.length;
+  let html=limited.map((item) => `<button class="sidebar-reservation" data-res-id="${item.id}"><span><strong>${item.id}</strong><small>${item.carClass} · ${item.location}</small></span><i class="status-badge ${item.status}">${titleStatus(item.status)}</i></button>`).join('');
+  if(remaining>0) html+=`<div style="text-align:center;font-size:10px;color:var(--muted);padding:6px">+${remaining} more</div>`;
+  html+=`<button class="sidebar-viewall" onclick="switchView('manage');renderResList()" style="width:100%;display:block;text-align:center;border:0;background:var(--navy);color:#fff;border-radius:5px;padding:10px;font:700 10px inherit;letter-spacing:.1em;cursor:pointer;margin-top:4px">VIEW ALL BOOKINGS →</button>`;
+  $('#reservationSidebar').innerHTML = html || '<p class="sidebar-empty">No demo reservations.</p>';
+  $$('.sidebar-reservation').forEach((button) => { if(button.dataset.resId) button.onclick=()=>openManage(button.dataset.resId); });
 }
 async function hydrateReservations() {
-  try { RESERVATIONS=(await api('/api/reservations')).map(normalizeReservation); } catch (_) { /* relative fallback remains available */ }
-  renderSidebar(); const first=RESERVATIONS.find((item)=>item.status==='confirmed') || RESERVATIONS[0];
+  try {
+    const mid = appMember?.id || 'MBR-00001';
+    RESERVATIONS=(await api(`/api/reservations?member_id=${mid}`)).map(normalizeReservation);
+  } catch (_) { /* relative fallback remains available */ }
+  renderSidebar(); renderResList(); const first=RESERVATIONS.find((item)=>item.status==='confirmed') || RESERVATIONS[0];
   if (first) $('#retrieveForm').elements.reservation_id.value=first.id;
 }
+let resListPage=0, resListFilter='all';
+const RES_PER_PAGE=5;
+function getFilteredRes() {
+  const statusOrder={active:0,confirmed:1,pending:2,hold:3,returned:4,cancelled:5};
+  const all=[...RESERVATIONS].filter(r=>!r.originalReservationId||r.status!=='cancelled').sort((a,b)=>(statusOrder[a.status]??9)-(statusOrder[b.status]??9));
+  if(resListFilter==='all') return all;
+  return all.filter(r=>r.status===resListFilter);
+}
+function renderResList() {
+  const filtered=getFilteredRes();
+  const totalPages=Math.max(1,Math.ceil(filtered.length/RES_PER_PAGE));
+  if(resListPage>=totalPages) resListPage=totalPages-1;
+  const page=filtered.slice(resListPage*RES_PER_PAGE,(resListPage+1)*RES_PER_PAGE);
+  $('#resListCount').textContent=`${filtered.length} reservation${filtered.length!==1?'s':''}`;
+  let table='<table class="res-list"><thead><tr><th>Reservation</th><th>Vehicle</th><th>Location</th><th>Dates</th><th>Total</th><th>Status</th></tr></thead><tbody>';
+  page.forEach(r=>{
+    table+=`<tr onclick="openManage('${r.id}')"><td class="res-id">${r.id}</td><td>${r.carClass}${r.vendor?' · '+r.vendor:''}</td><td>${r.location}</td><td>${formatTripDate(r.pickupAt)} → ${formatTripDate(r.dropAt)}</td><td>${money(r.total)}</td><td><i class="status-badge ${r.status}">${titleStatus(r.status)}</i></td></tr>`;
+  });
+  table+='</tbody></table>';
+  if(!filtered.length) table='<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">No reservations match this filter.</div>';
+  $('#resListContainer').innerHTML=table;
+  $('#resPagination').innerHTML=totalPages>1?`<button ${resListPage===0?'disabled':''} onclick="resListPage--;renderResList()">← Previous</button><span>Page ${resListPage+1} of ${totalPages}</span><button ${resListPage>=totalPages-1?'disabled':''} onclick="resListPage++;renderResList()">Next →</button>`:`<span></span><span style="font-size:11px;color:var(--muted)">Showing ${filtered.length} of ${getFilteredRes().length}</span><span></span>`;
+  $$('#resFilterBar .res-filter').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.filter===resListFilter);
+    btn.onclick=()=>{resListFilter=btn.dataset.filter;resListPage=0;renderResList();};
+  });
+}
 function openManage(id) {
-  switchView('manage'); if (id) $('#retrieveForm').elements.reservation_id.value=id;
+  switchView('manage'); renderResList(); if (id) $('#retrieveForm').elements.reservation_id.value=id;
   $('#retrieveForm').requestSubmit();
 }
 function renderReservation(reservation) {
@@ -606,6 +670,7 @@ function renderChangeSummary() {
 async function confirmChange() {
   const result=await api(`/api/reservations/${appState.flow.resId}/change/confirm`,{method:'POST'}); await hydrateReservations();
   appState.flow=FlowMachine.advance(appState.flow,'complete',{replacementId:result.replacement.id});
+  const newRes=reservationById(result.replacement.id); if(newRes) { $('#retrieveForm').elements.reservation_id.value=result.replacement.id; renderReservation(newRes); }
   flowPanel('Change complete',`<p><strong>${result.replacement.id}</strong> is CONFIRMED. The original ${result.original.id} is now CANCELLED.</p>`); addMessage(`Your change is complete. ${result.replacement.id} is confirmed and ${result.original.id} was released.`); handleAgentAction({action:'change_complete'});
 }
 function renderNewSummary() {

@@ -74,7 +74,11 @@ def chat(body:ChatInput,reservations:Annotated[ReservationService,Depends(reserv
         LOGGER.warning("Vertex reply unavailable for session %s: %s",body.session_id,exc)
         return fallback_reply(body.message,live)
 @app.get("/api/reservations")
-def list_reservations(reservations:Annotated[ReservationService,Depends(reservation_service)]): return reservations.list()
+def list_reservations(reservations:Annotated[ReservationService,Depends(reservation_service)], member_id:str|None=None):
+    all_res = reservations.list()
+    if member_id:
+        all_res = [r for r in all_res if r.get("member_id") == member_id]
+    return all_res
 @app.get("/api/reservations/{reservation_id}")
 def get_reservation(reservation_id:str,reservations:Annotated[ReservationService,Depends(reservation_service)]): return reservations.get(reservation_id)
 @app.post("/api/reservations",status_code=201)
